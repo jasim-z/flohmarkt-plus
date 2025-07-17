@@ -3,9 +3,8 @@ import { MessagePattern } from '@nestjs/microservices';
 import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './current-user.decorator';
-import JwtAuthGuard from './guards/jwt-auth.guard';
-import { LocalAuthGuard } from './guards/local-auth.guard';
-import { User } from './users/schemas/user.schema';
+import { JwtAuthGuard, LocalAuthGuard } from '@app/common';
+import { User } from '@app/common/users/schemas/user.schema';
 
 @Controller('auth')
 export class AuthController {

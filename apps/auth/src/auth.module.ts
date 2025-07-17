@@ -5,9 +5,9 @@ import { RmqModule, DatabaseModule } from '@app/common';
 import * as Joi from 'joi';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { JwtStrategy } from './strategies/jwt.strategy';
-import { LocalStrategy } from './strategies/local.strategy';
-import { UsersModule } from './users/users.module';
+import { JwtStrategy, LocalStrategy } from '@app/common';
+import { UsersModule } from '@app/common/users/users.module';
+import { loadConfig } from '@app/common/config/config';
 
 @Module({
   imports: [
@@ -20,8 +20,12 @@ import { UsersModule } from './users/users.module';
         JWT_SECRET: Joi.string().required(),
         JWT_EXPIRATION: Joi.string().required(),
         MONGODB_URI: Joi.string().required(),
+        RABBIT_MQ_URI: Joi.string().required(),
+        RABBIT_MQ_AUTH_QUEUE: Joi.string().required(),
       }),
-      envFilePath: './apps/auth/.env',
+      load: [
+        loadConfig,
+      ],
     }),
     JwtModule.registerAsync({
       useFactory: (configService: ConfigService) => ({

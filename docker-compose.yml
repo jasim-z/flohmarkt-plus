@@ -5,8 +5,15 @@ services:
       dockerfile: ./apps/orders/Dockerfile
       target: development
     command: npm run start:dev orders
+    environment:
+      - PORT=3949
+      - NODE_ENV=development
+      - JWT_EXPIRATION=3600
     env_file:
-      - ./apps/orders/.env
+      - apps/orders/.env
+    secrets:
+      - jwt_secret
+      - mongodb_uri
     depends_on:
       - mongodb-primary
       - mongodb-secondary
@@ -26,8 +33,15 @@ services:
       dockerfile: ./apps/billing/Dockerfile
       target: development
     command: npm run start:dev billing
+    environment:
+      - PORT=3951
+      - NODE_ENV=development
+      - JWT_EXPIRATION=3600
     env_file:
-      - ./apps/billing/.env
+      - apps/billing/.env
+    secrets:
+      - jwt_secret
+      - mongodb_uri
     depends_on:
       - mongodb-primary
       - mongodb-secondary
@@ -37,6 +51,8 @@ services:
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules
+    ports:
+      - '3951:3951'
 
   auth:
     build:
@@ -44,10 +60,15 @@ services:
       dockerfile:  ./apps/auth/Dockerfile
       target: development
     command: npm run start:dev auth
-    ports:
-      - '3950:3950'
+    environment:
+      - PORT=3950
+      - NODE_ENV=development
+      - JWT_EXPIRATION=3600
     env_file:
-      - ./apps/auth/.env
+      - apps/auth/.env
+    secrets:
+      - jwt_secret
+      - mongodb_uri
     depends_on:
       - mongodb-primary
       - mongodb-secondary
@@ -55,7 +76,9 @@ services:
       - rabbitmq
     volumes:
       - .:/usr/src/app
-      - ./usr/src/app/node_modules
+      - /usr/src/app/node_modules
+    ports:
+      - '3950:3950'
 
   rabbitmq:
     image: rabbitmq
@@ -63,39 +86,60 @@ services:
       - '5673:5672'
 
   mongodb-primary:
-    image: docker.io/bitnami/mongodb:5.0
+    image: mongo:5.0
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/data/keyfile"]
+    secrets:
+      - mongodb_root_username
+      - mongodb_root_password
     environment:
-      - MONGODB_ADVERTISED_HOSTNAME=mongodb-primary
-      - MONGODB_REPLICA_SET_MODE=primary
-      - MONGODB_ROOT_PASSWORD=password123
-      - MONGODB_REPLICA_SET_KEY=replicasetkey123
+      - MONGO_INITDB_ROOT_USERNAME_FILE=/run/secrets/mongodb_root_username
+      - MONGO_INITDB_ROOT_PASSWORD_FILE=/run/secrets/mongodb_root_password
     volumes:
-      - 'mongodb_master_data:/bitnami/mongodb'
+      - 'mongodb_master_data:/data/db'
+      - ./mongo-keyfile:/data/keyfile
     ports:
       - '27017:27017'
 
   mongodb-secondary:
-    image: docker.io/bitnami/mongodb:5.0
+    image: mongo:5.0
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/data/keyfile"]
     depends_on:
       - mongodb-primary
+    secrets:
+      - mongodb_uri
+      - mongodb_root_username
+      - mongodb_root_password
     environment:
-      - MONGODB_ADVERTISED_HOSTNAME=mongodb-secondary
-      - MONGODB_REPLICA_SET_MODE=secondary
-      - MONGODB_INITIAL_PRIMARY_HOST=mongodb-primary
-      - MONGODB_INITIAL_PRIMARY_ROOT_PASSWORD=password123
-      - MONGODB_REPLICA_SET_KEY=replicasetkey123
+      - MONGO_INITDB_ROOT_USERNAME_FILE=/run/secrets/mongodb_root_username
+      - MONGO_INITDB_ROOT_PASSWORD_FILE=/run/secrets/mongodb_root_password
+    volumes:
+     - ./mongo-keyfile:/data/keyfile
 
   mongodb-arbiter:
-    image: docker.io/bitnami/mongodb:5.0
+    image: mongo:5.0
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/data/keyfile"]
     depends_on:
       - mongodb-primary
+    secrets:
+      - mongodb_uri
+      - mongodb_root_username
+      - mongodb_root_password
     environment:
-      - MONGODB_ADVERTISED_HOSTNAME=mongodb-arbiter
-      - MONGODB_REPLICA_SET_MODE=arbiter
-      - MONGODB_INITIAL_PRIMARY_HOST=mongodb-primary
-      - MONGODB_INITIAL_PRIMARY_ROOT_PASSWORD=password123
-      - MONGODB_REPLICA_SET_KEY=replicasetkey123
+      - MONGO_INITDB_ROOT_USERNAME_FILE=/run/secrets/mongodb_root_username
+      - MONGO_INITDB_ROOT_PASSWORD_FILE=/run/secrets/mongodb_root_password
+    volumes:
+      - ./mongo-keyfile:/data/keyfile
 
 volumes:
   mongodb_master_data:
     driver: local
+
+secrets:
+  jwt_secret:
+    file: ./secrets/jwt_secret.txt
+  mongodb_uri:
+    file: ./secrets/mongodb_uri.txt
+  mongodb_root_username:
+    file: ./secrets/mongodb_root_username.txt
+  mongodb_root_password:
+    file: ./secrets/mongodb_root_password.txt

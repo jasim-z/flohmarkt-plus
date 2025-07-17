@@ -3,8 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Types } from 'mongoose';
-import { TokenPayload } from '../auth.service';
-import { UsersService } from '../users/users.service';
+import { TokenPayload } from '@app/common/types/token-payload';
+import { UsersService } from '@app/common/users/users.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -15,8 +15,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (request: any) => {
-          return request?.Authentication;
+          const token = request?.Authentication;
+          return token;
         },
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
       ]),
       secretOrKey: configService.get('JWT_SECRET'),
     });
@@ -24,9 +26,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate({ userId }: TokenPayload) {
     try {
-      return await this.usersService.getUser({
+      const user = await this.usersService.getUser({
         _id: new Types.ObjectId(userId),
       });
+      return user;
     } catch (err) {
       throw new UnauthorizedException();
     }

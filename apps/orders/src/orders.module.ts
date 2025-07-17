@@ -8,6 +8,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { Order, OrderSchema } from './schemas/order.schemas';
 import { OrdersRepository } from './orders.repository';
 import { BILLING_SERVICE } from './constants/services';
+import { JwtStrategy, UsersModule } from '@app/common';
 
 @Module({
   imports: [
@@ -23,9 +24,10 @@ import { BILLING_SERVICE } from './constants/services';
     MongooseModule.forFeature([{ name: Order.name, schema: OrderSchema }]),
     RmqModule.register({
       name: BILLING_SERVICE
-    })
+    }),
+    UsersModule,
   ],
   controllers: [OrdersController],
-  providers: [OrdersService, OrdersRepository],
+  providers: [OrdersService, OrdersRepository, JwtStrategy],
 })
 export class OrdersModule {}
