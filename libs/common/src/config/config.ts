@@ -8,7 +8,5 @@ export function loadConfig() {
         RABBIT_MQ_URI: process.env.RABBIT_MQ_URI,
         RABBIT_MQ_AUTH_QUEUE: process.env.RABBIT_MQ_AUTH_QUEUE,
         RABBIT_MQ_BILLING_QUEUE: process.env.RABBIT_MQ_BILLING_QUEUE,
-        // MONGODB_URI: fs.readFileSync('/run/secrets/mongodb_uri', 'utf8').trim(),
-        // JWT_SECRET: fs.readFileSync('/run/secrets/jwt_secret', 'utf8').trim(),
     };
 }
