@@ -4,7 +4,7 @@ import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './current-user.decorator';
 import { JwtAuthGuard, LocalAuthGuard } from '@app/common';
-import { User } from '@app/common/users/schemas/user.schema';
+import { User } from 'apps/auth/src/users/schemas/user.schema';
 
 @Controller('auth')
 export class AuthController {

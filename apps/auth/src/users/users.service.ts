@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { UsersRepository } from './users.repository';
-import { CreateUserRequest } from './dto/create-user.request';
+import { CreateUserRequest } from '../../../../libs/common/src/dto/user/create-user.request';
 import { User } from './schemas/user.schema';
 
 @Injectable()

@@ -4,8 +4,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Types } from 'mongoose';
 import { TokenPayload } from '@app/common/types/token-payload';
-import { UsersService } from '@app/common/users/users.service';
-
+import { UsersService } from 'apps/auth/src/users/users.service';
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
