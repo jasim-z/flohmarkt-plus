@@ -15,12 +15,18 @@ services:
       - jwt_secret
       - mongodb_uri
     depends_on:
-      - mongodb-primary
-      - mongodb-secondary
-      - mongodb-arbiter
-      - billing
-      - auth
-      - rabbitmq
+      mongodb-primary:
+        condition: service_healthy
+      mongodb-secondary:
+        condition: service_started
+      mongodb-arbiter:
+        condition: service_started
+      billing:
+        condition: service_started
+      auth:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules
@@ -43,11 +49,16 @@ services:
       - jwt_secret
       - mongodb_uri
     depends_on:
-      - mongodb-primary
-      - mongodb-secondary
-      - mongodb-arbiter
-      - rabbitmq
-      - auth
+      mongodb-primary:
+        condition: service_healthy
+      mongodb-secondary:
+        condition: service_started
+      mongodb-arbiter:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      auth:
+        condition: service_started
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules
@@ -70,15 +81,51 @@ services:
       - jwt_secret
       - mongodb_uri
     depends_on:
-      - mongodb-primary
-      - mongodb-secondary
-      - mongodb-arbiter
-      - rabbitmq
+      mongodb-primary:
+        condition: service_healthy
+      mongodb-secondary:
+        condition: service_started
+      mongodb-arbiter:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules
     ports:
       - '3950:3950'
+
+  listings:
+    build:
+      context: .
+      dockerfile: ./apps/listings/Dockerfile
+      target: development
+    command: npm run start:dev listings
+    environment:
+      - PORT=3952
+      - NODE_ENV=development
+      - JWT_EXPIRATION=3600
+    env_file:
+      - apps/listings/.env
+    secrets:
+      - jwt_secret
+      - mongodb_uri
+    depends_on:
+      mongodb-primary:
+        condition: service_healthy
+      mongodb-secondary:
+        condition: service_started
+      mongodb-arbiter:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      auth:
+        condition: service_started
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    ports:
+      - '3952:3952'
 
   rabbitmq:
     image: rabbitmq
@@ -97,8 +144,15 @@ services:
     volumes:
       - 'mongodb_master_data:/data/db'
       - ./mongo-keyfile:/data/keyfile
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
     ports:
       - '27017:27017'
+    healthcheck:
+      test: ["CMD", "mongosh", "--username", "root", "--password", "password123", "--authenticationDatabase", "admin", "--eval", "rs.status().ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   mongodb-secondary:
     image: mongo:5.0
