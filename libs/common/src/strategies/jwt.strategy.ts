@@ -1,16 +1,12 @@
-import { Injectable, UnauthorizedException, Inject } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { Types } from 'mongoose';
 import { TokenPayload } from '@app/common/types/token-payload';
-import { IUserService } from '@app/common/types/user-service.interface';
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(
-    configService: ConfigService,
-    @Inject('IUserService') private readonly usersService: IUserService,
-  ) {
+  constructor(configService: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (request: any) => {
@@ -23,14 +19,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate({ userId }: TokenPayload) {
-    try {
-      const user = await this.usersService.getUser({
-        _id: new Types.ObjectId(userId),
-      });
-      return user;
-    } catch (err) {
+  async validate({ userId, role, email }: TokenPayload) {
+    if (!userId) {
       throw new UnauthorizedException();
     }
+
+    // Return user object with data from the JWT token
+    // This is secure because the data comes from the signed JWT token
+    return {
+      _id: userId,
+      userId: userId,
+      role: role || 'buyer', // Use role from token
+      email: email || 'user@example.com',
+      displayName: 'User', // Placeholder
+    };
   }
 }
