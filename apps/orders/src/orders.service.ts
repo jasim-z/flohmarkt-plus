@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { CreateOrderRequest } from './dto/create-order.request';
 import { OrdersRepository } from './orders.repository';
 import { BILLING_SERVICE } from './constants/services';
@@ -13,7 +13,12 @@ export class OrdersService {
     @Inject(BILLING_SERVICE) private billingClient: ClientProxy,
   ) {}
 
-  async createOrder(request: CreateOrderRequest, userId: string) {
+  async createOrder(request: CreateOrderRequest, userId: string, userRole: string) {
+    // Validate user has buyer role (from JWT token)
+    if (!['buyer', 'admin'].includes(userRole)) {
+      throw new ForbiddenException('Only buyers can create orders');
+    }
+
     const session = await this.ordersRepository.startTransaction();
     try {
       // TODO: Get listing details to extract sellerId
@@ -45,6 +50,11 @@ export class OrdersService {
   }
 
   async getOrder(orderId: string, userId: string, userRole: string) {
+    // Validate user has permission to view this order (from JWT token)
+    if (!['buyer', 'seller', 'admin'].includes(userRole)) {
+      throw new ForbiddenException('Insufficient permissions to view orders');
+    }
+
     const query: any = { _id: orderId };
 
     // Buyers can only see their own orders
@@ -65,6 +75,11 @@ export class OrdersService {
   }
 
   async getOrders(userId: string, userRole: string) {
+    // Validate user has permission to view orders (from JWT token)
+    if (!['buyer', 'seller', 'admin'].includes(userRole)) {
+      throw new ForbiddenException('Insufficient permissions to view orders');
+    }
+
     const query: any = {};
 
     // Buyers can only see their own orders

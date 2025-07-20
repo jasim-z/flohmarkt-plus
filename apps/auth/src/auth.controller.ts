@@ -1,28 +1,61 @@
-import { Controller, Post, Res, UseGuards } from '@nestjs/common';
-import { MessagePattern } from '@nestjs/microservices';
+import {
+  Controller,
+  Post,
+  UseGuards,
+  Request,
+  Res,
+} from '@nestjs/common';
+import { MessagePattern, Payload } from '@nestjs/microservices';
 import { Response } from 'express';
 import { AuthService } from './auth.service';
-import { CurrentUser } from './current-user.decorator';
-import { JwtAuthGuard, LocalAuthGuard } from '@app/common';
-import { User } from 'apps/auth/src/users/schemas/user.schema';
+import { LocalAuthGuard } from '@app/common';
+import { UsersService } from './users/users.service';
+import { Types } from 'mongoose';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly usersService: UsersService,
+  ) {}
 
   @UseGuards(LocalAuthGuard)
   @Post('login')
-  async login(
-    @CurrentUser() user: User,
-    @Res({ passthrough: true }) response: Response,
-  ) {
-    await this.authService.login(user, response);
-    response.send(user);
+  async login(@Request() req, @Res({ passthrough: true }) response: Response) {
+    return this.authService.login(req.user, response);
   }
 
-  @UseGuards(JwtAuthGuard)
-  @MessagePattern('validate_user')
-  async validateUser(@CurrentUser() user: User) {
-    return user;
+  @Post('logout')
+  logout(@Res({ passthrough: true }) response: Response) {
+    this.authService.logout(response);
+    return { message: 'Logged out successfully' };
+  }
+
+  @MessagePattern('get_user')
+  async getUser(@Payload() data: { userId: string }) {
+    try {
+      const user = await this.usersService.getUser({
+        _id: new Types.ObjectId(data.userId),
+      });
+
+      if (!user) {
+        return null;
+      }
+
+      // Return user details without sensitive information
+      return {
+        _id: user._id,
+        email: user.email,
+        role: user.role,
+        displayName: user.displayName,
+        city: user.city,
+        neighborhood: user.neighborhood,
+        isVerified: user.isVerified,
+        rating: user.rating,
+      };
+    } catch (error) {
+      console.error('Error getting user:', error);
+      return null;
+    }
   }
 }

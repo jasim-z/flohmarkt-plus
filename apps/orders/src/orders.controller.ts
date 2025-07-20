@@ -14,7 +14,7 @@ export class OrdersController {
     @Body() request: CreateOrderRequest,
     @CurrentUser() user: any,
   ) {
-    return this.ordersService.createOrder(request, user._id.toString());
+    return this.ordersService.createOrder(request, user._id.toString(), user.role);
   }
 
   @Get()

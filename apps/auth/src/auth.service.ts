@@ -6,6 +6,8 @@ import { User } from './users/schemas/user.schema';
 
 export interface TokenPayload {
   userId: string;
+  role: string;
+  email: string;
 }
 
 @Injectable()
@@ -16,9 +18,10 @@ export class AuthService {
   ) {}
 
   async login(user: User, response: Response) {
-
     const tokenPayload: TokenPayload = {
       userId: user._id.toHexString(),
+      role: user.role || 'buyer', // Include user role in token
+      email: user.email,
     };
 
     const expires = new Date();
@@ -32,6 +35,18 @@ export class AuthService {
       httpOnly: true,
       expires,
     });
+
+    return {
+      access_token: token,
+      user: {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        displayName: user.displayName,
+        city: user.city,
+        neighborhood: user.neighborhood,
+      },
+    };
   }
 
   logout(response: Response) {
