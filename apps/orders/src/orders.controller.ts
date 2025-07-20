@@ -1,25 +1,33 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards, Param } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderRequest } from './dto/create-order.request';
-import { JwtAuthGuard } from '@app/common';
+import { JwtAuthGuard, RolesGuard, Roles, CurrentUser } from '@app/common';
 
 @Controller('orders')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Post()
-  async createOrder(@Body() request: CreateOrderRequest) {
-    return this.ordersService.createOrder(request);
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('buyer', 'admin')
+  async createOrder(
+    @Body() request: CreateOrderRequest,
+    @CurrentUser() user: any,
+  ) {
+    return this.ordersService.createOrder(request, user._id.toString());
   }
 
-  // @Get()
-  // async getOrder() {
-  //   return this.ordersService.getOrder();
-  // }
-
-  @UseGuards(JwtAuthGuard)
   @Get()
-  async getOrders() {
-    return this.ordersService.getOrders();
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('buyer', 'seller', 'admin')
+  async getOrders(@CurrentUser() user: any) {
+    return this.ordersService.getOrders(user._id.toString(), user.role);
+  }
+
+  @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('buyer', 'seller', 'admin')
+  async getOrder(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.ordersService.getOrder(id, user._id.toString(), user.role);
   }
 }
