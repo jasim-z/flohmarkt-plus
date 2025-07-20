@@ -9,11 +9,22 @@ export * from './guards/roles.guard';
 export * from './strategies/jwt.strategy';
 export * from './strategies/local.strategy';
 
+<<<<<<< Updated upstream
+=======
+export * from './types/token-payload';
+
+>>>>>>> Stashed changes
 // Decorators
 export * from './decorators/current-user.decorator';
 export * from './decorators/roles.decorator';
 
+<<<<<<< Updated upstream
 export * from './types/token-payload';
 
 // Flea Market App DTOs
 export * from './dto/user/create-user.request';
+=======
+// Flea Market App DTOs
+export * from './dto/user/create-user.request';
+
+>>>>>>> Stashed changes
