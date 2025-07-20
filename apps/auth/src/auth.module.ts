@@ -1,13 +1,16 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-import { RmqModule, DatabaseModule } from '@app/common';
+import { RmqModule, DatabaseModule, IUserService } from '@app/common';
 import * as Joi from 'joi';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy, LocalStrategy } from '@app/common';
 import { UsersModule } from 'apps/auth/src/users/users.module';
 import { loadConfig } from '@app/common/config/config';
+import { UsersService } from 'apps/auth/src/users/users.service';
+import { SeedService } from './seeds/seed.service';
+import { SeedController } from './seeds/seed.controller';
 
 @Module({
   imports: [
@@ -23,9 +26,7 @@ import { loadConfig } from '@app/common/config/config';
         RABBIT_MQ_URI: Joi.string().required(),
         RABBIT_MQ_AUTH_QUEUE: Joi.string().required(),
       }),
-      load: [
-        loadConfig,
-      ],
+      load: [loadConfig],
     }),
     JwtModule.registerAsync({
       useFactory: (configService: ConfigService) => ({
@@ -37,7 +38,16 @@ import { loadConfig } from '@app/common/config/config';
       inject: [ConfigService],
     }),
   ],
-  controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, JwtStrategy],
+  controllers: [AuthController, SeedController],
+  providers: [
+    AuthService,
+    LocalStrategy,
+    JwtStrategy,
+    SeedService,
+    {
+      provide: 'IUserService',
+      useExisting: UsersService,
+    },
+  ],
 })
 export class AuthModule {}

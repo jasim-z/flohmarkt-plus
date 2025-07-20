@@ -9,11 +9,15 @@ export * from './guards/roles.guard';
 export * from './strategies/jwt.strategy';
 export * from './strategies/local.strategy';
 
+
+export * from './types/token-payload';
+export * from './types/user-service.interface';
+
+// Flea Market App DTOs
+export * from './dto/user/create-user.dto';
+export * from './dto/listing/create-listing.dto';
+
 // Decorators
 export * from './decorators/current-user.decorator';
 export * from './decorators/roles.decorator';
 
-export * from './types/token-payload';
-
-// Flea Market App DTOs
-export * from './dto/user/create-user.request';

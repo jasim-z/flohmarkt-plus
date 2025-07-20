@@ -5,33 +5,33 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { UsersRepository } from './users.repository';
-import { CreateUserRequest } from '../../../../libs/common/src/dto/user/create-user.request';
+import { CreateUserDto, UserRole } from '@app/common';
 import { User } from './schemas/user.schema';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly usersRepository: UsersRepository) {}
 
-  async createUser(request: CreateUserRequest) {
+  async createUser(request: CreateUserDto) {
     try {
-      console.log('🚀 ~ AuthService ~ User ~ createUser:');
+      await this.validateCreateUserRequest(request);
 
-      const userResp = await this.validateCreateUserRequest(request);
-      console.log('🚀 ~ UsersService ~ createUser ~ userResp:', userResp);
       const user = await this.usersRepository.create({
         ...request,
         password: await bcrypt.hash(request.password, 10),
+        role: request.role || UserRole.BUYER, // Default to buyer
+        isActive: true,
+        memberSince: new Date(),
       });
-
-      console.log('🚀 ~ AuthService ~ User ~ createUser: user', user);
 
       return user;
     } catch (error) {
       console.log('🚀 ~ UsersService ~ createUser ~ error:', error);
+      throw error;
     }
   }
 
-  private async validateCreateUserRequest(request: CreateUserRequest) {
+  private async validateCreateUserRequest(request: CreateUserDto) {
     let user: User;
     try {
       user = await this.usersRepository.findOne({
@@ -48,6 +48,10 @@ export class UsersService {
 
   async validateUser(email: string, password: string) {
     const user = await this.usersRepository.findOne({ email });
+    if (!user) {
+      throw new UnauthorizedException('User not found.');
+    }
+    
     const passwordIsValid = await bcrypt.compare(password, user.password);
     if (!passwordIsValid) {
       throw new UnauthorizedException('Credentials are not valid.');
@@ -57,5 +61,24 @@ export class UsersService {
 
   async getUser(getUserArgs: Partial<User>) {
     return this.usersRepository.findOne(getUserArgs);
+  }
+
+  async updateUserProfile(userId: string, updateData: Partial<User>) {
+    return this.usersRepository.findOneAndUpdate(
+      { _id: userId },
+      { ...updateData, lastSeen: new Date() },
+    );
+  }
+
+  async getUsersByRole(role: UserRole) {
+    return this.usersRepository.find({ role, isActive: true });
+  }
+
+  async getNearbyUsers(latitude: number, longitude: number, radiusKm = 10) {
+    // This would use geospatial queries when we add location indexes
+    return this.usersRepository.find({
+      isActive: true,
+      // Add geospatial query here when needed
+    });
   }
 }
