@@ -1,13 +1,26 @@
-import { IsNotEmpty, IsPhoneNumber, IsPositive, IsString } from "class-validator";
+import { IsNotEmpty, IsPositive, IsString, IsOptional, IsEnum } from 'class-validator';
+import { OrderStatus } from '../schemas/order.schemas';
 
 export class CreateOrderRequest {
-    @IsString()
-    @IsNotEmpty()
-    name: string;
+  @IsString()
+  @IsNotEmpty()
+  listingId: string;
 
-    @IsPositive()
-    price: number;
+  @IsPositive()
+  quantity: number;
 
-    @IsPhoneNumber()
-    phoneNumber: string;
+  @IsPositive()
+  totalPrice: number;
+
+  @IsOptional()
+  @IsString()
+  deliveryAddress?: string;
+
+  @IsOptional()
+  @IsString()
+  pickupAddress?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }
