@@ -1,5 +1,10 @@
-import { Inject, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { CreateOrderRequest } from './dto/create-order.request';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
+import { CreateOrderRequest } from '@app/common/dto/order/create-order.dto';
 import { OrdersRepository } from './orders.repository';
 import { BILLING_SERVICE } from './constants/services';
 import { ClientProxy } from '@nestjs/microservices';

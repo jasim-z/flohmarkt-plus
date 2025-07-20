@@ -11,24 +11,30 @@ import {
   Request,
 } from '@nestjs/common';
 import { ListingsService } from './listings.service';
-import { CreateListingDto } from '@app/common';
-import { JwtAuthGuard } from '@app/common';
+import { JwtAuthGuard, RolesGuard, Roles } from '@app/common';
+import { CreateListingDto } from '@app/common/dto/listing/create-listing.dto';
 
 @Controller('listings')
 export class ListingsController {
   constructor(private readonly listingsService: ListingsService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('seller')
   create(@Body() createListingDto: CreateListingDto, @Request() req) {
     return this.listingsService.create(createListingDto, 'temp-seller-id');
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('seller', 'buyer', 'admin')
   findAll(@Query() query: any) {
     return this.listingsService.findAll(query);
   }
 
   @Get('nearby')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('seller', 'buyer', 'admin')
   findNearby(
     @Query('latitude') latitude: number,
     @Query('longitude') longitude: number,
@@ -39,31 +45,43 @@ export class ListingsController {
   }
 
   @Get('search')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('seller', 'buyer', 'admin')
   search(@Query('q') searchTerm: string, @Query() query: any) {
     return this.listingsService.search(searchTerm, query);
   }
 
   @Get('categories')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('seller', 'buyer', 'admin')
   getCategories() {
     return this.listingsService.getCategories();
   }
 
   @Get('trending')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('seller', 'buyer', 'admin')
   getTrending(@Query('limit') limit = 10) {
     return this.listingsService.getTrending(limit);
   }
 
   @Get('seller/:sellerId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('seller', 'buyer', 'admin')
   findBySeller(@Param('sellerId') sellerId: string) {
     return this.listingsService.findBySeller(sellerId);
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('seller', 'buyer', 'admin')
   findOne(@Param('id') id: string) {
     return this.listingsService.findOne(id);
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('seller')
   update(
     @Param('id') id: string,
     @Body() updateListingDto: any,
@@ -73,6 +91,8 @@ export class ListingsController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('seller')
   remove(@Param('id') id: string, @Request() req) {
     return this.listingsService.remove(id, 'temp-seller-id');
   }

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Listing, ListingDocument } from '../schemas/listing.schema';
-import { UserRole, ItemCategory, ItemCondition, DeliveryOption } from '@app/common';
+import { ItemCategory, ItemCondition, DeliveryOption } from '@app/common';
 
 @Injectable()
 export class SeedService {
