@@ -1,40 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import FleaMarketIllustration from "../../components/FleaMarketIllustration";
-import { useRouter } from "next/navigation";
-import toast from "react-hot-toast";
-import { signupUser } from "../../api/auth";
+import FleaMarketIllustration from "../../../components/FleaMarketIllustration";
+import { loginUser } from "../../../api/auth";
+import { useTranslations } from "next-intl";
+import LanguageSwitcher from "../../../components/LanguageSwitcher";
 
-export default function SignupPage() {
-  const router = useRouter();
+export default function LoginPage() {
+  const t = useTranslations();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
+  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleSignup(e: React.FormEvent) {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     if (loading) return;
-    if (password !== confirmPassword) {
-      toast.error("Passwörter stimmen nicht überein.");
-      return;
-    }
+    setMessage("");
     setLoading(true);
     try {
-      await signupUser({ email, password, displayName });
-      toast.success("Registrierung erfolgreich! Du kannst dich jetzt einloggen.");
-      setEmail("");
-      setPassword("");
-      setConfirmPassword("");
-      setDisplayName("");
-      setTimeout(() => {
-        router.push("/login");
-      }, 2700);
-    } catch (err: any) {
-      toast.error(err.message || "Registrierung fehlgeschlagen");
+      await loginUser(email, password);
+      setMessage(t("login.success"));
+      // Optionally redirect or fetch user data here
+    } catch (err: unknown) {
+      setMessage((err instanceof Error ? err.message : String(err)) || t("login.error"));
     }
     setLoading(false);
   }
@@ -48,9 +37,9 @@ export default function SignupPage() {
             <FleaMarketIllustration />
           </div>
           <div className="mt-8 text-center">
-            <h2 className="text-2xl font-bold text-orange-800 mb-2">Willkommen zum Münchner Flohmarkt!</h2>
-            <p className="text-orange-700 text-lg">Entdecke, kaufe und verkaufe Schätze aus deiner Nachbarschaft.<br />
-              <span className="inline-block mt-2">Handeln, stöbern, Gemeinschaft erleben.</span>
+            <h2 className="text-2xl font-bold text-orange-800 mb-2">{t("welcome.headline")}</h2>
+            <p className="text-orange-700 text-lg">{t("welcome.sub")}<br />
+              <span className="inline-block mt-2">{t("welcome.cta")}</span>
             </p>
           </div>
         </div>
@@ -64,20 +53,13 @@ export default function SignupPage() {
       {/* Form: always visible, right on desktop, below SVG on mobile, bg-orange-50 */}
       <div className="flex flex-col justify-center items-center w-full md:w-1/2 p-4 md:p-8 bg-orange-50">
         <div className="w-full max-w-sm md:max-w-md p-6 md:p-8 rounded-2xl shadow-lg border border-orange-100 bg-white">
-          <h1 className="text-3xl font-bold text-center text-orange-700 mb-6">Registrieren</h1>
-          <form onSubmit={handleSignup} className="space-y-4">
-            <input
-              className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
-              type="text"
-              placeholder="Name oder Nickname"
-              value={displayName}
-              onChange={e => setDisplayName(e.target.value)}
-              required
-            />
+          <LanguageSwitcher />
+          <h1 className="text-3xl font-bold text-center text-orange-700 mb-6">{t("login.title")}</h1>
+          <form onSubmit={handleLogin} className="space-y-5">
             <input
               className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
               type="email"
-              placeholder="Email"
+              placeholder={t("login.email")}
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
@@ -85,17 +67,9 @@ export default function SignupPage() {
             <input
               className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
               type="password"
-              placeholder="Passwort"
+              placeholder={t("login.password")}
               value={password}
               onChange={e => setPassword(e.target.value)}
-              required
-            />
-            <input
-              className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
-              type="password"
-              placeholder="Passwort bestätigen"
-              value={confirmPassword}
-              onChange={e => setConfirmPassword(e.target.value)}
               required
             />
             <button
@@ -106,14 +80,12 @@ export default function SignupPage() {
               {loading ? (
                 <span className="loader border-2 border-white border-t-transparent rounded-full w-5 h-5 inline-block align-middle mr-2 animate-spin"></span>
               ) : null}
-              Registrieren
+              {t("login.button")}
             </button>
           </form>
+          {message && <p className="mt-4 text-center text-red-500">{message}</p>}
           <p className="mt-6 text-center text-gray-500">
-            Schon ein Konto?{" "}
-            <Link href="/login" className="text-orange-600 hover:underline">
-              Login
-            </Link>
+            {t("login.noAccount")} <a href={`/${typeof window !== 'undefined' && window.location.pathname.split('/')[1] || 'en'}/signup`} className="text-orange-600 hover:underline">{t("login.signupLink")}</a>
           </p>
         </div>
       </div>

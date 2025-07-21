@@ -1,0 +1,30 @@
+{
+  "login": {
+    "title": "Login",
+    "email": "Email",
+    "password": "Passwort",
+    "button": "Login",
+    "noAccount": "Noch kein Konto?",
+    "signupLink": "Registrieren",
+    "success": "Login erfolgreich! Willkommen zurück.",
+    "error": "Login fehlgeschlagen"
+  },
+  "signup": {
+    "title": "Registrieren",
+    "name": "Name oder Nickname",
+    "email": "Email",
+    "password": "Passwort",
+    "confirmPassword": "Passwort bestätigen",
+    "button": "Registrieren",
+    "hasAccount": "Schon ein Konto?",
+    "loginLink": "Login",
+    "success": "Registrierung erfolgreich! Du kannst dich jetzt einloggen.",
+    "error": "Registrierung fehlgeschlagen",
+    "passwordMismatch": "Passwörter stimmen nicht überein."
+  },
+  "welcome": {
+    "headline": "Willkommen zum Münchner Flohmarkt!",
+    "sub": "Entdecke, kaufe und verkaufe Schätze aus deiner Nachbarschaft.",
+    "cta": "Handeln, stöbern, Gemeinschaft erleben."
+  }
+} 

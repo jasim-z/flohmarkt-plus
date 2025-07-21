@@ -1,0 +1,30 @@
+{
+  "login": {
+    "title": "Login",
+    "email": "Email",
+    "password": "Password",
+    "button": "Login",
+    "noAccount": "No account yet?",
+    "signupLink": "Sign up",
+    "success": "Login successful! Welcome back.",
+    "error": "Login failed"
+  },
+  "signup": {
+    "title": "Sign Up",
+    "name": "Name or Nickname",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "button": "Sign Up",
+    "hasAccount": "Already have an account?",
+    "loginLink": "Login",
+    "success": "Registration successful! You can now log in.",
+    "error": "Registration failed",
+    "passwordMismatch": "Passwords do not match."
+  },
+  "welcome": {
+    "headline": "Welcome to Munich Flea Market!",
+    "sub": "Discover, buy and sell treasures from your neighborhood.",
+    "cta": "Haggle, browse, experience community."
+  }
+} 
