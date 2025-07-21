@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { Inter } from 'next/font/google'
+import { Nunito } from 'next/font/google'
 import "./globals.css";
-const inter = Inter({ subsets: ['latin'] })
+import { Toaster } from "react-hot-toast";
+const nunito = Nunito({ subsets: ['latin'], weight: ['400', '700'] })
 
 export const metadata: Metadata = {
   title: "FlohMarkt+",
@@ -16,8 +17,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${inter.className} antialiased`}
+        className={`${nunito.className} antialiased`}
       >
+        <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
         {children}
       </body>
     </html>

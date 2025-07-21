@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Post, UseGuards, Param } from '@nestjs/common';
 import { OrdersService } from './orders.service';
-import { CreateOrderRequest } from './dto/create-order.request';
+import { CreateOrderRequest } from '@app/common/dto/order/create-order.dto';
 import { JwtAuthGuard, RolesGuard, Roles, CurrentUser } from '@app/common';
 
 @Controller('orders')

@@ -28,17 +28,17 @@ export class User extends AbstractDocument {
   })
   role: UserRole;
 
-  @Prop({ required: true })
-  city: string;
+  @Prop()
+  city?: string;
 
-  @Prop({ required: true })
-  neighborhood: string;
+  @Prop()
+  neighborhood?: string;
 
-  @Prop({ required: true, type: Number })
-  latitude: number;
+  @Prop({ type: Number })
+  latitude?: number;
 
-  @Prop({ required: true, type: Number })
-  longitude: number;
+  @Prop({ type: Number })
+  longitude?: number;
 
   @Prop()
   phoneNumber?: string;

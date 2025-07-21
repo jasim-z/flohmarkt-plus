@@ -4,7 +4,7 @@ import {
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
-import { CreateOrderRequest } from '@app/common/dto/order/create-order.dto';
+import { CreateOrderDto } from '@app/common/dto/order/create-order.dto';
 import { OrdersRepository } from './orders.repository';
 import { BILLING_SERVICE } from './constants/services';
 import { ClientProxy } from '@nestjs/microservices';
@@ -18,7 +18,7 @@ export class OrdersService {
     @Inject(BILLING_SERVICE) private billingClient: ClientProxy,
   ) {}
 
-  async createOrder(request: CreateOrderRequest, userId: string, userRole: string) {
+  async createOrder(request: CreateOrderDto, userId: string, userRole: string) {
     // Validate user has buyer role (from JWT token)
     if (!['buyer', 'admin'].includes(userRole)) {
       throw new ForbiddenException('Only buyers can create orders');
