@@ -53,7 +53,6 @@ export default function SignupPage() {
           <div className="mt-8 text-center">
             <h2 className="text-2xl font-bold text-orange-800 mb-2">{t("welcome.headline")}</h2>
             <p className="text-orange-700 text-lg">{t("welcome.sub")}<br />
-              <span className="inline-block mt-2">{t("welcome.cta")}</span>
             </p>
           </div>
         </div>
