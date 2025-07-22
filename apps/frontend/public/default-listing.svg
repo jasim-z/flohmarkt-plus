@@ -1,0 +1,9 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="120" height="120" rx="16" fill="#FDE68A"/>
+  <rect x="20" y="36" width="80" height="48" rx="8" fill="#FFF7ED" stroke="#F59E42" stroke-width="2"/>
+  <circle cx="44" cy="60" r="8" fill="#F59E42" fill-opacity="0.3"/>
+  <path d="M36 76L56 56L72 72L84 60L100 76" stroke="#F59E42" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="20" y="36" width="80" height="48" rx="8" stroke="#F59E42" stroke-width="2"/>
+  <rect x="1" y="1" width="118" height="118" rx="15" stroke="#F59E42" stroke-width="2"/>
+  <text x="60" y="110" text-anchor="middle" font-size="14" fill="#F59E42" font-family="Nunito, sans-serif">FlohMarkt+</text>
+</svg>

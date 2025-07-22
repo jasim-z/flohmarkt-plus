@@ -4,11 +4,12 @@ import {
   UseGuards,
   Request,
   Res,
+  Get,
 } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { Response } from 'express';
 import { AuthService } from './auth.service';
-import { LocalAuthGuard } from '@app/common';
+import { LocalAuthGuard, JwtAuthGuard } from '@app/common';
 import { UsersService } from './users/users.service';
 import { Types } from 'mongoose';
 
@@ -29,6 +30,12 @@ export class AuthController {
   logout(@Res({ passthrough: true }) response: Response) {
     this.authService.logout(response);
     return { message: 'Logged out successfully' };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  getMe(@Request() req) {
+    return req.user;
   }
 
   @MessagePattern('get_user')

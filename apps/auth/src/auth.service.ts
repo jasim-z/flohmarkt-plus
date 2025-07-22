@@ -34,6 +34,7 @@ export class AuthService {
     response.cookie('Authentication', token, {
       httpOnly: true,
       expires,
+      sameSite: 'lax',
     });
 
     return {
@@ -53,6 +54,7 @@ export class AuthService {
     response.cookie('Authentication', '', {
       httpOnly: true,
       expires: new Date(),
+      sameSite: 'lax',
     });
   }
 }

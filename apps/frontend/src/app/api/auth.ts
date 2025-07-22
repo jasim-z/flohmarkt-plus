@@ -32,4 +32,25 @@ export async function signupUser({
     throw new Error(data.message || "Registrierung fehlgeschlagen");
   }
   return res;
+}
+
+export async function getCurrentUser() {
+  try {
+    const res = await fetch("http://localhost:3950/auth/me", {
+      method: "GET",
+      credentials: "include",
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
 } 
+
+export async function logoutUser() {
+  const res = await fetch("http://localhost:3950/auth/logout", {
+    method: "POST",
+    credentials: "include",
+  });
+  return res;
+}

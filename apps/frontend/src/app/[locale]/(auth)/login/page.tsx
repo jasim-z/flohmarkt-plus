@@ -5,6 +5,9 @@ import FleaMarketIllustration from "../../../components/FleaMarketIllustration";
 import { loginUser } from "../../../api/auth";
 import { useTranslations } from "next-intl";
 import LanguageSwitcher from "../../../components/LanguageSwitcher";
+import { useRouter, useParams } from "next/navigation";
+import { useEffect } from "react";
+import { getCurrentUser } from "../../../api/auth";
 
 export default function LoginPage() {
   const t = useTranslations();
@@ -12,6 +15,19 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const params = useParams();
+
+  useEffect(() => {
+    async function checkUser() {
+      const user = await getCurrentUser();
+      if (user && user.role === "buyer") {
+        router.replace(`/${params.locale}/home`);
+      }
+      // Optionally handle other roles here
+    }
+    checkUser();
+  }, [router, params.locale]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -21,6 +37,7 @@ export default function LoginPage() {
     try {
       await loginUser(email, password);
       setMessage(t("login.success"));
+      router.replace('/en/home');
       // Optionally redirect or fetch user data here
     } catch (err: unknown) {
       setMessage((err instanceof Error ? err.message : String(err)) || t("login.error"));
