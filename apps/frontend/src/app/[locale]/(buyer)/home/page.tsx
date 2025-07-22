@@ -41,6 +41,7 @@ export default function BuyerHome() {
         const listings = await getListings();
         setListings(listings);
       } catch (err) {
+        console.error('Error fetching listings:', err);
         setError('Failed to load listings');
       } finally {
         setLoading(false);
