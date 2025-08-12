@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
   Request,
+  Put,
 } from '@nestjs/common';
 import { MarketsService } from './markets.service';
 import { JwtAuthGuard, RolesGuard, Roles } from '@app/common';
@@ -54,6 +55,16 @@ export class MarketsController {
     @Param('userId') userId: string
   ) {
     return this.marketsService.addUserToMarket(marketId, userId);
+  }
+
+  @Put(':marketId/registered-vendors')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  updateRegisteredVendors(
+    @Param('marketId') marketId: string,
+    @Body() body: { userIds: string[] }
+  ) {
+    return this.marketsService.updateRegisteredVendors(marketId, body.userIds);
   }
 
   @Get(':id')

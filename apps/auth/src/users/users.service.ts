@@ -68,6 +68,14 @@ export class UsersService {
     return this.usersRepository.findOne(getUserArgs);
   }
 
+  async getUserById(userId: string) {
+    const user = await this.usersRepository.findOne({ _id: userId });
+    if (!user) {
+      throw new UnprocessableEntityException('User not found');
+    }
+    return user;
+  }
+
   async getUsers(query: GetUsersDto): Promise<PaginatedUsersResponse> {
     const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', role, isActive } = query;
     

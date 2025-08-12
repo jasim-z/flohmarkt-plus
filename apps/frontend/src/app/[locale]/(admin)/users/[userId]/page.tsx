@@ -3,9 +3,10 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { FaUser, FaEnvelope, FaCalendar, FaUserShield, FaCheckCircle, FaTimesCircle, FaArrowLeft, FaStore, FaUsers, FaMapMarkerAlt, FaClock, FaInfo } from "react-icons/fa";
+import { FaUser, FaEnvelope, FaCalendar, FaUserShield, FaTimesCircle, FaArrowLeft, FaStore, FaUsers, FaMapMarkerAlt, FaClock, FaInfo, FaPhone } from "react-icons/fa";
 import { User } from "../../../../api/users";
 import { Market, getMarketsByUser } from "../../../../api/markets";
+import { getUserById } from "../../../../api/users";
 
 export default function UserDetail() {
   const t = useTranslations();
@@ -21,21 +22,11 @@ export default function UserDetail() {
     const fetchUserData = async () => {
       try {
         setLoading(true);
+        setError(null);
         
-        // Mock user data for now - replace with actual user API call when available
-        const mockUser: User = {
-          _id: params.userId as string,
-          email: 'john.doe@example.com',
-          firstName: 'John',
-          lastName: 'Doe',
-          displayName: 'John Doe',
-          role: 'seller',
-          isActive: true,
-          createdAt: '2024-01-15T10:00:00Z',
-          updatedAt: '2024-01-15T10:00:00Z'
-        };
-        
-        setUser(mockUser);
+        // Fetch real user data
+        const userData = await getUserById(params.userId as string);
+        setUser(userData);
         
         // Fetch real markets data
         setMarketsLoading(true);
@@ -73,12 +64,30 @@ export default function UserDetail() {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-7xl mx-auto">
+          {/* Back Button */}
+          <button
+            onClick={() => router.back()}
+            className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors duration-200"
+          >
+            <FaArrowLeft className="h-4 w-4" />
+            <span>Back to Users</span>
+          </button>
+
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center space-x-3">
               <FaTimesCircle className="h-6 w-6 text-red-500" />
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">User not found</h3>
-                <p className="text-gray-600">{error || 'The requested user could not be found.'}</p>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {error?.includes('not found') ? 'User Not Found' : 'Error Loading User'}
+                </h3>
+                <p className="text-gray-600">
+                  {error || 'The requested user could not be found or loaded.'}
+                </p>
+                {error?.includes('not found') && (
+                  <p className="text-sm text-gray-500 mt-2">
+                    The user ID &quot;{params.userId}&quot; doesn&apos;t exist in the system.
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -176,9 +185,9 @@ export default function UserDetail() {
                     </span>
                   </div>
                   <div className="flex items-center space-x-3">
-                    <FaStore className="h-4 w-4 text-gray-400" />
+                    <FaPhone className="h-4 w-4 text-gray-400" />
                     <span className="text-gray-700">
-                      {markets.length} markets joined
+                      {user.phoneNumber}
                     </span>
                   </div>
                 </div>
@@ -188,6 +197,7 @@ export default function UserDetail() {
         </div>
 
         {/* User's Markets */}
+        {user.role === 'seller' && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-900">Joined Markets</h2>
@@ -214,7 +224,7 @@ export default function UserDetail() {
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">No Markets Joined Yet</h3>
               <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                This user hasn't joined any markets yet. They can browse available markets and register as vendors to start participating.
+                This user hasn&apos;t joined any markets yet. They can browse available markets and register as vendors to start participating.
               </p>
               <div className="bg-gray-50 rounded-lg p-4 max-w-md mx-auto">
                 <div className="flex items-center space-x-3 text-sm text-gray-600">
@@ -279,6 +289,7 @@ export default function UserDetail() {
             </div>
           )}
         </div>
+        )}
       </div>
     </div>
   );

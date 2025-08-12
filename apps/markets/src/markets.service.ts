@@ -43,6 +43,19 @@ export class MarketsService {
     return market;
   }
 
+  async updateRegisteredVendors(marketId: string, userIds: string[]) {
+    const market = await this.marketsRepository.findOne({ _id: new Types.ObjectId(marketId) });
+    if (!market) throw new NotFoundException('Market not found');
+    
+    // Convert all user IDs to ObjectIds
+    const objectIds = userIds.map(id => new Types.ObjectId(id));
+    
+    return this.marketsRepository.findOneAndUpdate(
+      { _id: new Types.ObjectId(marketId) },
+      { registeredVendors: objectIds }
+    );
+  }
+
   async findOne(id: string) {
     const market = await this.marketsRepository.findOne({ _id: new Types.ObjectId(id) });
     if (!market) throw new NotFoundException('Market not found');
@@ -53,9 +66,16 @@ export class MarketsService {
     if (user.role !== 'admin') {
       throw new ForbiddenException('Only admins can update markets');
     }
+    
+    // Convert registeredVendors to ObjectIds if they exist
+    const updateData = { ...updateMarketDto };
+    if (updateData.registeredVendors && Array.isArray(updateData.registeredVendors)) {
+      updateData.registeredVendors = updateData.registeredVendors.map(id => new Types.ObjectId(id));
+    }
+    
     return this.marketsRepository.findOneAndUpdate(
       { _id: new Types.ObjectId(id) },
-      { ...updateMarketDto }
+      updateData
     );
   }
 

@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Get, Query, ValidationPipe, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Get, Query, ValidationPipe, UseGuards, Param } from '@nestjs/common';
 import { CreateUserDto, GetUsersDto, PaginatedUsersResponse } from '@app/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '@app/common/guards/jwt-auth.guard';
@@ -20,5 +20,12 @@ export class UsersController {
   @Roles(UserRole.ADMIN)
   async getUsers(@Query() query: GetUsersDto): Promise<PaginatedUsersResponse> {
     return this.usersService.getUsers(query);
+  }
+
+  @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  async getUserById(@Param('id') id: string) {
+    return this.usersService.getUserById(id);
   }
 }

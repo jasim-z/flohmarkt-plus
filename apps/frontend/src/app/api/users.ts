@@ -9,6 +9,7 @@ export interface User {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  phoneNumber?: string;
 }
 
 export interface PaginationMeta {
@@ -65,6 +66,33 @@ export async function getUsers(params: GetUsersParams = {}): Promise<PaginatedUs
     return data;
   } catch (error) {
     console.error('Error fetching users:', error);
+    throw error;
+  }
+}
+
+export async function getUserById(userId: string): Promise<User> {
+  try {
+    const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3950'}/users/${userId}`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error('User not found');
+      }
+      throw new Error('Failed to fetch user');
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching user:', error);
     throw error;
   }
 } 
