@@ -3,54 +3,9 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { FaUser, FaEnvelope, FaCalendar, FaUserShield, FaCheckCircle, FaTimesCircle, FaArrowLeft, FaStore, FaUsers, FaMapMarkerAlt } from "react-icons/fa";
+import { FaUser, FaEnvelope, FaCalendar, FaUserShield, FaCheckCircle, FaTimesCircle, FaArrowLeft, FaStore, FaUsers, FaMapMarkerAlt, FaClock, FaInfo } from "react-icons/fa";
 import { User } from "../../../../api/users";
-
-// Mock markets data - replace with actual API call when markets service is ready
-interface Market {
-  _id: string;
-  name: string;
-  description: string;
-  location: string;
-  startDate: string;
-  endDate: string;
-  status: 'active' | 'upcoming' | 'completed';
-  participantCount: number;
-  image?: string;
-}
-
-const mockMarkets: Market[] = [
-  {
-    _id: '1',
-    name: 'Spring Flea Market',
-    description: 'A vibrant spring market with local vendors and artisans',
-    location: 'Central Park, Downtown',
-    startDate: '2024-03-15',
-    endDate: '2024-03-17',
-    status: 'upcoming',
-    participantCount: 45
-  },
-  {
-    _id: '2',
-    name: 'Vintage Collectors Fair',
-    description: 'Specialized market for vintage and antique items',
-    location: 'Historic District',
-    startDate: '2024-02-20',
-    endDate: '2024-02-22',
-    status: 'completed',
-    participantCount: 32
-  },
-  {
-    _id: '3',
-    name: 'Artisan Craft Market',
-    description: 'Handmade crafts and unique artistic creations',
-    location: 'Arts Quarter',
-    startDate: '2024-01-10',
-    endDate: '2024-01-12',
-    status: 'completed',
-    participantCount: 28
-  }
-];
+import { Market, getMarketsByUser } from "../../../../api/markets";
 
 export default function UserDetail() {
   const t = useTranslations();
@@ -60,24 +15,44 @@ export default function UserDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [markets, setMarkets] = useState<Market[]>([]);
+  const [marketsLoading, setMarketsLoading] = useState(true);
 
   useEffect(() => {
-    // Mock user data - replace with actual API call
-    const mockUser: User = {
-      _id: params.userId as string,
-      email: 'john.doe@example.com',
-      firstName: 'John',
-      lastName: 'Doe',
-      displayName: 'John Doe',
-      role: 'seller',
-      isActive: true,
-      createdAt: '2024-01-15T10:00:00Z',
-      updatedAt: '2024-01-15T10:00:00Z'
+    const fetchUserData = async () => {
+      try {
+        setLoading(true);
+        
+        // Mock user data for now - replace with actual user API call when available
+        const mockUser: User = {
+          _id: params.userId as string,
+          email: 'john.doe@example.com',
+          firstName: 'John',
+          lastName: 'Doe',
+          displayName: 'John Doe',
+          role: 'seller',
+          isActive: true,
+          createdAt: '2024-01-15T10:00:00Z',
+          updatedAt: '2024-01-15T10:00:00Z'
+        };
+        
+        setUser(mockUser);
+        
+        // Fetch real markets data
+        setMarketsLoading(true);
+        const userMarkets = await getMarketsByUser(params.userId as string);
+        setMarkets(userMarkets);
+        
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch user data');
+      } finally {
+        setLoading(false);
+        setMarketsLoading(false);
+      }
     };
-    
-    setUser(mockUser);
-    setMarkets(mockMarkets);
-    setLoading(false);
+
+    if (params.userId) {
+      fetchUserData();
+    }
   }, [params.userId]);
 
   if (loading) {
@@ -114,11 +89,11 @@ export default function UserDetail() {
 
   const getStatusColor = (status: Market['status']) => {
     switch (status) {
-      case 'active':
+      case 'ongoing':
         return 'bg-green-100 text-green-800';
       case 'upcoming':
         return 'bg-blue-100 text-blue-800';
-      case 'completed':
+      case 'past':
         return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -127,15 +102,27 @@ export default function UserDetail() {
 
   const getStatusLabel = (status: Market['status']) => {
     switch (status) {
-      case 'active':
-        return 'Active';
+      case 'ongoing':
+        return 'Ongoing';
       case 'upcoming':
         return 'Upcoming';
-      case 'completed':
-        return 'Completed';
+      case 'past':
+        return 'Past';
       default:
         return status;
     }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const formatTime = (timeString: string) => {
+    return timeString;
   };
 
   return (
@@ -185,7 +172,7 @@ export default function UserDetail() {
                   <div className="flex items-center space-x-3">
                     <FaCalendar className="h-4 w-4 text-gray-400" />
                     <span className="text-gray-700">
-                      Joined {new Date(user.createdAt).toLocaleDateString()}
+                      Joined {formatDate(user.createdAt)}
                     </span>
                   </div>
                   <div className="flex items-center space-x-3">
@@ -210,11 +197,31 @@ export default function UserDetail() {
             </div>
           </div>
 
-          {markets.length === 0 ? (
-            <div className="text-center py-12">
-              <FaStore className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No markets joined yet</h3>
-              <p className="text-gray-600">This user hasn't joined any markets yet.</p>
+          {marketsLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="bg-gray-50 rounded-lg p-6 border border-gray-200 animate-pulse">
+                  <div className="h-6 bg-gray-200 rounded mb-4"></div>
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                </div>
+              ))}
+            </div>
+          ) : markets.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <FaStore className="h-12 w-12 text-gray-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">No Markets Joined Yet</h3>
+              <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                This user hasn't joined any markets yet. They can browse available markets and register as vendors to start participating.
+              </p>
+              <div className="bg-gray-50 rounded-lg p-4 max-w-md mx-auto">
+                <div className="flex items-center space-x-3 text-sm text-gray-600">
+                  <FaInfo className="h-4 w-4 text-blue-500" />
+                  <span>Users can join markets by registering as vendors in the Markets section</span>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -224,29 +231,48 @@ export default function UserDetail() {
                   className="bg-gray-50 rounded-lg p-6 border border-gray-200 hover:border-blue-300 transition-colors duration-200"
                 >
                   <div className="flex items-start justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">{market.name}</h3>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(market.status)}`}>
+                    <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">{market.name}</h3>
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full flex-shrink-0 ${getStatusColor(market.status)}`}>
                       {getStatusLabel(market.status)}
                     </span>
                   </div>
                   
                   <p className="text-gray-600 text-sm mb-4 line-clamp-2">{market.description}</p>
                   
-                  <div className="space-y-2 text-sm text-gray-600">
+                  <div className="space-y-3 text-sm text-gray-600">
                     <div className="flex items-center space-x-2">
-                      <FaMapMarkerAlt className="h-3 w-3" />
-                      <span>{market.location}</span>
+                      <FaMapMarkerAlt className="h-3 w-3 flex-shrink-0" />
+                      <span className="line-clamp-1">{market.location}</span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <FaCalendar className="h-3 w-3" />
-                      <span>
-                        {new Date(market.startDate).toLocaleDateString()} - {new Date(market.endDate).toLocaleDateString()}
-                      </span>
+                      <FaCalendar className="h-3 w-3 flex-shrink-0" />
+                      <span>{formatDate(market.date)}</span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <FaUsers className="h-3 w-3" />
-                      <span>{market.participantCount} participants</span>
+                      <FaClock className="h-3 w-3 flex-shrink-0" />
+                      <span>{formatTime(market.startTime)} - {formatTime(market.endTime)}</span>
                     </div>
+                    <div className="flex items-center space-x-2">
+                      <FaUsers className="h-3 w-3 flex-shrink-0" />
+                      <span>{market.registeredVendors.length} vendors</span>
+                    </div>
+                    {market.categories.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {market.categories.slice(0, 3).map((category, index) => (
+                          <span
+                            key={index}
+                            className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full"
+                          >
+                            {category}
+                          </span>
+                        ))}
+                        {market.categories.length > 3 && (
+                          <span className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded-full">
+                            +{market.categories.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

@@ -20,4 +20,6 @@ export * from './dto/user/create-user.request';
 export * from './dto/user/create-user.dto';
 export * from './dto/user/get-users.dto';
 export * from './dto/user/paginated-users.response';
+export * from './dto/market/create-market.dto';
+export * from './dto/market/update-market.dto';
 

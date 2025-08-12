@@ -127,6 +127,38 @@ services:
     ports:
       - '3952:3952'
 
+  markets:
+    build:
+      context: .
+      dockerfile: ./apps/markets/Dockerfile
+      target: development
+    command: npm run start:dev markets
+    environment:
+      - PORT=3953
+      - NODE_ENV=development
+      - JWT_EXPIRATION=3600
+    env_file:
+      - apps/markets/.env
+    secrets:
+      - jwt_secret
+      - mongodb_uri
+    depends_on:
+      mongodb-primary:
+        condition: service_healthy
+      mongodb-secondary:
+        condition: service_started
+      mongodb-arbiter:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      auth:
+        condition: service_started
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    ports:
+      - '3953:3953'
+
   rabbitmq:
     image: rabbitmq
     ports:

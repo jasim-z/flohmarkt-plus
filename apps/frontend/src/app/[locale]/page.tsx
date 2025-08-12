@@ -4,25 +4,29 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { getCurrentUser } from "../api/auth";
 
-export default function Home({ params }: { params: { locale: string } }) {
+type PageProps = {
+  params: Promise<{ locale: string }>
+}
+
+export default function Home({ params }: PageProps) {
   const router = useRouter();
   
   useEffect(() => {
     async function checkUser() {
+      const { locale } = await params;
       const user = await getCurrentUser();
-      console.log('user =====>', user);
       if (user && user.role === 'buyer') {
-        router.replace(`/${params.locale}/home`);
+        router.replace(`/${locale}/home`);
       } else if (user && user.role === 'seller') {
-        router.replace(`/${params.locale}/home`);
+        router.replace(`/${locale}/home`);
       } else if (user && user.role === 'admin') {
-        router.replace(`/${params.locale}/dashboard`);
+        router.replace(`/${locale}/dashboard`);
       } else {
-        router.replace(`/${params.locale}/login`);
+        router.replace(`/${locale}/login`);
       }
     }
     checkUser();
-  }, [router, params.locale]);
+  }, [router, params]);
   
   return null;
 } 

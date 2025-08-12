@@ -1,0 +1,95 @@
+export interface Market {
+  _id: string;
+  name: string;
+  description: string;
+  location: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  isActive: boolean;
+  createdBy: string;
+  bannerImage: string;
+  vendorLimit?: number;
+  boothsAvailable?: number;
+  categories: string[];
+  status: 'upcoming' | 'ongoing' | 'past';
+  registeredVendors: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GetMarketsParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+  userId?: string; // To filter markets by user participation
+}
+
+export interface PaginatedMarketsResponse {
+  data: Market[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
+
+export async function getMarkets(params: GetMarketsParams = {}): Promise<PaginatedMarketsResponse> {
+  try {
+    const searchParams = new URLSearchParams();
+    
+    if (params.page) searchParams.append('page', params.page.toString());
+    if (params.limit) searchParams.append('limit', params.limit.toString());
+    if (params.search) searchParams.append('search', params.search);
+    if (params.status) searchParams.append('status', params.status);
+    if (params.userId) searchParams.append('userId', params.userId);
+
+    const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3953'}/markets?${searchParams.toString()}`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch markets');
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching markets:', error);
+    throw error;
+  }
+}
+
+export async function getMarketsByUser(userId: string): Promise<Market[]> {
+  try {
+    const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3953'}/markets/user/${userId}`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch user markets');
+    }
+
+    const data = await response.json();
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching user markets:', error);
+    throw error;
+  }
+} 
