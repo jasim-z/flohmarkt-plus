@@ -1,5 +1,4 @@
 import { IsNotEmpty, IsPositive, IsString, IsOptional, IsEnum } from 'class-validator';
-import { OrderStatus } from '../schemas/order.schemas';
 
 export class CreateOrderDto {
   @IsString()

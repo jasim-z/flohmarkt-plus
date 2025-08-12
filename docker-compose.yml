@@ -127,6 +127,38 @@ services:
     ports:
       - '3952:3952'
 
+  markets:
+    build:
+      context: .
+      dockerfile: ./apps/markets/Dockerfile
+      target: development
+    command: npm run start:dev markets
+    environment:
+      - PORT=3953
+      - NODE_ENV=development
+      - JWT_EXPIRATION=3600
+    env_file:
+      - apps/markets/.env
+    secrets:
+      - jwt_secret
+      - mongodb_uri
+    depends_on:
+      mongodb-primary:
+        condition: service_healthy
+      mongodb-secondary:
+        condition: service_started
+      mongodb-arbiter:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      auth:
+        condition: service_started
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    ports:
+      - '3953:3953'
+
   rabbitmq:
     image: rabbitmq
     ports:
@@ -183,6 +215,24 @@ services:
       - MONGO_INITDB_ROOT_PASSWORD_FILE=/run/secrets/mongodb_root_password
     volumes:
       - ./mongo-keyfile:/data/keyfile
+
+  frontend:
+    build:
+      context: ./apps/frontend
+    command: pnpm dev
+    environment:
+      - NODE_ENV=development
+    depends_on:
+      - auth
+      - listings
+      - orders
+      - billing
+      - markets
+    volumes:
+      - ./apps/frontend:/usr/src/app
+      - /usr/src/app/node_modules
+    ports:
+      - '3000:3000'
 
 volumes:
   mongodb_master_data:

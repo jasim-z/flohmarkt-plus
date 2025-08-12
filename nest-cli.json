@@ -55,22 +55,13 @@
         "tsConfigPath": "apps/listings/tsconfig.app.json"
       }
     },
-    "chat": {
+    "markets": {
       "type": "application",
-      "root": "apps/chat",
+      "root": "apps/markets",
       "entryFile": "main",
-      "sourceRoot": "apps/chat/src",
+      "sourceRoot": "apps/markets/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/chat/tsconfig.app.json"
-      }
-    },
-    "notifications": {
-      "type": "application",
-      "root": "apps/notifications",
-      "entryFile": "main",
-      "sourceRoot": "apps/notifications/src",
-      "compilerOptions": {
-        "tsConfigPath": "apps/notifications/tsconfig.app.json"
+        "tsConfigPath": "apps/markets/tsconfig.app.json"
       }
     }
   }

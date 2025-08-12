@@ -12,13 +12,12 @@ export const metadata: Metadata = {
   description: "Digital Flea Market for Local Neighborhoods",
 };
 
-export default async function LocaleLayout({
-  children,
-  params
-}: {
+type PageProps = {
   children: React.ReactNode;
-  params: { locale: string };
-}) {
+  params: Promise<{ locale: string }>
+}
+
+export default async function LocaleLayout({ children, params }: PageProps) {
   const { locale } = await params;
   const messages = (await import(`../../messages/${locale}.json`)).default;
 
@@ -31,4 +30,4 @@ export default async function LocaleLayout({
       </div>
     </NextIntlClientProvider>
   );
-} 
+}
