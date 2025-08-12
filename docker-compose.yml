@@ -184,8 +184,6 @@ services:
     volumes:
       - ./mongo-keyfile:/data/keyfile
 
-<<<<<<< Updated upstream
-=======
   frontend:
     build:
       context: ./apps/frontend
@@ -199,7 +197,6 @@ services:
       - listings
       - orders
       - billing
-      - markets
     volumes:
       - ./apps/frontend:/app
       - /app/node_modules
@@ -207,7 +204,6 @@ services:
     ports:
       - '3000:3000'
 
->>>>>>> Stashed changes
 volumes:
   mongodb_master_data:
     driver: local

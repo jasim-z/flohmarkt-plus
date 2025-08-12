@@ -31,10 +31,13 @@ export class AuthService {
 
     const token = this.jwtService.sign(tokenPayload);
 
-    response.cookie('Authentication', token, {
+    // Set cookie with proper configuration for cross-origin requests
+    response.cookie('authentication', token, {
       httpOnly: true,
       expires,
       sameSite: 'lax',
+      secure: false, // Set to true in production with HTTPS
+      domain: 'localhost', // Allow cookies to be shared across localhost ports
     });
 
     return {
@@ -51,10 +54,12 @@ export class AuthService {
   }
 
   logout(response: Response) {
-    response.cookie('Authentication', '', {
+    response.cookie('authentication', '', {
       httpOnly: true,
       expires: new Date(),
       sameSite: 'lax',
+      secure: false, // Set to true in production with HTTPS
+      domain: 'localhost', // Allow cookies to be shared across localhost ports
     });
   }
 }
