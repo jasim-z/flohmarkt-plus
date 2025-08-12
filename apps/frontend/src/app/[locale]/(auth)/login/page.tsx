@@ -8,7 +8,7 @@ import LanguageSwitcher from "../../../components/LanguageSwitcher";
 import { useRouter, useParams } from "next/navigation";
 import { useEffect } from "react";
 import { getCurrentUser } from "../../../api/auth";
-
+ 
 export default function LoginPage() {
   const t = useTranslations();
   const [email, setEmail] = useState("");
@@ -23,6 +23,10 @@ export default function LoginPage() {
       const user = await getCurrentUser();
       if (user && user.role === "buyer") {
         router.replace(`/${params.locale}/home`);
+      } else if (user && user.role === "seller") {
+        router.replace(`/${params.locale}/home`);
+      } else if (user && user.role === "admin") {
+        router.replace(`/${params.locale}/dashboard`);
       }
       // Optionally handle other roles here
     }
@@ -36,8 +40,14 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await loginUser(email, password);
-      setMessage(t("login.success"));
-      router.replace('/en/home');
+      const user = await getCurrentUser();
+      if (user && user.role === "buyer") {
+        router.replace(`/${params.locale}/home`);
+      } else if (user && user.role === "seller") {
+        router.replace(`/${params.locale}/home`);
+      } else if (user && user.role === "admin") {
+        router.replace(`/${params.locale}/dashboard`);
+      }
       // Optionally redirect or fetch user data here
     } catch (err: unknown) {
       setMessage((err instanceof Error ? err.message : String(err)) || t("login.error"));

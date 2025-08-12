@@ -11,7 +11,15 @@ export default function Home({ params }: { params: { locale: string } }) {
       const user = await getCurrentUser();
       console.log('user =====>', user);
       if (user && user.role === 'buyer') {
+<<<<<<< Updated upstream
         router.replace(`/${params.locale}/buyer/home`);
+=======
+        router.replace(`/${locale}/buyer/home`);
+      } else if (user && user.role === 'seller') {
+        router.replace(`/${locale}/seller/home`);
+      } else if (user && user.role === 'admin') {
+        router.replace(`/${locale}/admin/home`);
+>>>>>>> Stashed changes
       } else {
         router.replace(`/${params.locale}/login`);
       }

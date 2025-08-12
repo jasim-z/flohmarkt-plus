@@ -26,5 +26,8 @@
     "headline": "Willkommen zum Münchner Flohmarkt!",
     "sub": "Entdecke, kaufe und verkaufe Schätze aus deiner Nachbarschaft.",
     "cta": "Handeln, stöbern, Gemeinschaft erleben."
+  },
+  "dashboard": {
+    "title": "Dashboard"
   }
 } 

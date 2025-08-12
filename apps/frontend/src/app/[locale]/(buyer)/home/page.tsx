@@ -30,6 +30,10 @@ export default function BuyerHome() {
       const user = await getCurrentUser();
       if (!user) {
         router.replace(`/${params.locale}/login`);
+      } else if (user && user.role === "seller") {
+        router.replace(`/${params.locale}/seller/home`);
+      } else if (user && user.role === "admin") {
+        router.replace(`/${params.locale}/dashboard`);
       }
     }
     checkAuth();
