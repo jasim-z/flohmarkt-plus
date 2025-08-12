@@ -71,9 +71,9 @@ export default function Header() {
               <Link href="/en/users" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
                 Users
               </Link>
-              <a href="#" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+              <Link href="/en/markets" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
                 Markets
-              </a>
+              </Link>
               <a href="#" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
                 Roles
               </a>

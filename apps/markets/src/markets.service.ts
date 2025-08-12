@@ -1,11 +1,16 @@
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
 import { MarketsRepository } from './markets.repository';
 import { CreateMarketDto, UpdateMarketDto } from '@app/common';
-import { Types } from 'mongoose';
+import { MarketDocument } from './schemas/market.schema';
 
 @Injectable()
 export class MarketsService {
-  constructor(private readonly marketsRepository: MarketsRepository) {}
+  constructor(
+    private readonly marketsRepository: MarketsRepository,
+    @InjectModel('Market') private readonly marketModel: Model<MarketDocument>,
+  ) {}
 
   async create(createMarketDto: CreateMarketDto, user: any) {
     if (user.role !== 'admin') {
@@ -19,7 +24,54 @@ export class MarketsService {
   }
 
   async findAll(query: any = {}) {
-    return this.marketsRepository.find(query);
+    const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', status, isActive } = query;
+    
+    // Build filter object
+    const filter: any = {};
+    
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { location: { $regex: search, $options: 'i' } },
+        { categories: { $in: [new RegExp(search, 'i')] } },
+      ];
+    }
+    
+    if (status) {
+      filter.status = status;
+    }
+    
+    if (isActive !== undefined) {
+      filter.isActive = isActive === 'true';
+    }
+
+    // Get total count
+    const total = await this.marketModel.countDocuments(filter);
+    const totalPages = Math.ceil(total / limit);
+    
+    // Get paginated results
+    const skip = (page - 1) * limit;
+    const sortDirection = sortOrder === 'asc' ? 1 : -1;
+    
+    const markets = await this.marketModel.find(filter)
+      .sort({ [sortBy]: sortDirection })
+      .skip(skip)
+      .limit(limit)
+      .lean()
+      .exec();
+
+    return {
+      data: markets,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    };
   }
 
   async findByUser(userId: string) {
@@ -70,7 +122,15 @@ export class MarketsService {
     // Convert registeredVendors to ObjectIds if they exist
     const updateData = { ...updateMarketDto };
     if (updateData.registeredVendors && Array.isArray(updateData.registeredVendors)) {
-      updateData.registeredVendors = updateData.registeredVendors.map(id => new Types.ObjectId(id));
+      // The DTO expects string[], but we need to convert to ObjectId[] for MongoDB
+      // We'll handle this by creating a new object with the converted values
+      const convertedData = { ...updateData };
+      convertedData.registeredVendors = updateData.registeredVendors.map(id => new Types.ObjectId(id));
+      
+      return this.marketsRepository.findOneAndUpdate(
+        { _id: new Types.ObjectId(id) },
+        convertedData
+      );
     }
     
     return this.marketsRepository.findOneAndUpdate(
@@ -104,7 +164,7 @@ export class MarketsService {
         startTime: '09:00',
         endTime: '18:00',
         isActive: true,
-        createdBy: new Types.ObjectId('507f1f77bcf86cd799439011'), // Mock admin ID
+        createdBy: '507f1f77bcf86cd799439011', // Mock admin ID as string
         bannerImage: 'https://example.com/spring-market.jpg',
         vendorLimit: 50,
         boothsAvailable: 45,
@@ -120,7 +180,7 @@ export class MarketsService {
         startTime: '10:00',
         endTime: '17:00',
         isActive: true,
-        createdBy: new Types.ObjectId('507f1f77bcf86cd799439011'),
+        createdBy: '507f1f77bcf86cd799439011',
         bannerImage: 'https://example.com/vintage-fair.jpg',
         vendorLimit: 30,
         boothsAvailable: 25,
@@ -136,7 +196,7 @@ export class MarketsService {
         startTime: '11:00',
         endTime: '19:00',
         isActive: true,
-        createdBy: new Types.ObjectId('507f1f77bcf86cd799439011'),
+        createdBy: '507f1f77bcf86cd799439011',
         bannerImage: 'https://example.com/artisan-market.jpg',
         vendorLimit: 40,
         boothsAvailable: 35,
