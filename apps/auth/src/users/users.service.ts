@@ -4,13 +4,18 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { UsersRepository } from './users.repository';
-import { CreateUserDto, UserRole } from '@app/common';
+import { CreateUserDto, UserRole, GetUsersDto, PaginatedUsersResponse } from '@app/common';
 import { User } from './schemas/user.schema';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly usersRepository: UsersRepository) {}
+  constructor(
+    private readonly usersRepository: UsersRepository,
+    @InjectModel(User.name) private readonly userModel: Model<User>,
+  ) {}
 
   async createUser(request: CreateUserDto) {
     try {
@@ -61,6 +66,57 @@ export class UsersService {
 
   async getUser(getUserArgs: Partial<User>) {
     return this.usersRepository.findOne(getUserArgs);
+  }
+
+  async getUsers(query: GetUsersDto): Promise<PaginatedUsersResponse> {
+    const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', role, isActive } = query;
+    
+    // Build filter object
+    const filter: any = {};
+    
+    if (search) {
+      filter.$or = [
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { displayName: { $regex: search, $options: 'i' } },
+      ];
+    }
+    
+    if (role) {
+      filter.role = role;
+    }
+    
+    if (isActive !== undefined) {
+      filter.isActive = isActive;
+    }
+
+    // Get total count
+    const total = await this.userModel.countDocuments(filter);
+    const totalPages = Math.ceil(total / limit);
+    
+    // Get paginated results
+    const skip = (page - 1) * limit;
+    const sortDirection = sortOrder === 'asc' ? 1 : -1;
+    
+    const users = await this.userModel.find(filter)
+      .sort({ [sortBy]: sortDirection })
+      .skip(skip)
+      .limit(limit)
+      .lean()
+      .exec();
+
+    return {
+      data: users,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    };
   }
 
   async updateUserProfile(userId: string, updateData: Partial<User>) {

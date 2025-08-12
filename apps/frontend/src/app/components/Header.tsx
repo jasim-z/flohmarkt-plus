@@ -1,6 +1,7 @@
 'use client';
 import { FaShoppingCart, FaHeart, FaUserCircle, FaSearch, FaBell, FaCog, FaChevronDown } from 'react-icons/fa';
 import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
 import { logoutUser, getCurrentUser } from '../api/auth';
 import HeaderLanguageSwitcher from './HeaderLanguageSwitcher';
@@ -64,14 +65,14 @@ export default function Header() {
             
             {/* Navigation Menu */}
             <nav className="hidden lg:flex space-x-8">
-              <a href="#" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+              <Link href="/en/dashboard" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
                 Dashboard
-              </a>
+              </Link>
+              <Link href="/en/users" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                Users
+              </Link>
               <a href="#" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
                 Markets
-              </a>
-              <a href="#" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
-                Users
               </a>
               <a href="#" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
                 Roles

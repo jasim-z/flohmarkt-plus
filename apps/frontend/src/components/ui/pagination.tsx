@@ -6,7 +6,7 @@ import {
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { Button } from "@/components/ui/button"
 
 function Pagination({ className, ...props }: React.ComponentProps<"nav">) {
   return (
@@ -48,16 +48,23 @@ function PaginationLink({
   size = "icon",
   ...props
 }: PaginationLinkProps) {
+  const baseClasses = "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+  
+  const variantClasses = isActive 
+    ? "border border-gray-300 bg-white text-gray-700 shadow-sm hover:bg-gray-50"
+    : "text-gray-700 hover:bg-gray-100"
+  
+  const sizeClasses = size === "icon" ? "h-9 w-9" : "h-9 px-4 py-2"
+  
   return (
     <a
       aria-current={isActive ? "page" : undefined}
       data-slot="pagination-link"
       data-active={isActive}
       className={cn(
-        buttonVariants({
-          variant: isActive ? "outline" : "ghost",
-          size,
-        }),
+        baseClasses,
+        variantClasses,
+        sizeClasses,
         className
       )}
       {...props}

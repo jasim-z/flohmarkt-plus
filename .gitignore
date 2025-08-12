@@ -2,6 +2,9 @@
 /dist
 /node_modules
 
+# pnpm store (package cache)
+.pnpm-store/
+
 # Logs
 logs
 *.log

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FaUsers, FaStore, FaUserShield, FaChartLine, FaPlus, FaChevronUp, FaChevronDown, FaCalendar, FaArrowRight } from "react-icons/fa";
+import Link from "next/link";
 
 export default function Dashboard() {
   const t = useTranslations();
@@ -71,7 +72,7 @@ export default function Dashboard() {
 
         {/* Navigation Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200 cursor-pointer">
+          <Link href="/en/users" className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200 cursor-pointer">
             <div className="flex items-center space-x-4">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                 <FaUsers size={24} className="text-white" />
@@ -81,7 +82,7 @@ export default function Dashboard() {
                 <p className="text-gray-600 text-sm">Manage user accounts</p>
               </div>
             </div>
-          </div>
+          </Link>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200 cursor-pointer">
             <div className="flex items-center space-x-4">

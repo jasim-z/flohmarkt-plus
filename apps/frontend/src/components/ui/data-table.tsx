@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Search, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FaSearch, FaChevronUp, FaChevronDown, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +20,7 @@ export interface Column<T> {
   key: keyof T;
   label: string;
   sortable?: boolean;
-  render?: (value: any, row: T) => React.ReactNode;
+  render?: (value: T[keyof T], row: T) => React.ReactNode;
 }
 
 export interface DataTableProps<T> {
@@ -90,8 +90,8 @@ export function DataTable<T extends Record<string, any>>({
     if (isServerSide || !displaySortConfig.key) return filteredData;
 
     return [...filteredData].sort((a, b) => {
-      const aValue = a[displaySortConfig.key!];
-      const bValue = b[displaySortConfig.key!];
+      const aValue = a[displaySortConfig.key!] as T[keyof T];
+      const bValue = b[displaySortConfig.key!] as T[keyof T];
 
       if (aValue == null && bValue == null) return 0;
       if (aValue == null) return 1;
@@ -134,12 +134,12 @@ export function DataTable<T extends Record<string, any>>({
 
   const getSortIcon = (key: keyof T) => {
     if (displaySortConfig.key !== key) {
-      return <ChevronUp className="h-4 w-4 text-muted-foreground" />;
+      return <FaChevronUp className="h-4 w-4 text-gray-400" />;
     }
     return displaySortConfig.direction === 'asc' ? (
-      <ChevronUp className="h-4 w-4 text-primary" />
+      <FaChevronUp className="h-4 w-4 text-blue-600" />
     ) : (
-      <ChevronDown className="h-4 w-4 text-primary" />
+      <FaChevronDown className="h-4 w-4 text-blue-600" />
     );
   };
 
@@ -149,7 +149,7 @@ export function DataTable<T extends Record<string, any>>({
       {searchable && (
         <div className="flex items-center space-x-2">
           <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <FaSearch className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
             <Input
               placeholder="Search..."
               value={searchTerm}
@@ -169,7 +169,7 @@ export function DataTable<T extends Record<string, any>>({
                 <TableHead
                   key={String(column.key)}
                   className={cn(
-                    column.sortable && "cursor-pointer hover:bg-muted/50"
+                    column.sortable && "cursor-pointer hover:bg-gray-50"
                   )}
                   onClick={() => column.sortable && handleSort(column.key)}
                 >
@@ -188,7 +188,7 @@ export function DataTable<T extends Record<string, any>>({
                 <TableRow key={index}>
                   {columns.map((column) => (
                     <TableCell key={String(column.key)}>
-                      <div className="h-4 bg-muted rounded animate-pulse"></div>
+                      <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
                     </TableCell>
                   ))}
                 </TableRow>
@@ -211,7 +211,7 @@ export function DataTable<T extends Record<string, any>>({
       {/* Pagination */}
       {displayTotalPages > 1 && (
         <div className="flex items-center justify-between space-x-2 py-4">
-          <div className="text-sm text-muted-foreground">
+          <div className="text-sm text-gray-500">
             {isServerSide && totalItems ? (
               <>
                 Showing {((displayCurrentPage - 1) * pageSize) + 1} to{' '}
@@ -238,7 +238,7 @@ export function DataTable<T extends Record<string, any>>({
               }}
               disabled={displayCurrentPage === 1}
             >
-              <ChevronLeft className="h-4 w-4" />
+              <FaChevronLeft className="h-4 w-4" />
             </Button>
             
             {Array.from({ length: Math.min(5, displayTotalPages) }, (_, i) => {
@@ -284,7 +284,7 @@ export function DataTable<T extends Record<string, any>>({
               }}
               disabled={displayCurrentPage === displayTotalPages}
             >
-              <ChevronRight className="h-4 w-4" />
+              <FaChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>

@@ -4,9 +4,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState, useCallback } from "react";
 import { DataTable, Column } from "@/components/ui/data-table";
 import { getUsers, User, GetUsersParams } from "../../../api/users";
-import { User as UserIcon, Mail, Calendar, Shield, CheckCircle, XCircle } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { FaUser, FaEnvelope, FaCalendar, FaUserShield, FaCheckCircle, FaTimesCircle, FaSearch, FaFilter } from "react-icons/fa";
 
 export default function Users() {
   const t = useTranslations();
@@ -85,17 +83,14 @@ export default function Users() {
       sortable: true,
       render: (value: string, row: User) => (
         <div className="flex items-center space-x-3">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={row.avatar} alt={row.displayName} />
-            <AvatarFallback>
-              <UserIcon className="h-4 w-4" />
-            </AvatarFallback>
-          </Avatar>
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+            <FaUser className="h-5 w-5 text-white" />
+          </div>
           <div className="flex flex-col">
-            <span className="text-sm font-medium">
+            <span className="text-sm font-medium text-gray-900">
               {row.firstName} {row.lastName}
             </span>
-            <span className="text-xs text-muted-foreground">{row.email}</span>
+            <span className="text-xs text-gray-500">{row.email}</span>
           </div>
         </div>
       ),
@@ -106,8 +101,8 @@ export default function Users() {
       sortable: true,
       render: (value: string) => (
         <div className="flex items-center space-x-2">
-          <Mail className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm">{value}</span>
+          <FaEnvelope className="h-4 w-4 text-gray-400" />
+          <span className="text-sm text-gray-700">{value}</span>
         </div>
       ),
     },
@@ -117,16 +112,14 @@ export default function Users() {
       sortable: true,
       render: (value: string) => (
         <div className="flex items-center space-x-2">
-          <Shield className="h-4 w-4 text-muted-foreground" />
-          <Badge 
-            variant={
-              value === 'admin' ? 'destructive' : 
-              value === 'seller' ? 'secondary' : 
-              'default'
-            }
-          >
+          <FaUserShield className="h-4 w-4 text-gray-400" />
+          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+            value === 'admin' ? 'bg-red-100 text-red-800' : 
+            value === 'seller' ? 'bg-blue-100 text-blue-800' : 
+            'bg-green-100 text-green-800'
+          }`}>
             {value}
-          </Badge>
+          </span>
         </div>
       ),
     },
@@ -137,13 +130,15 @@ export default function Users() {
       render: (value: boolean) => (
         <div className="flex items-center space-x-2">
           {value ? (
-            <CheckCircle className="h-4 w-4 text-green-500" />
+            <FaCheckCircle className="h-4 w-4 text-green-500" />
           ) : (
-            <XCircle className="h-4 w-4 text-red-500" />
+            <FaTimesCircle className="h-4 w-4 text-red-500" />
           )}
-          <Badge variant={value ? 'default' : 'secondary'}>
+          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+            value ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+          }`}>
             {value ? 'Active' : 'Inactive'}
-          </Badge>
+          </span>
         </div>
       ),
     },
@@ -153,8 +148,8 @@ export default function Users() {
       sortable: true,
       render: (value: string) => (
         <div className="flex items-center space-x-2">
-          <Calendar className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm">
+          <FaCalendar className="h-4 w-4 text-gray-400" />
+          <span className="text-sm text-gray-700">
             {new Date(value).toLocaleDateString()}
           </span>
         </div>
@@ -164,16 +159,14 @@ export default function Users() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <XCircle className="h-5 w-5 text-destructive" />
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-destructive">Error loading users</h3>
-                <div className="mt-2 text-sm text-destructive/80">{error}</div>
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center space-x-3">
+              <FaTimesCircle className="h-6 w-6 text-red-500" />
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Error loading users</h3>
+                <p className="text-gray-600">{error}</p>
               </div>
             </div>
           </div>
@@ -183,31 +176,35 @@ export default function Users() {
   }
 
   return (
-    <div className="min-h-screen bg-background py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-foreground">{t("users.title")}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Manage and view all users in the system
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Users Management
+          </h1>
+          <p className="text-gray-600">Manage and view all users in the system</p>
         </div>
         
-        <DataTable
-          data={users}
-          columns={columns}
-          pageSize={10}
-          searchable={true}
-          className="mb-8"
-          // Server-side pagination props
-          totalItems={totalItems}
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
-          onSearch={handleSearch}
-          onSort={handleSort}
-          sortConfig={sortConfig}
-          loading={loading}
-        />
+        {/* Users Data Table */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <DataTable
+            data={users}
+            columns={columns}
+            pageSize={10}
+            searchable={true}
+            className="mb-8"
+            // Server-side pagination props
+            totalItems={totalItems}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            onSearch={handleSearch}
+            onSort={handleSort}
+            sortConfig={sortConfig}
+            loading={loading}
+          />
+        </div>
       </div>
     </div>
   );
