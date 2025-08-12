@@ -4,8 +4,6 @@ import { useState, useMemo } from 'react';
 import { FaSearch, FaChevronUp, FaChevronDown, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Table,
   TableBody,
@@ -41,6 +39,7 @@ export interface DataTableProps<T> {
     direction: 'asc' | 'desc';
   };
   loading?: boolean;
+  onRowClick?: (row: T) => void;
 }
 
 export function DataTable<T extends Record<string, any>>({
@@ -58,6 +57,7 @@ export function DataTable<T extends Record<string, any>>({
   onSort,
   sortConfig: externalSortConfig,
   loading = false,
+  onRowClick,
 }: DataTableProps<T>) {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
@@ -195,7 +195,11 @@ export function DataTable<T extends Record<string, any>>({
               ))
             ) : (
               paginatedData.map((row, index) => (
-                <TableRow key={index}>
+                <TableRow
+                  key={index}
+                  onClick={() => onRowClick?.(row)}
+                  className="cursor-pointer hover:bg-gray-50"
+                >
                   {columns.map((column) => (
                     <TableCell key={String(column.key)}>
                       {column.render ? column.render(row[column.key], row) : String(row[column.key] || '')}
