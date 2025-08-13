@@ -2,14 +2,16 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { DataTable, Column } from "@/components/ui/data-table";
 import { getMarkets, Market, GetMarketsParams } from "../../../api/markets";
-import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaSearch, FaCheckCircle, FaTimesCircle, FaExclamationTriangle } from "react-icons/fa";
+import { FaStore, FaMapMarkerAlt, FaCalendar, FaUsers, FaSearch, FaCheckCircle, FaTimesCircle, FaExclamationTriangle } from "react-icons/fa";
+import { checkUserRole } from "@/app/utils/userHelper";
 
 export default function Markets() {
   const t = useTranslations();
   const router = useRouter();
+  const params = useParams();
   const [markets, setMarkets] = useState<Market[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +43,10 @@ export default function Markets() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    checkUserRole(params.locale as string, "markets", router, setLoading);
+  }, [router, params.locale]);
 
   useEffect(() => {
     const loadMarkets = async () => {

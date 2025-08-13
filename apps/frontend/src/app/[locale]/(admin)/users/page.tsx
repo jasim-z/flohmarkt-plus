@@ -6,10 +6,13 @@ import { useRouter } from "next/navigation";
 import { DataTable, Column } from "@/components/ui/data-table";
 import { getUsers, User, GetUsersParams } from "../../../api/users";
 import { FaUser, FaEnvelope, FaCalendar, FaUserShield, FaCheckCircle, FaTimesCircle, FaSearch } from "react-icons/fa";
+import { useUser } from "@/contexts/UserContext";
+import UnAuthourized from "@/app/components/UnAuthourized";
 
 export default function Users() {
   const t = useTranslations();
   const router = useRouter();
+  const { role, isLoaded } = useUser();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,9 +28,9 @@ export default function Users() {
   }>({ key: null, direction: 'asc' });
 
   // Debouncing ref
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchUsers = async (params: GetUsersParams = {}) => {
+  const fetchUsers = useCallback(async (params: GetUsersParams = {}) => {
     try {
       setLoading(true);
       const response = await getUsers(params);
@@ -40,22 +43,29 @@ export default function Users() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     const loadUsers = async () => {
-      await fetchUsers();
+      const params: GetUsersParams = {
+        page: 1,
+        limit: 10,
+        search: undefined,
+        sortBy: sortConfig.key as string || 'createdAt',
+        sortOrder: sortConfig.direction || 'desc',
+      };
+      await fetchUsers(params);
     };
     loadUsers();
-  }, []); // Only run once on mount
+  }, [fetchUsers, sortConfig]); // Only run once on mount
 
   const handlePageChange = useCallback((page: number) => {
     const params: GetUsersParams = {
       page,
       limit: 10,
       search: searchTerm || undefined,
-      sortBy: sortConfig.key as string || undefined,
-      sortOrder: sortConfig.direction,
+      sortBy: sortConfig.key as string || 'createdAt',
+      sortOrder: sortConfig.direction || 'desc',
     };
     fetchUsers(params);
   }, [fetchUsers, searchTerm, sortConfig]);
@@ -185,6 +195,8 @@ export default function Users() {
       ),
     },
   ];
+
+  if (role !== 'admin' && isLoaded) return <UnAuthourized />;
 
   if (error) {
     return (

@@ -1,11 +1,11 @@
 "use client";
 
-import { getCurrentUser } from "@/app/api/auth";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { FaUsers, FaStore, FaUserShield, FaChartLine, FaPlus, FaChevronUp, FaChevronDown, FaCalendar, FaArrowRight } from "react-icons/fa";
+import { FaUsers, FaStore, FaUserShield, FaPlus, FaChevronUp, FaChevronDown, FaCalendar, FaArrowRight } from "react-icons/fa";
 import Link from "next/link";
+import { checkUserRole } from "@/app/utils/userHelper";
 
 export default function Dashboard() {
   const t = useTranslations();
@@ -15,27 +15,7 @@ export default function Dashboard() {
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    async function checkUser() {
-      try {
-        const user = await getCurrentUser();
-        if (!user) {
-          router.replace(`/${params.locale}/login`);
-          return;
-        }
-        
-        if (user.role !== "admin") {
-          router.replace(`/${params.locale}/home`);
-          return;
-        }
-        
-        setLoading(false);
-      } catch (error) {
-        console.error("Error checking user:", error);
-        router.replace(`/${params.locale}/login`);
-      }
-    }
-    
-    checkUser();
+    checkUserRole(params.locale as string, "dashboard", router, setLoading);
   }, [router, params.locale]);
 
   const toggleProject = (projectId: string) => {
