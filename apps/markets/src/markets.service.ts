@@ -114,6 +114,90 @@ export class MarketsService {
     return market;
   }
 
+  async getVendorsByMarket(marketId: string, query: any = {}) {
+    const { page = 1, limit = 20, search, sortBy = 'displayName', sortOrder = 'asc' } = query;
+    
+    // Ensure page and limit are integers
+    const pageNum = parseInt(page.toString(), 10) || 1;
+    const limitNum = parseInt(limit.toString(), 10) || 20;
+    
+    // First, get the market to ensure it exists and get vendor IDs
+    const market = await this.marketsRepository.findOne({ _id: new Types.ObjectId(marketId) });
+    if (!market) throw new NotFoundException('Market not found');
+    
+    if (!market.registeredVendors || market.registeredVendors.length === 0) {
+      return {
+        data: [],
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total: 0,
+          totalPages: 0,
+          hasNext: false,
+          hasPrev: false,
+        },
+      };
+    }
+
+    // Build filter for users (vendors)
+    const filter: any = {
+      _id: { $in: market.registeredVendors },
+      role: 'seller', // Only get users with seller role
+      isActive: true,
+    };
+    
+    if (search) {
+      filter.$or = [
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } },
+        { displayName: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    // Get total count
+    const total = await this.marketModel.db.collection('users').countDocuments(filter);
+    const totalPages = Math.ceil(total / limitNum);
+    
+    // Get paginated results with performance optimizations
+    const skip = (pageNum - 1) * limitNum;
+    const sortDirection = sortOrder === 'asc' ? 1 : -1;
+    
+    const vendors = await this.marketModel.db.collection('users')
+      .find(filter)
+      .sort({ [sortBy]: sortDirection })
+      .skip(skip)
+      .limit(limitNum)
+      .project({
+        _id: 1,
+        firstName: 1,
+        lastName: 1,
+        displayName: 1,
+        email: 1,
+        avatar: 1,
+        role: 1,
+        isActive: 1,
+        city: 1,
+        neighborhood: 1,
+        rating: 1,
+        isVerified: 1,
+        createdAt: 1,
+      })
+      .toArray();
+
+    return {
+      data: vendors,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages,
+        hasNext: pageNum < totalPages,
+        hasPrev: pageNum > 1,
+      },
+    };
+  }
+
   async update(id: string, updateMarketDto: UpdateMarketDto, user: any) {
     if (user.role !== 'admin') {
       throw new ForbiddenException('Only admins can update markets');
@@ -125,7 +209,7 @@ export class MarketsService {
       // The DTO expects string[], but we need to convert to ObjectId[] for MongoDB
       // We'll handle this by creating a new object with the converted values
       const convertedData = { ...updateData };
-      convertedData.registeredVendors = updateData.registeredVendors.map(id => new Types.ObjectId(id));
+      convertedData.registeredVendors = updateData.registeredVendors.map(id => new Types.ObjectId(id)) as any;
       
       return this.marketsRepository.findOneAndUpdate(
         { _id: new Types.ObjectId(id) },

@@ -38,6 +38,42 @@ export interface PaginatedMarketsResponse {
   };
 }
 
+export interface Vendor {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  displayName: string;
+  email: string;
+  avatar?: string;
+  role: string;
+  isActive: boolean;
+  city?: string;
+  neighborhood?: string;
+  rating?: number;
+  isVerified?: boolean;
+  createdAt: string;
+}
+
+export interface GetVendorsParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface PaginatedVendorsResponse {
+  data: Vendor[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
+
 export async function getMarkets(params: GetMarketsParams = {}): Promise<PaginatedMarketsResponse> {
   try {
     const searchParams = new URLSearchParams();
@@ -83,13 +119,45 @@ export async function getMarketsByUser(userId: string): Promise<Market[]> {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch user markets');
+      throw new Error('Failed to fetch markets');
     }
 
     const data = await response.json();
-    return data || [];
+    return data;
   } catch (error) {
-    console.error('Error fetching user markets:', error);
+    console.error('Error fetching markets:', error);
+    throw error;
+  }
+}
+
+export async function getVendorsByMarket(marketId: string, params: GetVendorsParams = {}): Promise<PaginatedVendorsResponse> {
+  try {
+    const searchParams = new URLSearchParams();
+    
+    if (params.page) searchParams.append('page', params.page.toString());
+    if (params.limit) searchParams.append('limit', params.limit.toString());
+    if (params.search) searchParams.append('search', params.search);
+    if (params.sortBy) searchParams.append('sortBy', params.sortBy);
+    if (params.sortOrder) searchParams.append('sortOrder', params.sortOrder);
+
+    const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3953'}/markets/${marketId}/vendors?${searchParams.toString()}`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch vendors');
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching vendors:', error);
     throw error;
   }
 } 
