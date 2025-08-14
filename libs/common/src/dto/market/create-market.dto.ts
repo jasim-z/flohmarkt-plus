@@ -8,7 +8,10 @@ import {
   IsNumber,
   Min,
   Max,
+  ValidateIf,
+  Validate,
 } from 'class-validator';
+import { IsVendorBoothRatioValid } from '../validators/vendor-booth-ratio.validator';
 
 export enum MarketStatus {
   UPCOMING = 'upcoming',
@@ -50,6 +53,8 @@ export class CreateMarketDto {
 
   @IsNumber()
   @IsOptional()
+  @ValidateIf((o) => o.vendorLimit !== undefined)
+  @Validate(IsVendorBoothRatioValid)
   boothsAvailable?: number;
 
   @IsArray()

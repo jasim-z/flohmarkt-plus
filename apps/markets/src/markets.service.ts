@@ -17,6 +17,19 @@ export class MarketsService {
       throw new ForbiddenException('Only admins can create markets');
     }
 
+    // Enforce 1:1 relationship between vendor limit and booths available
+    if (createMarketDto.vendorLimit && createMarketDto.boothsAvailable) {
+      if (createMarketDto.vendorLimit !== createMarketDto.boothsAvailable) {
+        throw new ForbiddenException('Vendor limit and booths available must be equal for 1:1 allocation');
+      }
+    } else if (createMarketDto.vendorLimit) {
+      // Auto-set booths available to match vendor limit
+      createMarketDto.boothsAvailable = createMarketDto.vendorLimit;
+    } else if (createMarketDto.boothsAvailable) {
+      // Auto-set vendor limit to match booths available
+      createMarketDto.vendorLimit = createMarketDto.boothsAvailable;
+    }
+
     // Calculate market status based on date and time
     const marketDate = new Date(createMarketDto.date);
     const now = new Date();
@@ -255,6 +268,19 @@ export class MarketsService {
       throw new ForbiddenException('Only admins can update markets');
     }
     
+    // Enforce 1:1 relationship between vendor limit and booths available
+    if (updateMarketDto.vendorLimit && updateMarketDto.boothsAvailable) {
+      if (updateMarketDto.vendorLimit !== updateMarketDto.boothsAvailable) {
+        throw new ForbiddenException('Vendor limit and booths available must be equal for 1:1 allocation');
+      }
+    } else if (updateMarketDto.vendorLimit) {
+      // Auto-set booths available to match vendor limit
+      updateMarketDto.boothsAvailable = updateMarketDto.vendorLimit;
+    } else if (updateMarketDto.boothsAvailable) {
+      // Auto-set vendor limit to match booths available
+      updateMarketDto.vendorLimit = updateMarketDto.boothsAvailable;
+    }
+    
     // Convert registeredVendors to ObjectIds if they exist
     const updateData = { ...updateMarketDto };
     if (updateData.registeredVendors && Array.isArray(updateData.registeredVendors)) {
@@ -303,7 +329,7 @@ export class MarketsService {
         createdBy: '507f1f77bcf86cd799439011', // Mock admin ID as string
         bannerImage: 'https://example.com/spring-market.jpg',
         vendorLimit: 50,
-        boothsAvailable: 45,
+        boothsAvailable: 50,
         categories: ['Crafts', 'Vintage', 'Food', 'Art'],
         status: 'upcoming',
         registeredVendors: []
@@ -319,7 +345,7 @@ export class MarketsService {
         createdBy: '507f1f77bcf86cd799439011',
         bannerImage: 'https://example.com/vintage-fair.jpg',
         vendorLimit: 30,
-        boothsAvailable: 25,
+        boothsAvailable: 30,
         categories: ['Vintage', 'Antiques', 'Collectibles'],
         status: 'past',
         registeredVendors: []
@@ -335,7 +361,7 @@ export class MarketsService {
         createdBy: '507f1f77bcf86cd799439011',
         bannerImage: 'https://example.com/artisan-market.jpg',
         vendorLimit: 40,
-        boothsAvailable: 35,
+        boothsAvailable: 40,
         categories: ['Crafts', 'Art', 'Handmade', 'Jewelry'],
         status: 'past',
         registeredVendors: []

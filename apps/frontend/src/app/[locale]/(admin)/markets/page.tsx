@@ -210,12 +210,12 @@ export default function Markets() {
     });
   };
 
-  const columns: Column<Market>[] = [
+  const columns: Column<Record<string, unknown>>[] = [
     {
       key: 'name',
       label: 'Market Name',
       sortable: true,
-      render: (value: string | number | boolean | string[] | undefined, row: Market) => (
+      render: (value: unknown, row: Record<string, unknown>) => (
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-teal-600 rounded-lg flex items-center justify-center">
             <FaStore className="h-5 w-5 text-white" />
@@ -224,7 +224,7 @@ export default function Markets() {
             <span className="text-sm font-medium text-gray-900">
               {String(value || '')}
             </span>
-            <span className="text-xs text-gray-500">{row.description}</span>
+            <span className="text-xs text-gray-500">{String(row.description || '')}</span>
           </div>
         </div>
       ),
@@ -233,7 +233,7 @@ export default function Markets() {
       key: 'location',
       label: 'Location',
       sortable: true,
-      render: (value: string | number | boolean | string[] | undefined, row: Market) => (
+      render: (value: unknown, row: Record<string, unknown>) => (
         <div className="flex items-center space-x-2">
           <FaMapMarkerAlt className="h-4 w-4 text-gray-400" />
           <span className="text-sm text-gray-700">{String(value || '')}</span>
@@ -244,7 +244,7 @@ export default function Markets() {
       key: 'date',
       label: 'Date',
       sortable: true,
-      render: (value: string | number | boolean | string[] | undefined, row: Market) => (
+      render: (value: unknown, row: Record<string, unknown>) => (
         <div className="flex items-center space-x-2">
           <FaCalendar className="h-4 w-4 text-gray-400" />
           <span className="text-sm text-gray-700">
@@ -257,8 +257,8 @@ export default function Markets() {
       key: 'status',
       label: 'Status',
       sortable: false,
-      render: (value: string | number | boolean | string[] | undefined, row: Market) => {
-        const status = calculateMarketStatus(row);
+      render: (value: unknown, row: Record<string, unknown>) => {
+        const status = calculateMarketStatus(row as unknown as Market);
         return (
           <div className="flex items-center space-x-2">
             {status === 'ongoing' ? (
@@ -279,12 +279,14 @@ export default function Markets() {
       key: 'registeredVendors',
       label: 'Vendors',
       sortable: false,
-      render: (value: string | number | boolean | string[] | undefined, row: Market) => (
+      render: (value: unknown, row: Record<string, unknown>) => (
         <div className="flex items-center space-x-2">
           <FaUsers className="h-4 w-4 text-gray-400" />
-          <span className="text-sm text-gray-700">
-            {Array.isArray(value) ? value.length : 0} / {row.vendorLimit || '∞'}
-          </span>
+          <div className="flex flex-col">
+            <span className="text-sm text-gray-700">
+              {Array.isArray(value) ? value.length : 0} / {String(row.vendorLimit || '∞')}
+            </span>
+          </div>
         </div>
       ),
     },

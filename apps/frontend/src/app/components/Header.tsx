@@ -1,5 +1,5 @@
 'use client';
-import { FaShoppingCart, FaHeart, FaUserCircle, FaSearch, FaBell, FaCog, FaChevronDown } from 'react-icons/fa';
+import { FaShoppingCart, FaHeart, FaUserCircle, FaBell, FaCog, FaChevronDown } from 'react-icons/fa';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
@@ -74,23 +74,10 @@ export default function Header() {
               <Link href="/en/markets" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
                 Markets
               </Link>
-              <a href="#" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
-                Roles
-              </a>
             </nav>
           </div>
 
-          {/* Search Bar */}
-          <div className="hidden md:flex flex-1 max-w-md mx-8">
-            <div className="relative w-full">
-              <input
-                type="text"
-                placeholder="Search..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-              />
-              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-            </div>
-          </div>
+
 
           {/* Right Side Icons and Actions */}
           <div className="flex items-center space-x-4">

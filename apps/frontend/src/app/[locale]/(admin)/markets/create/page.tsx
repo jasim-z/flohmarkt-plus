@@ -49,10 +49,19 @@ export default function CreateMarket() {
   });
 
   const handleInputChange = (field: keyof CreateMarketForm, value: string | number | boolean | undefined) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setFormData(prev => {
+      const updated = {
+        ...prev,
+        [field]: value
+      };
+      
+      // Auto-fill booths available when vendor limit changes (1:1 logic)
+      if (field === 'vendorLimit' && typeof value === 'number') {
+        updated.boothsAvailable = value;
+      }
+      
+      return updated;
+    });
   };
 
   const handleAddCategory = () => {
@@ -110,6 +119,9 @@ export default function CreateMarket() {
         }
       }
 
+      // Ensure 1:1 logic - booths available equals vendor limit
+      const finalBoothsAvailable = formData.vendorLimit || formData.boothsAvailable;
+      
       const marketData: CreateMarketRequest = {
         name: formData.name,
         description: formData.description,
@@ -120,7 +132,7 @@ export default function CreateMarket() {
         isActive: formData.isActive,
         bannerImage: formData.bannerImage,
         vendorLimit: formData.vendorLimit,
-        boothsAvailable: formData.boothsAvailable,
+        boothsAvailable: finalBoothsAvailable,
         categories: formData.categories,
       };
 
@@ -372,6 +384,21 @@ export default function CreateMarket() {
                 <span>Capacity Settings</span>
               </h3>
               
+              {/* 1:1 Logic Note */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    <FaUsers className="h-5 w-5 text-blue-600 mt-0.5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-blue-800">1:1 Vendor to Booth Allocation</h4>
+                    <p className="text-sm text-blue-700 mt-1">
+                      Each vendor will be allocated exactly one booth. The number of booths available will automatically match the vendor limit to ensure fair and equal space distribution.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -390,15 +417,26 @@ export default function CreateMarket() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Booths Available
+                    {formData.vendorLimit && formData.vendorLimit > 0 && (
+                      <span className="ml-2 text-xs text-blue-600 font-normal">
+                        (Auto-filled: 1 booth per vendor)
+                      </span>
+                    )}
                   </label>
                   <input
                     type="number"
                     value={formData.boothsAvailable || ''}
                     onChange={(e) => handleInputChange('boothsAvailable', e.target.value ? parseInt(e.target.value) : undefined)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Unlimited"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
+                    placeholder={formData.vendorLimit && formData.vendorLimit > 0 ? "Auto-filled" : "Unlimited"}
                     min="1"
+                    disabled={formData.vendorLimit !== undefined && formData.vendorLimit > 0}
                   />
+                  {formData.vendorLimit && formData.vendorLimit > 0 && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Booths available automatically matches vendor limit for 1:1 allocation
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
