@@ -16,8 +16,25 @@ export class MarketsService {
     if (user.role !== 'admin') {
       throw new ForbiddenException('Only admins can create markets');
     }
+
+    // Calculate market status based on date and time
+    const marketDate = new Date(createMarketDto.date);
+    const now = new Date();
+    const marketStartTime = new Date(createMarketDto.date + 'T' + createMarketDto.startTime);
+    const marketEndTime = new Date(createMarketDto.date + 'T' + createMarketDto.endTime);
+    
+    let status: string;
+    if (marketDate < now && now < marketEndTime) {
+      status = 'ongoing';
+    } else if (marketDate > now || (marketDate.getTime() === now.getTime() && marketStartTime > now)) {
+      status = 'upcoming';
+    } else {
+      status = 'past';
+    }
+
     return this.marketsRepository.create({
       ...createMarketDto,
+      status,
       createdBy: new Types.ObjectId(user.userId),
       registeredVendors: (createMarketDto.registeredVendors || []).map(id => new Types.ObjectId(id)),
     });
@@ -112,6 +129,41 @@ export class MarketsService {
     const market = await this.marketsRepository.findOne({ _id: new Types.ObjectId(id) });
     if (!market) throw new NotFoundException('Market not found');
     return market;
+  }
+
+  async updateMarketStatuses() {
+    const now = new Date();
+    
+    // Update ongoing markets - markets that have started but not ended
+    await this.marketModel.updateMany(
+      {
+        status: 'upcoming',
+        $or: [
+          { date: { $lt: now } },
+          {
+            $and: [
+              { date: { $lte: now } },
+              { startTime: { $lte: now.toTimeString().slice(0, 5) } }
+            ]
+          }
+        ]
+      },
+      { status: 'ongoing' }
+    );
+
+    // Update past markets - markets that have ended
+    await this.marketModel.updateMany(
+      {
+        status: { $in: ['upcoming', 'ongoing'] },
+        $and: [
+          { date: { $lte: now } },
+          { endTime: { $lte: now.toTimeString().slice(0, 5) } }
+        ]
+      },
+      { status: 'past' }
+    );
+
+    return { message: 'Market statuses updated successfully' };
   }
 
   async getVendorsByMarket(marketId: string, query: any = {}) {

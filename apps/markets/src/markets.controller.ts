@@ -47,6 +47,13 @@ export class MarketsController {
     return this.marketsService.seed();
   }
 
+  @Post('update-statuses')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  updateStatuses() {
+    return this.marketsService.updateMarketStatuses();
+  }
+
   @Post(':marketId/users/:userId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
@@ -68,6 +75,8 @@ export class MarketsController {
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'seller', 'buyer')
   findOne(@Param('id') id: string) {
     return this.marketsService.findOne(id);
   }

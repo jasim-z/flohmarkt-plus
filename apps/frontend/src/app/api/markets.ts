@@ -28,6 +28,21 @@ export interface GetMarketsParams {
   sortOrder?: 'asc' | 'desc';
 }
 
+export interface CreateMarketRequest {
+  name: string;
+  description: string;
+  location: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  isActive: boolean;
+  bannerImage: string;
+  vendorLimit?: number;
+  boothsAvailable?: number;
+  categories: string[];
+  status?: 'upcoming' | 'ongoing' | 'past';
+}
+
 export interface PaginatedMarketsResponse {
   data: Market[];
   pagination: {
@@ -160,6 +175,32 @@ export async function getVendorsByMarket(marketId: string, params: GetVendorsPar
     return data;
   } catch (error) {
     console.error('Error fetching vendors:', error);
+    throw error;
+  }
+}
+
+export async function createMarket(marketData: CreateMarketRequest): Promise<Market> {
+  try {
+    const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3953'}/markets`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+      },
+      body: JSON.stringify(marketData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Failed to create market');
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error creating market:', error);
     throw error;
   }
 } 

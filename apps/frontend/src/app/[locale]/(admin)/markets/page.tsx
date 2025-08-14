@@ -281,10 +281,21 @@ export default function Markets() {
       <div className="max-w-7xl mx-auto">
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Markets Management
-          </h1>
-          <p className="text-gray-600">Manage and view all markets in the system</p>
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Markets Management
+              </h1>
+              <p className="text-gray-600">Manage and view all markets in the system</p>
+            </div>
+            <button
+              onClick={() => router.push('/en/markets/create')}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium flex items-center space-x-2 transition-colors duration-200"
+            >
+              <FaStore className="h-5 w-5" />
+              <span>Create Market</span>
+            </button>
+          </div>
         </div>
         
         {/* Markets Data Table */}
