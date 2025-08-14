@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { FaSearch, FaChevronUp, FaChevronDown, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Loading } from '@/components/ui/loading';
 import {
   Table,
   TableBody,
@@ -40,6 +41,7 @@ export interface DataTableProps<T> {
   };
   loading?: boolean;
   onRowClick?: (row: T) => void;
+  navigatingToUser?: string | null;
 }
 
 export function DataTable<T extends Record<string, any>>({
@@ -58,6 +60,7 @@ export function DataTable<T extends Record<string, any>>({
   sortConfig: externalSortConfig,
   loading = false,
   onRowClick,
+  navigatingToUser,
 }: DataTableProps<T>) {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
@@ -198,19 +201,33 @@ export function DataTable<T extends Record<string, any>>({
                 </TableRow>
               ))
             ) : (
-              paginatedData.map((row, index) => (
-                <TableRow
-                  key={index}
-                  onClick={() => onRowClick?.(row)}
-                  className="cursor-pointer hover:bg-gray-50"
-                >
-                  {columns.map((column) => (
-                    <TableCell key={String(column.key)}>
-                      {column.render ? column.render(row[column.key], row) : String(row[column.key] || '')}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              paginatedData.map((row, index) => {
+                // Check if this row is being navigated to
+                const isNavigating = navigatingToUser && (row as any)._id === navigatingToUser;
+                
+                return (
+                  <TableRow
+                    key={index}
+                    onClick={() => onRowClick?.(row)}
+                    className={`cursor-pointer transition-all duration-200 ${
+                      isNavigating 
+                        ? 'bg-blue-50 border-blue-200' 
+                        : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    {columns.map((column) => (
+                      <TableCell key={String(column.key)}>
+                        <div className="flex items-center space-x-2">
+                          {column.render ? column.render(row[column.key], row) : String(row[column.key] || '')}
+                          {isNavigating && (
+                            <Loading variant="spinner" size="sm" />
+                          )}
+                        </div>
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>

@@ -5,11 +5,22 @@ export interface User {
   lastName: string;
   displayName: string;
   avatar?: string;
+  bio?: string;
   role: string;
+  city?: string;
+  neighborhood?: string;
+  latitude?: number;
+  longitude?: number;
+  phoneNumber?: string;
+  isVerified?: boolean;
+  rating?: number;
+  totalSales?: number;
+  totalPurchases?: number;
+  totalReviews?: number;
+  badges?: string[];
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  phoneNumber?: string;
 }
 
 export interface PaginationMeta {

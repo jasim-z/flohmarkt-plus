@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { DataTable, Column } from "@/components/ui/data-table";
+import { Loading } from "@/components/ui/loading";
 import { getUsers, User, GetUsersParams } from "../../../api/users";
 import { FaUser, FaEnvelope, FaCalendar, FaUserShield, FaCheckCircle, FaTimesCircle, FaSearch } from "react-icons/fa";
 import { useUser } from "@/contexts/UserContext";
@@ -112,7 +113,10 @@ export default function Users() {
     };
   }, []);
 
+  const [navigatingToUser, setNavigatingToUser] = useState<string | null>(null);
+
   const handleRowClick = useCallback((user: User) => {
+    setNavigatingToUser(user._id);
     router.push(`/en/users/${user._id}`);
   }, [router]);
 
@@ -266,9 +270,20 @@ export default function Users() {
             sortConfig={sortConfig}
             loading={loading}
             onRowClick={handleRowClick}
+            navigatingToUser={navigatingToUser}
           />
         </div>
       </div>
+
+      {/* Loading Overlay for User Navigation */}
+      {navigatingToUser && (
+        <Loading 
+          variant="spinner" 
+          size="lg" 
+          text="Loading User Details..." 
+          overlay={true} 
+        />
+      )}
     </div>
   );
 }
