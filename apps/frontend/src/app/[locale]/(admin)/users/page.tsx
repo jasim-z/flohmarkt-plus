@@ -255,7 +255,7 @@ export default function Users() {
             columns={columns}
             pageSize={10}
             searchable={false}
-            className="mb-8"
+            className="mb-2"
             // Server-side pagination props
             totalItems={totalItems}
             currentPage={currentPage}

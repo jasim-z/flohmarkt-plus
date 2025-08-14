@@ -70,7 +70,11 @@ export function DataTable<T extends Record<string, any>>({
   const isServerSide = !!onPageChange;
   const displayCurrentPage = isServerSide ? externalCurrentPage || 1 : currentPage;
   const displayTotalPages = isServerSide ? externalTotalPages || 1 : Math.ceil(data.length / pageSize);
-  const displaySortConfig = isServerSide ? externalSortConfig || { key: null, direction: 'asc' } : sortConfig;
+  const displaySortConfig = useMemo(() => 
+    isServerSide ? externalSortConfig || { key: null, direction: 'asc' } : sortConfig,
+    [isServerSide, externalSortConfig, sortConfig]
+  );
+
 
   // For client-side pagination, filter and sort data
   const filteredData = useMemo(() => {
@@ -257,10 +261,15 @@ export function DataTable<T extends Record<string, any>>({
                 pageNum = displayCurrentPage - 2 + i;
               }
               
+              // Ensure both values are numbers for comparison
+              const currentPageNum = Number(displayCurrentPage);
+              const buttonVariant = currentPageNum === pageNum ? "default" : "outline";
+              const isCurrentPage = currentPageNum === pageNum;
+              
               return (
                 <Button
                   key={pageNum}
-                  variant={displayCurrentPage === pageNum ? "default" : "outline"}
+                  variant={buttonVariant}
                   size="sm"
                   onClick={() => {
                     if (isServerSide && onPageChange) {
@@ -268,6 +277,12 @@ export function DataTable<T extends Record<string, any>>({
                     } else {
                       setCurrentPage(pageNum);
                     }
+                  }}
+                  className={`debug-button-${pageNum}`}
+                  style={{
+                    backgroundColor: isCurrentPage ? '#2563eb' : 'white',
+                    color: isCurrentPage ? 'white' : '#374151',
+                    border: isCurrentPage ? 'none' : '1px solid #d1d5db'
                   }}
                 >
                   {pageNum}
