@@ -1,22 +1,16 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { FaUsers, FaStore, FaUserShield, FaPlus, FaChevronUp, FaChevronDown, FaCalendar, FaArrowRight } from "react-icons/fa";
 import Link from "next/link";
-import { checkUserRole } from "@/app/utils/userHelper";
+import UnAuthourized from "@/app/components/UnAuthourized";
+import { useUser } from "@/contexts/UserContext";
 
 export default function Dashboard() {
   const t = useTranslations();
-  const router = useRouter();
-  const params = useParams();
-  const [loading, setLoading] = useState(true);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    checkUserRole(params.locale as string, "dashboard", router, setLoading);
-  }, [router, params.locale]);
+  const { role, isLoaded } = useUser();
 
   const toggleProject = (projectId: string) => {
     const newExpanded = new Set(expandedProjects);
@@ -28,7 +22,13 @@ export default function Dashboard() {
     setExpandedProjects(newExpanded);
   };
 
-  if (loading) {
+  if (role !== 'admin' && isLoaded) return <UnAuthourized />;
+
+  // TODO: Add loading state
+  // TODO: Add Skeleton Loader
+  // TODO: Add Error State
+  // TODO: Add No Data State
+  if (!isLoaded) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">

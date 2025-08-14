@@ -166,7 +166,13 @@ services:
 
   mongodb-primary:
     image: mongo:5.0
-    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/data/keyfile"]
+    command:
+      [
+        "mongod",
+        "--replSet", "rs0",
+        "--bind_ip_all",
+        "--keyFile", "/data/keyfile"
+      ]
     secrets:
       - mongodb_root_username
       - mongodb_root_password
@@ -188,7 +194,13 @@ services:
 
   mongodb-secondary:
     image: mongo:5.0
-    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/data/keyfile"]
+    command:
+      [
+        "mongod",
+        "--replSet", "rs0",
+        "--bind_ip_all",
+        "--keyFile", "/data/keyfile"
+      ]
     depends_on:
       - mongodb-primary
     secrets:
@@ -203,7 +215,13 @@ services:
 
   mongodb-arbiter:
     image: mongo:5.0
-    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/data/keyfile"]
+    command:
+      [
+        "mongod",
+        "--replSet", "rs0",
+        "--bind_ip_all",
+        "--keyFile", "/data/keyfile"
+      ]
     depends_on:
       - mongodb-primary
     secrets:

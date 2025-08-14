@@ -3,7 +3,7 @@ import { Nunito } from 'next/font/google'
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import { NextIntlClientProvider } from 'next-intl';
-import { getLocale } from 'next-intl/server';
+import { getLocale, getMessages } from 'next-intl/server';
 import { UserProvider } from "@/contexts/UserContext";
 
 const nunito = Nunito({ subsets: ['latin'], weight: ['400', '700'] })
@@ -19,10 +19,11 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const locale = await getLocale();
+  const messages = await getMessages();
   return (
     <html lang={locale}>
       <body className={`${nunito.className} antialiased`}>
-        <NextIntlClientProvider>
+        <NextIntlClientProvider locale={locale} messages={messages}>
           <UserProvider>
             <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
             {children}
