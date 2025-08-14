@@ -8,6 +8,42 @@ import { Loading } from "@/components/ui/loading";
 import { getMarkets, Market, GetMarketsParams } from "../../../api/markets";
 import { FaStore, FaMapMarkerAlt, FaCalendar, FaUsers, FaSearch, FaCheckCircle, FaTimesCircle, FaExclamationTriangle } from "react-icons/fa";
 
+// Utility function to calculate market status based on current date/time
+// This approach is more efficient than backend calculation because:
+// 1. No additional API calls needed
+// 2. Real-time accuracy without database queries
+// 3. Scales to any number of markets
+// 4. Updates automatically as time passes
+const calculateMarketStatus = (market: Market): 'upcoming' | 'ongoing' | 'past' => {
+  const now = new Date();
+  const marketDate = new Date(market.date);
+  
+  // If market date is in the future, it's upcoming
+  if (marketDate > now) {
+    return 'upcoming';
+  }
+  
+  // If market date is today, check the time
+  if (marketDate.toDateString() === now.toDateString()) {
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+    const [startHours, startMinutes] = market.startTime.split(':').map(Number);
+    const [endHours, endMinutes] = market.endTime.split(':').map(Number);
+    const startTimeInMinutes = startHours * 60 + startMinutes;
+    const endTimeInMinutes = endHours * 60 + endMinutes;
+    
+    if (currentTime < startTimeInMinutes) {
+      return 'upcoming';
+    } else if (currentTime >= startTimeInMinutes && currentTime < endTimeInMinutes) {
+      return 'ongoing';
+    } else {
+      return 'past';
+    }
+  }
+  
+  // If market date is in the past, it's past
+  return 'past';
+};
+
 export default function Markets() {
   const t = useTranslations();
   const router = useRouter();
@@ -29,8 +65,9 @@ export default function Markets() {
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [navigatingToMarket, setNavigatingToMarket] = useState<string | null>(null);
+  const [statusUpdateTrigger, setStatusUpdateTrigger] = useState(0);
 
-  const fetchMarkets = async (params: GetMarketsParams = {}) => {
+  const fetchMarkets = useCallback(async (params: GetMarketsParams = {}) => {
     try {
       setLoading(true);
       const response = await getMarkets(params);
@@ -43,7 +80,7 @@ export default function Markets() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Initial load of markets
   useEffect(() => {
@@ -60,6 +97,15 @@ export default function Markets() {
     loadMarkets();
   }, []); // Only run on mount
 
+  // Timer to update market statuses every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setStatusUpdateTrigger(prev => prev + 1);
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, []);
+
   const handlePageChange = useCallback((page: number) => {
     const params: GetMarketsParams = {
       page,
@@ -69,7 +115,7 @@ export default function Markets() {
       sortOrder: sortConfig.direction,
     };
     fetchMarkets(params);
-  }, [searchTerm, sortConfig]);
+  }, [searchTerm, sortConfig, fetchMarkets]);
 
   const handleSearch = useCallback((term: string) => {
     setSearchTerm(term);
@@ -90,10 +136,11 @@ export default function Markets() {
       };
       fetchMarkets(params);
     }, 500); // 500ms delay
-  }, [sortConfig]);
+  }, [sortConfig, fetchMarkets]);
 
   const handleSort = useCallback((key: keyof Market, direction: 'asc' | 'desc') => {
     setSortConfig({ key, direction });
+    
     const params: GetMarketsParams = {
       page: 1,
       limit: 10,
@@ -101,8 +148,9 @@ export default function Markets() {
       sortBy: key as string,
       sortOrder: direction,
     };
+    
     fetchMarkets(params);
-  }, [searchTerm]);
+  }, [searchTerm, fetchMarkets]);
 
   const handleRowClick = useCallback((market: Market) => {
     setNavigatingToMarket(market._id);
@@ -167,7 +215,7 @@ export default function Markets() {
       key: 'name',
       label: 'Market Name',
       sortable: true,
-      render: (value: string | boolean | undefined, row: Market) => (
+      render: (value: string | number | boolean | string[] | undefined, row: Market) => (
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-teal-600 rounded-lg flex items-center justify-center">
             <FaStore className="h-5 w-5 text-white" />
@@ -185,7 +233,7 @@ export default function Markets() {
       key: 'location',
       label: 'Location',
       sortable: true,
-      render: (value: string | boolean | undefined, row: Market) => (
+      render: (value: string | number | boolean | string[] | undefined, row: Market) => (
         <div className="flex items-center space-x-2">
           <FaMapMarkerAlt className="h-4 w-4 text-gray-400" />
           <span className="text-sm text-gray-700">{String(value || '')}</span>
@@ -196,7 +244,7 @@ export default function Markets() {
       key: 'date',
       label: 'Date',
       sortable: true,
-      render: (value: string | boolean | undefined, row: Market) => (
+      render: (value: string | number | boolean | string[] | undefined, row: Market) => (
         <div className="flex items-center space-x-2">
           <FaCalendar className="h-4 w-4 text-gray-400" />
           <span className="text-sm text-gray-700">
@@ -208,27 +256,30 @@ export default function Markets() {
     {
       key: 'status',
       label: 'Status',
-      sortable: true,
-      render: (value: string | boolean | undefined, row: Market) => (
-        <div className="flex items-center space-x-2">
-          {value === 'ongoing' ? (
-            <FaCheckCircle className="h-4 w-4 text-green-500" />
-          ) : value === 'upcoming' ? (
-            <FaExclamationTriangle className="h-4 w-4 text-blue-500" />
-          ) : (
-            <FaTimesCircle className="h-4 w-4 text-gray-500" />
-          )}
-          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(value as Market['status'])}`}>
-            {getStatusLabel(value as Market['status'])}
-          </span>
-        </div>
-      ),
+      sortable: false,
+      render: (value: string | number | boolean | string[] | undefined, row: Market) => {
+        const status = calculateMarketStatus(row);
+        return (
+          <div className="flex items-center space-x-2">
+            {status === 'ongoing' ? (
+              <FaCheckCircle className="h-4 w-4 text-green-500" />
+            ) : status === 'upcoming' ? (
+              <FaExclamationTriangle className="h-4 w-4 text-blue-500" />
+            ) : (
+              <FaTimesCircle className="h-4 w-4 text-gray-500" />
+            )}
+            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(status)}`}>
+              {getStatusLabel(status)}
+            </span>
+          </div>
+        );
+      },
     },
     {
       key: 'registeredVendors',
       label: 'Vendors',
-      sortable: true,
-      render: (value: string | boolean | undefined, row: Market) => (
+      sortable: false,
+      render: (value: string | number | boolean | string[] | undefined, row: Market) => (
         <div className="flex items-center space-x-2">
           <FaUsers className="h-4 w-4 text-gray-400" />
           <span className="text-sm text-gray-700">
@@ -239,9 +290,9 @@ export default function Markets() {
     },
     {
       key: 'isActive',
-      label: 'Status',
+      label: 'Active Status',
       sortable: true,
-      render: (value: string | boolean | undefined, row: Market) => (
+      render: (value: string | number | boolean | string[] | undefined, row: Market) => (
         <div className="flex items-center space-x-2">
           {value ? (
             <FaCheckCircle className="h-4 w-4 text-green-500" />

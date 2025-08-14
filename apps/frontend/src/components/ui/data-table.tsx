@@ -44,7 +44,7 @@ export interface DataTableProps<T> {
   navigatingToUser?: string | null;
 }
 
-export function DataTable<T extends Record<string, any>>({
+export function DataTable<T extends Record<string, unknown>>({
   data,
   columns,
   pageSize = 10,
@@ -203,7 +203,7 @@ export function DataTable<T extends Record<string, any>>({
             ) : (
               paginatedData.map((row, index) => {
                 // Check if this row is being navigated to
-                const isNavigating = navigatingToUser && (row as any)._id === navigatingToUser;
+                const isNavigating = navigatingToUser && (row as Record<string, unknown>)._id === navigatingToUser;
                 
                 return (
                   <TableRow

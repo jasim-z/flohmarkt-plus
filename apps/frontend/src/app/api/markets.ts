@@ -100,6 +100,8 @@ export async function getMarkets(params: GetMarketsParams = {}): Promise<Paginat
     if (params.search) searchParams.append('search', params.search);
     if (params.status) searchParams.append('status', params.status);
     if (params.userId) searchParams.append('userId', params.userId);
+    if (params.sortBy) searchParams.append('sortBy', params.sortBy);
+    if (params.sortOrder) searchParams.append('sortOrder', params.sortOrder);
 
     const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3953'}/markets?${searchParams.toString()}`;
     

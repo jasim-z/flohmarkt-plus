@@ -7,6 +7,42 @@ import Image from "next/image";
 import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaArrowLeft, FaCheckCircle, FaTimesCircle, FaExclamationTriangle, FaUserShield, FaStar, FaSearch, FaSort, FaSortUp, FaSortDown } from "react-icons/fa";
 import { Market, getMarkets, getVendorsByMarket, Vendor, GetVendorsParams } from "../../../../api/markets";
 
+// Utility function to calculate market status based on current date/time
+// This approach is more efficient than backend calculation because:
+// 1. No additional API calls needed
+// 2. Real-time accuracy without database queries
+// 3. Scales to any number of markets
+// 4. Updates automatically as time passes
+const calculateMarketStatus = (market: Market): 'upcoming' | 'ongoing' | 'past' => {
+  const now = new Date();
+  const marketDate = new Date(market.date);
+  
+  // If market date is in the future, it's upcoming
+  if (marketDate > now) {
+    return 'upcoming';
+  }
+  
+  // If market date is today, check the time
+  if (marketDate.toDateString() === now.toDateString()) {
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+    const [startHours, startMinutes] = market.startTime.split(':').map(Number);
+    const [endHours, endMinutes] = market.endTime.split(':').map(Number);
+    const startTimeInMinutes = startHours * 60 + startMinutes;
+    const endTimeInMinutes = endHours * 60 + endMinutes;
+    
+    if (currentTime < startTimeInMinutes) {
+      return 'upcoming';
+    } else if (currentTime >= startTimeInMinutes && currentTime < endTimeInMinutes) {
+      return 'ongoing';
+    } else {
+      return 'past';
+    }
+  }
+  
+  // If market date is in the past, it's past
+  return 'past';
+};
+
 // Vendor Card Component
 function VendorCard({ vendor }: { vendor: Vendor }) {
   return (
@@ -95,6 +131,7 @@ export default function MarketDetail() {
   const [sortBy, setSortBy] = useState('displayName');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [statusUpdateTrigger, setStatusUpdateTrigger] = useState(0);
 
   // Debounce search term for performance
   useEffect(() => {
@@ -104,6 +141,15 @@ export default function MarketDetail() {
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  // Timer to update market status every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setStatusUpdateTrigger(prev => prev + 1);
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchVendors = useCallback(async () => {
     if (!market?._id) return;
@@ -314,9 +360,12 @@ export default function MarketDetail() {
             <div className="flex-1">
               <div className="flex items-center space-x-4 mb-4">
                 <h1 className="text-3xl font-bold text-gray-900">{market.name}</h1>
-                <span className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(market.status)}`}>
-                  {getStatusLabel(market.status)}
-                </span>
+                <div className="flex items-center space-x-2">
+                  <span className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(calculateMarketStatus(market))}`}>
+                    {getStatusLabel(calculateMarketStatus(market))}
+                  </span>
+                  
+                </div>
                 <span className={`px-3 py-1 text-sm font-medium rounded-full ${
                   market.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                 }`}>
