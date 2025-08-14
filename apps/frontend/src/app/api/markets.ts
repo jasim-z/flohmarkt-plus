@@ -24,6 +24,8 @@ export interface GetMarketsParams {
   search?: string;
   status?: string;
   userId?: string; // To filter markets by user participation
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 export interface PaginatedMarketsResponse {

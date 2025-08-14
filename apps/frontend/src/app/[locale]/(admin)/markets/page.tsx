@@ -2,16 +2,15 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { DataTable, Column } from "@/components/ui/data-table";
+import { Loading } from "@/components/ui/loading";
 import { getMarkets, Market, GetMarketsParams } from "../../../api/markets";
 import { FaStore, FaMapMarkerAlt, FaCalendar, FaUsers, FaSearch, FaCheckCircle, FaTimesCircle, FaExclamationTriangle } from "react-icons/fa";
-import { checkUserRole } from "@/app/utils/userHelper";
 
 export default function Markets() {
   const t = useTranslations();
   const router = useRouter();
-  const params = useParams();
   const [markets, setMarkets] = useState<Market[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +26,9 @@ export default function Markets() {
   }>({ key: null, direction: 'asc' });
 
   // Debouncing ref
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const [navigatingToMarket, setNavigatingToMarket] = useState<string | null>(null);
 
   const fetchMarkets = async (params: GetMarketsParams = {}) => {
     try {
@@ -44,16 +45,20 @@ export default function Markets() {
     }
   };
 
-  useEffect(() => {
-    checkUserRole(params.locale as string, "markets", router, setLoading);
-  }, [router, params.locale]);
-
+  // Initial load of markets
   useEffect(() => {
     const loadMarkets = async () => {
-      await fetchMarkets();
+      const params: GetMarketsParams = {
+        page: 1,
+        limit: 10,
+        search: undefined,
+        sortBy: undefined,
+        sortOrder: 'asc',
+      };
+      await fetchMarkets(params);
     };
     loadMarkets();
-  }, []);
+  }, []); // Only run on mount
 
   const handlePageChange = useCallback((page: number) => {
     const params: GetMarketsParams = {
@@ -64,7 +69,7 @@ export default function Markets() {
       sortOrder: sortConfig.direction,
     };
     fetchMarkets(params);
-  }, [fetchMarkets, searchTerm, sortConfig]);
+  }, [searchTerm, sortConfig]);
 
   const handleSearch = useCallback((term: string) => {
     setSearchTerm(term);
@@ -85,7 +90,7 @@ export default function Markets() {
       };
       fetchMarkets(params);
     }, 500); // 500ms delay
-  }, [fetchMarkets, sortConfig]);
+  }, [sortConfig]);
 
   const handleSort = useCallback((key: keyof Market, direction: 'asc' | 'desc') => {
     setSortConfig({ key, direction });
@@ -97,18 +102,29 @@ export default function Markets() {
       sortOrder: direction,
     };
     fetchMarkets(params);
-  }, [fetchMarkets, searchTerm]);
+  }, [searchTerm]);
 
   const handleRowClick = useCallback((market: Market) => {
+    setNavigatingToMarket(market._id);
     router.push(`/en/markets/${market._id}`);
   }, [router]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
+    // Reset navigation state when user returns to the page
+    const handleFocus = () => {
+      setNavigatingToMarket(null);
+    };
+
+    window.addEventListener('focus', handleFocus);
+
     return () => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
       }
+      // Reset navigation state when component unmounts
+      setNavigatingToMarket(null);
+      window.removeEventListener('focus', handleFocus);
     };
   }, []);
 
@@ -310,9 +326,20 @@ export default function Markets() {
             sortConfig={sortConfig}
             loading={loading}
             onRowClick={handleRowClick}
+            navigatingToUser={navigatingToMarket}
           />
         </div>
       </div>
+
+      {/* Loading Overlay for Market Navigation */}
+      {navigatingToMarket && (
+        <Loading 
+          variant="spinner" 
+          size="lg" 
+          text="Loading Market Details..." 
+          overlay={true} 
+        />
+      )}
     </div>
   );
-} 
+}
