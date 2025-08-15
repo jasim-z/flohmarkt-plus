@@ -62,4 +62,8 @@ export class UpdateMarketDto {
   @IsString({ each: true })
   @IsOptional()
   registeredVendors?: string[];
+
+  @IsBoolean()
+  @IsOptional()
+  isDeleted?: boolean;
 } 

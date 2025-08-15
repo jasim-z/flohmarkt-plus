@@ -105,4 +105,29 @@ export class MarketsController {
   remove(@Param('id') id: string, @Request() req) {
     return this.marketsService.remove(id, req.user);
   }
+
+  @Patch(':id/toggle-active')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  toggleActive(@Param('id') id: string, @Request() req) {
+    return this.marketsService.toggleActive(id, req.user);
+  }
+
+  @Post('migrate/add-is-deleted-field')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  async addIsDeletedFieldToExistingMarkets() {
+    // This would call the migration service
+    // For now, we'll implement it directly in the service
+    return this.marketsService.addIsDeletedFieldToExistingMarkets();
+  }
+
+  @Post('migrate/add-is-active-field')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  async addIsActiveFieldToExistingMarkets() {
+    // This would call the migration service
+    // For now, we'll implement it directly in the service
+    return this.marketsService.addIsActiveFieldToExistingMarkets();
+  }
 } 

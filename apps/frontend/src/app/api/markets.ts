@@ -14,6 +14,7 @@ export interface Market {
   categories: string[];
   status: 'upcoming' | 'ongoing' | 'past';
   registeredVendors: string[];
+  isDeleted: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -203,6 +204,79 @@ export async function createMarket(marketData: CreateMarketRequest): Promise<Mar
     return data;
   } catch (error) {
     console.error('Error creating market:', error);
+    throw error;
+  }
+}
+
+export async function updateMarket(marketId: string, marketData: Partial<CreateMarketRequest>): Promise<Market> {
+  try {
+    const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3953'}/markets/${marketId}`;
+    
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+      },
+      body: JSON.stringify(marketData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Failed to update market');
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error updating market:', error);
+    throw error;
+  }
+}
+
+export async function deleteMarket(marketId: string): Promise<void> {
+  try {
+    const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3953'}/markets/${marketId}`;
+    
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Failed to delete market');
+    }
+  } catch (error) {
+    console.error('Error deleting market:', error);
+    throw error;
+  }
+}
+
+export async function toggleMarketActive(marketId: string): Promise<Market> {
+  try {
+    const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3953'}/markets/${marketId}/toggle-active`;
+    
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Failed to toggle market status');
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error toggling market status:', error);
     throw error;
   }
 } 

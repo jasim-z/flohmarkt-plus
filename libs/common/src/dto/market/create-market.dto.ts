@@ -67,4 +67,8 @@ export class CreateMarketDto {
   @IsArray()
   @IsString({ each: true })
   registeredVendors: string[]; // seller user IDs (ObjectId as string)
+
+  @IsBoolean()
+  @IsOptional()
+  isDeleted?: boolean;
 } 

@@ -50,30 +50,47 @@ export class MarketsService {
       status,
       createdBy: new Types.ObjectId(user.userId),
       registeredVendors: (createMarketDto.registeredVendors || []).map(id => new Types.ObjectId(id)),
+      isDeleted: false, // Ensure new markets are not deleted
+      isActive: createMarketDto.isActive !== undefined ? createMarketDto.isActive : true, // Handle legacy data
     });
   }
 
   async findAll(query: any = {}) {
     const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', status, isActive } = query;
     
-    // Build filter object
-    const filter: any = {};
+    // Build filter object with AND logic to ensure deleted markets are always filtered out
+    const filter: any = {
+      $and: [
+        // Always filter out deleted markets (this condition must always be true)
+        {
+          $or: [
+            { isDeleted: false },           // Explicitly not deleted
+            { isDeleted: { $exists: false } } // Field doesn't exist (legacy data)
+          ]
+        }
+      ]
+    };
     
+    // Add search filter if provided
     if (search) {
-      filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-        { location: { $regex: search, $options: 'i' } },
-        { categories: { $in: [new RegExp(search, 'i')] } },
-      ];
+      filter.$and.push({
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+          { location: { $regex: search, $options: 'i' } },
+          { categories: { $in: [new RegExp(search, 'i')] } },
+        ]
+      });
     }
     
+    // Add status filter if provided
     if (status) {
-      filter.status = status;
+      filter.$and.push({ status });
     }
     
+    // Add active filter if provided
     if (isActive !== undefined) {
-      filter.isActive = isActive === 'true';
+      filter.$and.push({ isActive: isActive === 'true' });
     }
 
     // Get total count
@@ -107,12 +124,22 @@ export class MarketsService {
   async findByUser(userId: string) {
     return this.marketsRepository.find({
       registeredVendors: new Types.ObjectId(userId),
-      isActive: true
+      isActive: true,
+      $or: [
+        { isDeleted: false },
+        { isDeleted: { $exists: false } }
+      ]
     });
   }
 
   async addUserToMarket(marketId: string, userId: string) {
-    const market = await this.marketsRepository.findOne({ _id: new Types.ObjectId(marketId) });
+    const market = await this.marketsRepository.findOne({ 
+      _id: new Types.ObjectId(marketId),
+      $or: [
+        { isDeleted: false },           // Explicitly not deleted
+        { isDeleted: { $exists: false } } // Field doesn't exist (legacy data)
+      ]
+    });
     if (!market) throw new NotFoundException('Market not found');
     
     if (!market.registeredVendors.includes(new Types.ObjectId(userId))) {
@@ -126,7 +153,13 @@ export class MarketsService {
   }
 
   async updateRegisteredVendors(marketId: string, userIds: string[]) {
-    const market = await this.marketsRepository.findOne({ _id: new Types.ObjectId(marketId) });
+    const market = await this.marketsRepository.findOne({ 
+      _id: new Types.ObjectId(marketId),
+      $or: [
+        { isDeleted: false },           // Explicitly not deleted
+        { isDeleted: { $exists: false } } // Field doesn't exist (legacy data)
+      ]
+    });
     if (!market) throw new NotFoundException('Market not found');
     
     // Convert all user IDs to ObjectIds
@@ -139,7 +172,13 @@ export class MarketsService {
   }
 
   async findOne(id: string) {
-    const market = await this.marketsRepository.findOne({ _id: new Types.ObjectId(id) });
+    const market = await this.marketsRepository.findOne({ 
+      _id: new Types.ObjectId(id),
+      $or: [
+        { isDeleted: false },           // Explicitly not deleted
+        { isDeleted: { $exists: false } } // Field doesn't exist (legacy data)
+      ]
+    });
     if (!market) throw new NotFoundException('Market not found');
     return market;
   }
@@ -151,12 +190,24 @@ export class MarketsService {
     await this.marketModel.updateMany(
       {
         status: 'upcoming',
-        $or: [
-          { date: { $lt: now } },
+        $and: [
+          // Exclude deleted markets
           {
-            $and: [
-              { date: { $lte: now } },
-              { startTime: { $lte: now.toTimeString().slice(0, 5) } }
+            $or: [
+              { isDeleted: false },
+              { isDeleted: { $exists: false } }
+            ]
+          },
+          // Check date/time conditions
+          {
+            $or: [
+              { date: { $lt: now } },
+              {
+                $and: [
+                  { date: { $lte: now } },
+                  { startTime: { $lte: now.toTimeString().slice(0, 5) } }
+                ]
+              }
             ]
           }
         ]
@@ -169,6 +220,14 @@ export class MarketsService {
       {
         status: { $in: ['upcoming', 'ongoing'] },
         $and: [
+          // Exclude deleted markets
+          {
+            $or: [
+              { isDeleted: false },
+              { isDeleted: { $exists: false } }
+            ]
+          },
+          // Check date/time conditions
           { date: { $lte: now } },
           { endTime: { $lte: now.toTimeString().slice(0, 5) } }
         ]
@@ -187,7 +246,13 @@ export class MarketsService {
     const limitNum = parseInt(limit.toString(), 10) || 20;
     
     // First, get the market to ensure it exists and get vendor IDs
-    const market = await this.marketsRepository.findOne({ _id: new Types.ObjectId(marketId) });
+    const market = await this.marketsRepository.findOne({ 
+      _id: new Types.ObjectId(marketId),
+      $or: [
+        { isDeleted: false },           // Explicitly not deleted
+        { isDeleted: { $exists: false } } // Field doesn't exist (legacy data)
+      ]
+    });
     if (!market) throw new NotFoundException('Market not found');
     
     if (!market.registeredVendors || market.registeredVendors.length === 0) {
@@ -280,6 +345,11 @@ export class MarketsService {
       // Auto-set vendor limit to match booths available
       updateMarketDto.vendorLimit = updateMarketDto.boothsAvailable;
     }
+
+    // Ensure isDeleted field exists for legacy data
+    if (updateMarketDto.isDeleted === undefined) {
+      updateMarketDto.isDeleted = false;
+    }
     
     // Convert registeredVendors to ObjectIds if they exist
     const updateData = { ...updateMarketDto };
@@ -305,9 +375,33 @@ export class MarketsService {
     if (user.role !== 'admin') {
       throw new ForbiddenException('Only admins can delete markets');
     }
+    
+    // Use $set to ensure the isDeleted field exists
     return this.marketsRepository.findOneAndUpdate(
       { _id: new Types.ObjectId(id) },
-      { isActive: false }
+      { $set: { isDeleted: true } }
+    );
+  }
+
+  async toggleActive(id: string, user: any) {
+    if (user.role !== 'admin') {
+      throw new ForbiddenException('Only admins can toggle market status');
+    }
+    
+    const market = await this.marketsRepository.findOne({ _id: new Types.ObjectId(id) });
+    if (!market) throw new NotFoundException('Market not found');
+    
+    // Handle legacy data where isActive might not exist
+    const currentIsActive = market.isActive !== undefined ? market.isActive : true;
+    
+    return this.marketsRepository.findOneAndUpdate(
+      { _id: new Types.ObjectId(id) },
+      { 
+        $set: { 
+          isActive: !currentIsActive,
+          isDeleted: false // Ensure isDeleted field exists for legacy data
+        }
+      }
     );
   }
 
@@ -332,7 +426,8 @@ export class MarketsService {
         boothsAvailable: 50,
         categories: ['Crafts', 'Vintage', 'Food', 'Art'],
         status: 'upcoming',
-        registeredVendors: []
+        registeredVendors: [],
+        isDeleted: false
       },
       {
         name: 'Vintage Collectors Fair',
@@ -348,7 +443,8 @@ export class MarketsService {
         boothsAvailable: 30,
         categories: ['Vintage', 'Antiques', 'Collectibles'],
         status: 'past',
-        registeredVendors: []
+        registeredVendors: [],
+        isDeleted: false
       },
       {
         name: 'Artisan Craft Market',
@@ -364,7 +460,8 @@ export class MarketsService {
         boothsAvailable: 40,
         categories: ['Crafts', 'Art', 'Handmade', 'Jewelry'],
         status: 'past',
-        registeredVendors: []
+        registeredVendors: [],
+        isDeleted: false
       }
     ];
 
@@ -373,5 +470,85 @@ export class MarketsService {
     );
 
     return { message: 'Markets seeded successfully', count: createdMarkets.length };
+  }
+
+  async addIsDeletedFieldToExistingMarkets() {
+    try {
+      console.log('Starting migration: Adding isDeleted field to existing markets...');
+      
+      // Find all markets that don't have the isDeleted field
+      const marketsWithoutIsDeleted = await this.marketModel.find({
+        isDeleted: { $exists: false }
+      });
+      
+      console.log(`Found ${marketsWithoutIsDeleted.length} markets without isDeleted field`);
+      
+      if (marketsWithoutIsDeleted.length === 0) {
+        console.log('No migration needed - all markets already have isDeleted field');
+        return { message: 'No migration needed', count: 0 };
+      }
+      
+      // Update all markets to add isDeleted: false
+      const result = await this.marketModel.updateMany(
+        { isDeleted: { $exists: false } },
+        { $set: { isDeleted: false } }
+      );
+      
+      console.log(`Migration completed: ${result.modifiedCount} markets updated`);
+      
+      return {
+        message: 'Migration completed successfully',
+        count: result.modifiedCount,
+        totalMarkets: marketsWithoutIsDeleted.length
+      };
+    } catch (error) {
+      console.error('Migration failed:', error);
+      throw error;
+    }
+  }
+
+  async addIsActiveFieldToExistingMarkets() {
+    try {
+      console.log('Starting migration: Adding isActive field to existing markets...');
+      
+      // Find all markets that don't have the isActive field
+      const marketsWithoutIsActive = await this.marketModel.find({
+        isActive: { $exists: false }
+      });
+      
+      console.log(`Found ${marketsWithoutIsActive.length} markets without isActive field`);
+      
+      if (marketsWithoutIsActive.length === 0) {
+        console.log('No migration needed - all markets already have isActive field');
+        return { message: 'No migration needed', count: 0 };
+      }
+      
+      // Update all markets to add isActive: true
+      const result = await this.marketModel.updateMany(
+        { isActive: { $exists: false } },
+        { $set: { isActive: true } }
+      );
+      
+      console.log(`Migration completed: ${result.modifiedCount} markets updated`);
+      
+      return {
+        message: 'Migration completed successfully',
+        count: result.modifiedCount,
+        totalMarkets: marketsWithoutIsActive.length
+      };
+    } catch (error) {
+      console.error('Migration failed:', error);
+      throw error;
+    }
+  }
+
+  // Utility method to check if a market is deleted
+  private isMarketDeleted(market: any): boolean {
+    return market.isDeleted === true;
+  }
+
+  // Utility method to check if a market should be visible
+  private isMarketVisible(market: any): boolean {
+    return !this.isMarketDeleted(market);
   }
 } 

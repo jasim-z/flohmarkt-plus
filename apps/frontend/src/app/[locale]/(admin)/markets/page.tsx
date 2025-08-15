@@ -5,8 +5,8 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { DataTable, Column } from "@/components/ui/data-table";
 import { Loading } from "@/components/ui/loading";
-import { getMarkets, Market, GetMarketsParams } from "../../../api/markets";
-import { FaStore, FaMapMarkerAlt, FaCalendar, FaUsers, FaSearch, FaCheckCircle, FaTimesCircle, FaExclamationTriangle } from "react-icons/fa";
+import { getMarkets, Market, GetMarketsParams, deleteMarket } from "../../../api/markets";
+import { FaStore, FaMapMarkerAlt, FaCalendar, FaUsers, FaSearch, FaCheckCircle, FaTimesCircle, FaExclamationTriangle, FaEdit, FaTrash } from "react-icons/fa";
 
 // Utility function to calculate market status based on current date/time
 // This approach is more efficient than backend calculation because:
@@ -66,6 +66,11 @@ export default function Markets() {
 
   const [navigatingToMarket, setNavigatingToMarket] = useState<string | null>(null);
   const [statusUpdateTrigger, setStatusUpdateTrigger] = useState(0);
+  
+  // Edit and Delete state
+  const [editingMarket, setEditingMarket] = useState<Market | null>(null);
+  const [deletingMarket, setDeletingMarket] = useState<Market | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const fetchMarkets = useCallback(async (params: GetMarketsParams = {}) => {
     try {
@@ -156,6 +161,45 @@ export default function Markets() {
     setNavigatingToMarket(market._id);
     router.push(`/en/markets/${market._id}`);
   }, [router]);
+
+  const handleEditMarket = useCallback((market: Market) => {
+    setEditingMarket(market);
+    router.push(`/en/markets/${market._id}/edit`);
+  }, [router]);
+
+  const handleDeleteMarket = useCallback((market: Market) => {
+    setDeletingMarket(market);
+    setShowDeleteModal(true);
+  }, []);
+
+  const confirmDeleteMarket = useCallback(async () => {
+    if (!deletingMarket) return;
+    
+    try {
+      setLoading(true);
+      // TODO: Implement delete API call
+      await deleteMarket(deletingMarket._id);
+      setShowDeleteModal(false);
+      setDeletingMarket(null);
+      // Refresh markets list
+      await fetchMarkets({
+        page: currentPage,
+        limit: 10,
+        search: searchTerm || undefined,
+        sortBy: sortConfig.key as string || undefined,
+        sortOrder: sortConfig.direction,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete market');
+    } finally {
+      setLoading(false);
+    }
+  }, [deletingMarket, currentPage, searchTerm, sortConfig, fetchMarkets]);
+
+  const cancelDeleteMarket = useCallback(() => {
+    setShowDeleteModal(false);
+    setDeletingMarket(null);
+  }, []);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -294,7 +338,7 @@ export default function Markets() {
       key: 'isActive',
       label: 'Active Status',
       sortable: true,
-      render: (value: string | number | boolean | string[] | undefined, row: Market) => (
+      render: (value: unknown, row: Record<string, unknown>) => (
         <div className="flex items-center space-x-2">
           {value ? (
             <FaCheckCircle className="h-4 w-4 text-green-500" />
@@ -306,6 +350,35 @@ export default function Markets() {
           }`}>
             {value ? 'Active' : 'Inactive'}
           </span>
+        </div>
+      ),
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      sortable: false,
+      render: (value: unknown, row: Record<string, unknown>) => (
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEditMarket(row as unknown as Market);
+            }}
+            className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+            title="Edit Market"
+          >
+            <FaEdit className="h-4 w-4" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeleteMarket(row as unknown as Market);
+            }}
+            className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors duration-200"
+            title="Delete Market"
+          >
+            <FaTrash className="h-4 w-4" />
+          </button>
         </div>
       ),
     },
@@ -375,7 +448,7 @@ export default function Markets() {
           </div>
           
           <DataTable
-            data={markets}
+            data={markets as unknown as Record<string, unknown>[]}
             columns={columns}
             pageSize={10}
             searchable={false}
@@ -386,11 +459,18 @@ export default function Markets() {
             totalPages={totalPages}
             onPageChange={handlePageChange}
             onSearch={handleSearch}
-            onSort={handleSort}
+            onSort={handleSort as (key: string, direction: 'asc' | 'desc') => void}
             sortConfig={sortConfig}
             loading={loading}
-            onRowClick={handleRowClick}
+            onRowClick={handleRowClick as unknown as (row: Record<string, unknown>) => void}
             navigatingToUser={navigatingToMarket}
+            // Empty state props
+            searchTerm={searchTerm}
+            emptyStateMessage={searchTerm ? 'No markets found' : 'No markets available'}
+            emptyStateDescription={searchTerm 
+              ? `No markets found matching "${searchTerm}". Try adjusting your search terms.`
+              : 'There are no markets available at the moment. Create your first market to get started!'
+            }
           />
         </div>
       </div>
@@ -403,6 +483,48 @@ export default function Markets() {
           text="Loading Market Details..." 
           overlay={true} 
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && deletingMarket && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <FaTrash className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Delete Market</h3>
+                <p className="text-sm text-gray-600">This action cannot be undone.</p>
+              </div>
+            </div>
+            
+            <div className="mb-6">
+              <p className="text-gray-700">
+                Are you sure you want to delete <span className="font-semibold">&ldquo;{deletingMarket.name}&rdquo;</span>?
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                This will permanently remove the market and all associated data.
+              </p>
+            </div>
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={cancelDeleteMarket}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteMarket}
+                disabled={loading}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+              >
+                {loading ? 'Deleting...' : 'Delete Market'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

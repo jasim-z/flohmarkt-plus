@@ -48,6 +48,9 @@ export class Market extends AbstractDocument {
 
   @Prop({ type: [{ type: Types.ObjectId, ref: 'User' }], default: [] })
   registeredVendors: Types.ObjectId[];
+
+  @Prop({ default: false })
+  isDeleted: boolean;
 }
 
 export const MarketSchema = SchemaFactory.createForClass(Market);
@@ -56,4 +59,5 @@ export const MarketSchema = SchemaFactory.createForClass(Market);
 MarketSchema.index({ location: 1, date: 1 });
 MarketSchema.index({ status: 1 });
 MarketSchema.index({ createdBy: 1 });
-MarketSchema.index({ name: 'text', description: 'text', categories: 'text' }); 
+MarketSchema.index({ name: 'text', description: 'text', categories: 'text' });
+MarketSchema.index({ isDeleted: 1 }); 

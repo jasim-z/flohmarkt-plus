@@ -42,6 +42,10 @@ export interface DataTableProps<T> {
   loading?: boolean;
   onRowClick?: (row: T) => void;
   navigatingToUser?: string | null;
+  // Empty state props
+  searchTerm?: string;
+  emptyStateMessage?: string;
+  emptyStateDescription?: string;
 }
 
 export function DataTable<T extends Record<string, unknown>>({
@@ -61,6 +65,10 @@ export function DataTable<T extends Record<string, unknown>>({
   loading = false,
   onRowClick,
   navigatingToUser,
+  // Empty state props
+  searchTerm: externalSearchTerm,
+  emptyStateMessage,
+  emptyStateDescription,
 }: DataTableProps<T>) {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
@@ -200,6 +208,28 @@ export function DataTable<T extends Record<string, unknown>>({
                   ))}
                 </TableRow>
               ))
+            ) : paginatedData.length === 0 ? (
+              // Empty state message
+              <TableRow>
+                <TableCell colSpan={columns.length} className="text-center py-12">
+                  <div className="flex flex-col items-center space-y-3">
+                    <div className="text-gray-400">
+                      <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                      </svg>
+                    </div>
+                    <div className="text-lg font-medium text-gray-900">
+                      {externalSearchTerm ? (emptyStateMessage || 'No results found') : (emptyStateMessage || 'No data available')}
+                    </div>
+                    <div className="text-sm text-gray-500 max-w-sm">
+                      {externalSearchTerm 
+                        ? (emptyStateDescription || `No results found matching "${externalSearchTerm}". Try adjusting your search terms.`)
+                        : (emptyStateDescription || 'There are no items available at the moment.')
+                      }
+                    </div>
+                  </div>
+                </TableCell>
+              </TableRow>
             ) : (
               paginatedData.map((row, index) => {
                 // Check if this row is being navigated to
