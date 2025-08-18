@@ -65,15 +65,44 @@ export default function Header() {
             
             {/* Navigation Menu */}
             <nav className="hidden lg:flex space-x-8">
-              <Link href="/en/dashboard" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
-                Dashboard
-              </Link>
-              <Link href="/en/users" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
-                Users
-              </Link>
-              <Link href="/en/markets" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
-                Markets
-              </Link>
+              {user?.role === 'admin' && (
+                <>
+                  <Link href="/en/admin/dashboard" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                    Dashboard
+                  </Link>
+                  <Link href="/en/admin/users" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                    Users
+                  </Link>
+                  <Link href="/en/admin/markets" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                    Markets
+                  </Link>
+                </>
+              )}
+              
+              {user?.role === 'seller' && (
+                <>
+                  <Link href="/en/overview" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                    Home
+                  </Link>
+                  <Link href="/en/explore-markets" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                    Explore Markets
+                  </Link>
+                  <Link href="/en/orders" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                    Orders
+                  </Link>
+                  <Link href="/en/messages" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                    Messages
+                  </Link>
+                </>
+              )}
+              
+              {user?.role === 'buyer' && (
+                <>
+                  <Link href="/en/buyer/home" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                    Home
+                  </Link>
+                </>
+              )}
             </nav>
           </div>
 

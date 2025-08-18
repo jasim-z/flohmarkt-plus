@@ -22,7 +22,7 @@ export default function Login() {
       if (user && user.role === "buyer") {
         router.replace(`/${params.locale}/home`);
       } else if (user && user.role === "seller") {
-        router.replace(`/${params.locale}/home`);
+        router.replace(`/${params.locale}/overview`);
       } else if (user && user.role === "admin") {
         router.replace(`/${params.locale}/dashboard`);
       }

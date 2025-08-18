@@ -102,6 +102,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
         router.push(`/${locale}/unauthorized`);
         return;
       }
+      
+      // Protect seller routes
+      if (pathname.includes('/seller') && role !== 'seller') {
+        router.push(`/${locale}/unauthorized`);
+        return;
+      }
     }
   }, [pathname, role, isLoaded, router]);
 

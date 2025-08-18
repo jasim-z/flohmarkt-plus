@@ -18,7 +18,7 @@ export default function Home({ params }: PageProps) {
       if (user && user.role === 'buyer') {
         router.replace(`/${locale}/home`);
       } else if (user && user.role === 'seller') {
-        router.replace(`/${locale}/home`);
+        router.replace(`/${locale}/seller/overview`);
       } else if (user && user.role === 'admin') {
         router.replace(`/${locale}/dashboard`);
       } else {
