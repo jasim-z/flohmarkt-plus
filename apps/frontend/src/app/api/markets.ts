@@ -1,3 +1,8 @@
+// MongoDB Decimal128 type
+export interface MongoDecimal128 {
+  $numberDecimal: string;
+}
+
 export interface Market {
   _id: string;
   name: string;
@@ -11,7 +16,7 @@ export interface Market {
   bannerImage: string;
   vendorLimit?: number;
   boothsAvailable?: number;
-  price: string; // Decimal128 from MongoDB, received as string
+  price: string | MongoDecimal128; // Decimal128 from MongoDB, can be string or object
   categories: string[];
   status: 'upcoming' | 'ongoing' | 'past';
   registeredVendors: string[];

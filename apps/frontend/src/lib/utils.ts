@@ -21,3 +21,36 @@ export function cn(...inputs: (string | undefined | null | false)[]): string {
   
   return Array.from(classMap.values()).join(' ');
 }
+
+/**
+ * Formats a price value safely, handling various input types and edge cases
+ * @param price - The price value (can be string, number, undefined, or MongoDB Decimal128 object)
+ * @param fallback - Text to show when price is invalid or zero
+ * @returns Formatted price string or fallback text
+ */
+export function formatPrice(price: string | number | { $numberDecimal: string } | undefined | null, fallback: string = 'Contact for pricing'): string {
+  if (!price) {
+    return fallback;
+  }
+
+  let priceValue: string | number;
+
+  // Handle MongoDB Decimal128 object format
+  if (typeof price === 'object' && price.$numberDecimal) {
+    priceValue = price.$numberDecimal;
+  } else {
+    priceValue = price;
+  }
+
+  // Handle string/number values
+  if (priceValue === '0' || priceValue === 0) {
+    return fallback;
+  }
+  
+  const priceNum = parseFloat(priceValue.toString());
+  if (isNaN(priceNum) || priceNum <= 0) {
+    return fallback;
+  }
+  
+  return `$${priceNum.toFixed(2)}`;
+}

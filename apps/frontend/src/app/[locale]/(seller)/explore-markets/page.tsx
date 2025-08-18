@@ -7,6 +7,7 @@ import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaSearch, FaChec
 import { getMarkets, Market } from "@/app/api/markets";
 import UnAuthourized from "@/app/components/UnAuthourized";
 import { useUser } from "@/contexts/UserContext";
+import { formatPrice } from "@/lib/utils";
 
 export default function SellerExploreMarkets() {
   const t = useTranslations();
@@ -328,7 +329,7 @@ export default function SellerExploreMarkets() {
                       
                       <div className="flex items-center space-x-2 text-sm text-gray-600">
                         <FaDollarSign size={14} />
-                        <span>${market.price && market.price !== '0' ? parseFloat(market.price).toFixed(2) : 'Contact for pricing'}</span>
+                        <span>{formatPrice(market.price)}</span>
                       </div>
                     </div>
                     

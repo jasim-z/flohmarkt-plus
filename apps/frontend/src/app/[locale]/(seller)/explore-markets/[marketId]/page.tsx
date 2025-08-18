@@ -7,6 +7,7 @@ import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaArrowLeft, FaC
 import { Market, getMarketDetails } from "../../../../api/markets";
 import UnAuthourized from "@/app/components/UnAuthourized";
 import { useUser } from "@/contexts/UserContext";
+import { formatPrice } from "@/lib/utils";
 
 // Utility function to calculate market status based on current date/time
 const calculateMarketStatus = (market: Market): 'upcoming' | 'ongoing' | 'past' => {
@@ -382,7 +383,7 @@ export default function MarketDetail() {
                   <div className="flex items-center space-x-3">
                     <FaDollarSign className="h-4 w-4 text-gray-400 flex-shrink-0" />
                     <span className="text-gray-700">
-                      Booth price: ${market.price && market.price !== '0' ? parseFloat(market.price).toFixed(2) : 'Contact for pricing'}
+                      Booth price: {formatPrice(market.price)}
                     </span>
                   </div>
                 </div>
