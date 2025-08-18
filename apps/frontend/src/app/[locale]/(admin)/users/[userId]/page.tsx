@@ -24,13 +24,12 @@ export default function UserDetail() {
         setLoading(true);
         setError(null);
         
-        // Fetch real user data
-        const userData = await getUserById(params.userId as string);
+        const [userData, userMarkets] = await Promise.all([
+          getUserById(params.userId as string),
+          getMarketsByUser(params.userId as string)
+        ]);
+      
         setUser(userData);
-        
-        // Fetch real markets data
-        setMarketsLoading(true);
-        const userMarkets = await getMarketsByUser(params.userId as string);
         setMarkets(userMarkets);
         
       } catch (err) {
