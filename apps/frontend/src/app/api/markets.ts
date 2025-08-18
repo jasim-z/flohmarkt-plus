@@ -11,6 +11,7 @@ export interface Market {
   bannerImage: string;
   vendorLimit?: number;
   boothsAvailable?: number;
+  price: string; // Decimal128 from MongoDB, received as string
   categories: string[];
   status: 'upcoming' | 'ongoing' | 'past';
   registeredVendors: string[];
@@ -40,6 +41,7 @@ export interface CreateMarketRequest {
   bannerImage: string;
   vendorLimit?: number;
   boothsAvailable?: number;
+  price: number; // Will be converted to Decimal128 in the backend
   categories: string[];
   status?: 'upcoming' | 'ongoing' | 'past';
 }

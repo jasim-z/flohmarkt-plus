@@ -40,6 +40,9 @@ export class Market extends AbstractDocument {
   @Prop({ type: Number })
   boothsAvailable?: number;
 
+  @Prop({ type: Types.Decimal128, required: true, default: 0 })
+  price: Types.Decimal128;
+
   @Prop({ type: [String], required: true })
   categories: string[];
 

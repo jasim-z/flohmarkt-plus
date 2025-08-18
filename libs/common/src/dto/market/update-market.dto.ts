@@ -49,6 +49,10 @@ export class UpdateMarketDto {
   @Validate(IsVendorBoothRatioValid)
   boothsAvailable?: number;
 
+  @IsNumber()
+  @IsOptional()
+  price?: number; // Will be converted to Decimal128 in the backend
+
   @IsArray()
   @IsString({ each: true })
   @IsOptional()

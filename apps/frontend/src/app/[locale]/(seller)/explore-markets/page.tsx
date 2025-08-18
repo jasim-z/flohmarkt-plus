@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaSearch, FaCheck } from "react-icons/fa";
+import { useRouter } from "next/navigation";
+import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaSearch, FaCheck, FaDollarSign } from "react-icons/fa";
 import { getMarkets, Market } from "@/app/api/markets";
 import UnAuthourized from "@/app/components/UnAuthourized";
 import { useUser } from "@/contexts/UserContext";
 
 export default function SellerExploreMarkets() {
   const t = useTranslations();
+  const router = useRouter();
   const { role, isLoaded, user } = useUser();
   const [markets, setMarkets] = useState<Market[]>([]);
   const [loading, setLoading] = useState(false);
@@ -220,10 +222,13 @@ export default function SellerExploreMarkets() {
                 <div
                   key={market._id}
                   ref={index === markets.length - 1 ? lastMarketElementRef : null}
-                  className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200 cursor-pointer"
+                  className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200"
                 >
-                  {/* Market Image */}
-                  <div className="h-48 bg-gradient-to-br from-blue-500 to-purple-600 rounded-t-xl flex items-center justify-center relative overflow-hidden">
+                  {/* Market Image - Clickable for details */}
+                  <div 
+                    onClick={() => router.push(`/en/explore-markets/${market._id}`)}
+                    className="h-48 bg-gradient-to-br from-blue-500 to-purple-600 rounded-t-xl flex items-center justify-center relative overflow-hidden cursor-pointer hover:opacity-90 transition-opacity duration-200"
+                  >
                     {market.bannerImage ? (
                       <img 
                         src={market.bannerImage} 
@@ -258,18 +263,24 @@ export default function SellerExploreMarkets() {
                   
                   {/* Market Content */}
                   <div className="p-6">
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-lg font-semibold text-gray-900 line-clamp-2">
-                        {market.name}
-                      </h3>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(market.status)}`}>
-                        {market.status}
-                      </span>
+                    {/* Market Name - Clickable for details */}
+                    <div 
+                      onClick={() => router.push(`/en/explore-markets/${market._id}`)}
+                      className="cursor-pointer hover:text-blue-600 transition-colors duration-200"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <h3 className="text-lg font-semibold text-gray-900 line-clamp-2">
+                          {market.name}
+                        </h3>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(market.status)}`}>
+                          {market.status}
+                        </span>
+                      </div>
+                      
+                      <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                        {market.description}
+                      </p>
                     </div>
-                    
-                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                      {market.description}
-                    </p>
                     
                     {/* Vendor Availability */}
                     <div className="mb-4 p-3 bg-gray-50 rounded-lg">
@@ -313,6 +324,11 @@ export default function SellerExploreMarkets() {
                       <div className="flex items-center space-x-2 text-sm text-gray-600">
                         <FaClock size={14} />
                         <span>{market.startTime} - {market.endTime}</span>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <FaDollarSign size={14} />
+                        <span>${market.price && market.price !== '0' ? parseFloat(market.price).toFixed(2) : 'Contact for pricing'}</span>
                       </div>
                     </div>
                     

@@ -57,6 +57,11 @@ export class CreateMarketDto {
   @Validate(IsVendorBoothRatioValid)
   boothsAvailable?: number;
 
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  price?: number; // Will be converted to Decimal128 in the backend, defaults to 0
+
   @IsArray()
   @IsString({ each: true })
   categories: string[];

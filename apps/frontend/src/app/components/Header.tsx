@@ -67,13 +67,13 @@ export default function Header() {
             <nav className="hidden lg:flex space-x-8">
               {user?.role === 'admin' && (
                 <>
-                  <Link href="/en/admin/dashboard" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link href="/en/dashboard" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
                     Dashboard
                   </Link>
-                  <Link href="/en/admin/users" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link href="/en/users" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
                     Users
                   </Link>
-                  <Link href="/en/admin/markets" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link href="/en/markets" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
                     Markets
                   </Link>
                 </>
@@ -98,7 +98,7 @@ export default function Header() {
               
               {user?.role === 'buyer' && (
                 <>
-                  <Link href="/en/buyer/home" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link href="/en/home" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
                     Home
                   </Link>
                 </>

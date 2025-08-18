@@ -12,12 +12,16 @@ import {
   Put,
 } from '@nestjs/common';
 import { MarketsService } from './markets.service';
+import { MarketPriceMigrationService } from './migration/add-price-field';
 import { JwtAuthGuard, RolesGuard, Roles } from '@app/common';
 import { CreateMarketDto, UpdateMarketDto } from '@app/common';
 
 @Controller('markets')
 export class MarketsController {
-  constructor(private readonly marketsService: MarketsService) {}
+  constructor(
+    private readonly marketsService: MarketsService,
+    private readonly marketPriceMigrationService: MarketPriceMigrationService,
+  ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -136,5 +140,19 @@ export class MarketsController {
     // This would call the migration service
     // For now, we'll implement it directly in the service
     return this.marketsService.addIsActiveFieldToExistingMarkets();
+  }
+
+  @Post('migrate/add-price-field')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  async addPriceFieldToExistingMarkets() {
+    return this.marketPriceMigrationService.addPriceFieldToExistingMarkets();
+  }
+
+  @Post('migrate/update-price-to-decimal128')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  async updatePriceFieldToDecimal128() {
+    return this.marketPriceMigrationService.updatePriceFieldToDecimal128();
   }
 } 

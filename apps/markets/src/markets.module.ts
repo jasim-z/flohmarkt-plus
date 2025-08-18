@@ -6,6 +6,7 @@ import { MarketsService } from './markets.service';
 import { MarketsController } from './markets.controller';
 import { Market, MarketSchema } from './schemas/market.schema';
 import { MarketsRepository } from './markets.repository';
+import { MarketPriceMigrationService } from './migration/add-price-field';
 import { DatabaseModule, JwtStrategy, RolesGuard, HttpUsersServiceClient } from '@app/common';
 import { PassportModule } from '@nestjs/passport';
 import * as Joi from 'joi';
@@ -32,6 +33,7 @@ import * as Joi from 'joi';
     JwtStrategy, 
     RolesGuard,
     HttpUsersServiceClient,
+    MarketPriceMigrationService,
     {
       provide: 'USERS_SERVICE_CLIENT',
       useClass: HttpUsersServiceClient,
