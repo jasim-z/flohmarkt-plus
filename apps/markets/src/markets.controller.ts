@@ -88,6 +88,13 @@ export class MarketsController {
     return this.marketsService.getVendorsByMarket(id, query);
   }
 
+  @Get(':id/details')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'seller', 'buyer')
+  getMarketDetails(@Param('id') id: string, @Query() query: any) {
+    return this.marketsService.getMarketDetails(id, query);
+  }
+
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')

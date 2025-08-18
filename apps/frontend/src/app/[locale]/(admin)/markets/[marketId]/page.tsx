@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaArrowLeft, FaCheckCircle, FaTimesCircle, FaExclamationTriangle, FaUserShield, FaStar, FaSearch, FaSort, FaSortUp, FaSortDown } from "react-icons/fa";
-import { Market, getMarkets, getVendorsByMarket, Vendor, GetVendorsParams, toggleMarketActive } from "../../../../api/markets";
+import { Market, getMarketDetails, Vendor, GetVendorsParams, toggleMarketActive } from "../../../../api/markets";
 
 // Utility function to calculate market status based on current date/time
 // This approach is more efficient than backend calculation because:
@@ -167,8 +167,8 @@ export default function MarketDetail() {
         sortOrder,
       };
       
-      const response = await getVendorsByMarket(market._id, params);
-      setVendors(response.data);
+      const response = await getMarketDetails(market._id, params);
+      setVendors(response.vendors);
       setVendorsPagination(response.pagination);
     } catch (err) {
       setVendorsError(err instanceof Error ? err.message : 'Failed to fetch vendors');
@@ -182,7 +182,11 @@ export default function MarketDetail() {
   // Performance optimization: Only fetch vendors when market changes
   useEffect(() => {
     if (market?._id && market.registeredVendors.length > 0) {
-      fetchVendors();
+      // Vendors are already loaded from initial getMarketDetails call
+      // Only fetch if we need to refresh or apply filters
+      if (debouncedSearchTerm || sortBy !== 'displayName' || sortOrder !== 'asc' || vendorsPagination.page > 1) {
+        fetchVendors();
+      }
     } else if (market?._id && market.registeredVendors.length === 0) {
       setVendors([]);
       setVendorsLoading(false);
@@ -193,7 +197,10 @@ export default function MarketDetail() {
   // Separate effect for search, sort, and pagination changes
   useEffect(() => {
     if (market?._id && market.registeredVendors.length > 0) {
-      fetchVendors();
+      // Only fetch if we have filters applied
+      if (debouncedSearchTerm || sortBy !== 'displayName' || sortOrder !== 'asc' || vendorsPagination.page > 1) {
+        fetchVendors();
+      }
     }
   }, [debouncedSearchTerm, sortBy, sortOrder, vendorsPagination.page, fetchVendors]);
 
@@ -241,22 +248,18 @@ export default function MarketDetail() {
         setLoading(true);
         setError(null);
         
-        // Fetch market data by getting all markets and finding the specific one
-        const response = await getMarkets();
-        const foundMarket = response.data.find(m => m._id === params.marketId);
+        console.log('Fetching market data for ID:', params.marketId);
         
-        if (!foundMarket) {
-          throw new Error('Market not found');
-        }
+        // Use the aggregated endpoint to get market + vendors in one call
+        const response = await getMarketDetails(params.marketId as string);
         
-        setMarket(foundMarket);
-        
-        // For now, we'll use mock vendor data since we don't have a vendors API yet
-        // In the future, you can create a getVendorsByMarket API endpoint
-        // setVendors([]); // This line is removed as per the new_code
-        // setVendorsLoading(false); // This line is removed as per the new_code
+        setMarket(response.market);
+        setVendors(response.vendors);
+        setVendorsPagination(response.pagination);
+        setVendorsLoading(false);
         
       } catch (err) {
+        console.error('Error fetching market data:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch market data');
       } finally {
         setLoading(false);
@@ -265,6 +268,8 @@ export default function MarketDetail() {
 
     if (params.marketId) {
       fetchMarketData();
+    } else {
+      console.error('No marketId in params:', params);
     }
   }, [params.marketId]);
 

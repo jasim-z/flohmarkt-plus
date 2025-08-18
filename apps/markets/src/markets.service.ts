@@ -1,8 +1,8 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException, ServiceUnavailableException, Inject } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { MarketsRepository } from './markets.repository';
-import { CreateMarketDto, UpdateMarketDto } from '@app/common';
+import { CreateMarketDto, UpdateMarketDto, UsersServiceClient, GetUsersByIdsRequest } from '@app/common';
 import { MarketDocument } from './schemas/market.schema';
 
 @Injectable()
@@ -10,6 +10,7 @@ export class MarketsService {
   constructor(
     private readonly marketsRepository: MarketsRepository,
     @InjectModel('Market') private readonly marketModel: Model<MarketDocument>,
+    @Inject('USERS_SERVICE_CLIENT') private readonly usersServiceClient: UsersServiceClient,
   ) {}
 
   async create(createMarketDto: CreateMarketDto, user: any) {
@@ -269,62 +270,106 @@ export class MarketsService {
       };
     }
 
-    // Build filter for users (vendors)
-    const filter: any = {
-      _id: { $in: market.registeredVendors },
-      role: 'seller', // Only get users with seller role
-      isActive: true,
+    try {
+      // Use HTTP service client to fetch vendor data from users service
+      const request: GetUsersByIdsRequest = {
+        userIds: market.registeredVendors.map(id => id.toString()),
+        query: {
+          page: pageNum,
+          limit: limitNum,
+          search,
+          sortBy,
+          sortOrder,
+          role: 'seller',
+          isActive: true,
+        },
+      };
+
+      return await this.usersServiceClient.getUsersByIds(request);
+    } catch (error) {
+      // Handle service communication errors gracefully
+      throw new ServiceUnavailableException(
+        `Failed to fetch vendor data: ${error.message}. Please try again later.`
+      );
+    }
+  }
+
+  async getMarketDetails(marketId: string, vendorQuery: any = {}) {
+    // Get market data
+    const market = await this.marketsRepository.findOne({ 
+      _id: new Types.ObjectId(marketId),
+      $or: [
+        { isDeleted: false },
+        { isDeleted: { $exists: false } }
+      ]
+    });
+    
+    if (!market) throw new NotFoundException('Market not found');
+
+    // Get vendor data if market has vendors
+    let vendors = { 
+      data: [], 
+      pagination: { 
+        page: 1, 
+        limit: 20, 
+        total: 0, 
+        totalPages: 0, 
+        hasNext: false, 
+        hasPrev: false 
+      } 
     };
     
-    if (search) {
-      filter.$or = [
-        { firstName: { $regex: search, $options: 'i' } },
-        { lastName: { $regex: search, $options: 'i' } },
-        { displayName: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-      ];
+    if (market.registeredVendors && market.registeredVendors.length > 0) {
+      try {
+        const { page = 1, limit = 20, search, sortBy = 'displayName', sortOrder = 'asc' } = vendorQuery;
+        
+        const request: GetUsersByIdsRequest = {
+          userIds: market.registeredVendors.map(id => id.toString()),
+          query: {
+            page: parseInt(page.toString(), 10) || 1,
+            limit: parseInt(limit.toString(), 10) || 20,
+            search,
+            sortBy,
+            sortOrder,
+            role: 'seller',
+            isActive: true,
+          },
+        };
+
+        vendors = await this.usersServiceClient.getUsersByIds(request);
+      } catch (error) {
+        // Log error but don't fail the entire request
+        console.error('Failed to fetch vendor data:', error);
+        // Return empty vendors array on error
+        vendors = { 
+          data: [], 
+          pagination: { 
+            page: 1, 
+            limit: 20, 
+            total: 0, 
+            totalPages: 0, 
+            hasNext: false, 
+            hasPrev: false 
+          } 
+        };
+      }
     }
 
-    // Get total count
-    const total = await this.marketModel.db.collection('users').countDocuments(filter);
-    const totalPages = Math.ceil(total / limitNum);
-    
-    // Get paginated results with performance optimizations
-    const skip = (pageNum - 1) * limitNum;
-    const sortDirection = sortOrder === 'asc' ? 1 : -1;
-    
-    const vendors = await this.marketModel.db.collection('users')
-      .find(filter)
-      .sort({ [sortBy]: sortDirection })
-      .skip(skip)
-      .limit(limitNum)
-      .project({
-        _id: 1,
-        firstName: 1,
-        lastName: 1,
-        displayName: 1,
-        email: 1,
-        avatar: 1,
-        role: 1,
-        isActive: 1,
-        city: 1,
-        neighborhood: 1,
-        rating: 1,
-        isVerified: 1,
-        createdAt: 1,
-      })
-      .toArray();
+    // Calculate market statistics
+    const marketStats = {
+      totalVendors: market.registeredVendors?.length || 0,
+      activeVendors: vendors.data.filter(v => v.isActive).length,
+      verifiedVendors: vendors.data.filter(v => v.isVerified).length,
+      averageRating: vendors.data.length > 0 
+        ? vendors.data.reduce((sum, v) => sum + (v.rating || 0), 0) / vendors.data.length 
+        : 0,
+    };
 
     return {
-      data: vendors,
-      pagination: {
-        page: pageNum,
-        limit: limitNum,
-        total,
-        totalPages,
-        hasNext: pageNum < totalPages,
-        hasPrev: pageNum > 1,
-      },
+      market,
+      vendors: vendors.data,
+      pagination: vendors.pagination,
+      statistics: marketStats,
     };
   }
 

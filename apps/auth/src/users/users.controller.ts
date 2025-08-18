@@ -1,5 +1,5 @@
 import { Body, Controller, Post, Get, Query, ValidationPipe, UseGuards, Param } from '@nestjs/common';
-import { CreateUserDto, GetUsersDto, PaginatedUsersResponse } from '@app/common';
+import { CreateUserDto, GetUsersDto, PaginatedUsersResponse, GetUsersByIdsRequest, GetUsersResponse } from '@app/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '@app/common/guards/jwt-auth.guard';
 import { RolesGuard } from '@app/common/guards/roles.guard';
@@ -27,5 +27,10 @@ export class UsersController {
   @Roles(UserRole.ADMIN)
   async getUserById(@Param('id') id: string) {
     return this.usersService.getUserById(id);
+  }
+
+  @Post('batch')
+  async getUsersByIds(@Body() request: GetUsersByIdsRequest): Promise<GetUsersResponse> {
+    return this.usersService.getUsersByIds(request);
   }
 }

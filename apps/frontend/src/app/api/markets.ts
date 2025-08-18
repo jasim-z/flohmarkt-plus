@@ -279,4 +279,62 @@ export async function toggleMarketActive(marketId: string): Promise<Market> {
     console.error('Error toggling market status:', error);
     throw error;
   }
+}
+
+export interface MarketDetailsResponse {
+  market: Market;
+  vendors: Vendor[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+  statistics: {
+    totalVendors: number;
+    activeVendors: number;
+    verifiedVendors: number;
+    averageRating: number;
+  };
+}
+
+export async function getMarketDetails(marketId: string, params: GetVendorsParams = {}): Promise<MarketDetailsResponse> {
+  try {
+    const searchParams = new URLSearchParams();
+    
+    if (params.page) searchParams.append('page', params.page.toString());
+    if (params.limit) searchParams.append('limit', params.limit.toString());
+    if (params.search) searchParams.append('search', params.search);
+    if (params.sortBy) searchParams.append('sortBy', params.sortBy);
+    if (params.sortOrder) searchParams.append('sortOrder', params.sortOrder);
+    
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3953';
+    const fullUrl = `${apiUrl}/markets/${marketId}/details?${searchParams.toString()}`;
+    
+    const authToken = localStorage.getItem('auth_token');
+    
+    console.log('Calling API:', fullUrl);
+    console.log('Market ID:', marketId);
+    console.log('API URL env var:', process.env.NEXT_PUBLIC_API_URL);
+    console.log('Auth Token:', authToken ? `${authToken.substring(0, 20)}...` : 'NOT FOUND');
+    
+    const response = await fetch(fullUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching market details:', error);
+    throw error;
+  }
 } 
