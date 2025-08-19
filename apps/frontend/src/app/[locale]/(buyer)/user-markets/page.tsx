@@ -144,7 +144,7 @@ export default function BuyerMarkets() {
   const hasActiveFilters = filters.search || filters.category !== 'All Markets' || filters.status !== 'all';
 
   const handleMarketClick = (marketId: string) => {
-    router.push(`/${params.locale}/markets/${marketId}`);
+    router.push(`/${params.locale}/user-markets/${marketId}`);
   };
 
   // Loading state
