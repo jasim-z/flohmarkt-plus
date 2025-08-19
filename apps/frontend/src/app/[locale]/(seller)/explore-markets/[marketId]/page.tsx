@@ -4,10 +4,12 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaArrowLeft, FaCheck, FaTimes, FaDollarSign, FaInfoCircle } from "react-icons/fa";
-import { Market, getMarketDetails } from "../../../../api/markets";
+import { Market, getMarketDetails, joinMarket } from "../../../../api/markets";
 import UnAuthourized from "@/app/components/UnAuthourized";
 import { useUser } from "@/contexts/UserContext";
 import { formatPrice } from "@/lib/utils";
+import PaymentModal from "@/app/components/PaymentModal";
+import Toast, { ToastType } from "@/app/components/Toast";
 
 // Utility function to calculate market status based on current date/time
 const calculateMarketStatus = (market: Market): 'upcoming' | 'ongoing' | 'past' => {
@@ -50,6 +52,8 @@ export default function MarketDetail() {
   const [error, setError] = useState<string | null>(null);
   const [joinLoading, setJoinLoading] = useState(false);
   const [isJoined, setIsJoined] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: ToastType; isVisible: boolean } | null>(null);
 
   // Early return after all hooks
   if (role !== 'seller' && isLoaded) return <UnAuthourized />;
@@ -92,26 +96,41 @@ export default function MarketDetail() {
     }
   }, [params.marketId, fetchMarketData]);
 
-  const handleJoinMarket = async () => {
+  const handleJoinMarket = () => {
+    if (!market || !user) return;
+    setShowPaymentModal(true);
+  };
+
+  const handlePaymentSuccess = async () => {
     if (!market || !user) return;
     
     try {
       setJoinLoading(true);
       
-      // TODO: Implement join market API call
-      // const response = await joinMarket(market._id);
+      // The actual join market API call is handled in the PaymentModal
+      // This function is called after successful payment and API call
       
-      // For now, just simulate the join
-      setTimeout(() => {
-        setIsJoined(true);
-        setJoinLoading(false);
-        // You can add a success toast here
-      }, 1000);
+      // Refetch market data to get updated registeredVendors list
+      await fetchMarketData();
+      
+      // Update local state
+      setIsJoined(true);
+      setJoinLoading(false);
+      
+      setToast({
+        message: `Successfully joined ${market.name}!`,
+        type: 'success',
+        isVisible: true
+      });
       
     } catch (err) {
       console.error('Failed to join market:', err);
       setJoinLoading(false);
-      // You can add error handling here
+      setToast({
+        message: 'Failed to join market. Please try again.',
+        type: 'error',
+        isVisible: true
+      });
     }
   };
 
@@ -202,7 +221,7 @@ export default function MarketDetail() {
     );
   }
 
-  const getStatusColor = (status: Market['status']) => {
+  const getStatusColor = (status: 'upcoming' | 'ongoing' | 'past') => {
     switch (status) {
       case 'ongoing':
         return 'bg-green-100 text-green-800';
@@ -215,7 +234,7 @@ export default function MarketDetail() {
     }
   };
 
-  const getStatusLabel = (status: Market['status']) => {
+  const getStatusLabel = (status: 'upcoming' | 'ongoing' | 'past') => {
     switch (status) {
       case 'ongoing':
         return 'Ongoing';
@@ -505,6 +524,26 @@ export default function MarketDetail() {
           </div>
         </div>
       </div>
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onPaymentSuccess={handlePaymentSuccess}
+        marketName={market?.name || ''}
+        price={market?.price || '0'}
+        marketId={market?._id || ''}
+      />
+
+      {/* Toast Notifications */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          isVisible={toast.isVisible}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 } 

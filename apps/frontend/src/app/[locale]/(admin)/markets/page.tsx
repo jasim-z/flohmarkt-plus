@@ -220,7 +220,7 @@ export default function Markets() {
     };
   }, []);
 
-  const getStatusColor = (status: Market['status']) => {
+  const getStatusColor = (status: 'upcoming' | 'ongoing' | 'past') => {
     switch (status) {
       case 'ongoing':
         return 'bg-green-100 text-green-800';
@@ -233,7 +233,7 @@ export default function Markets() {
     }
   };
 
-  const getStatusLabel = (status: Market['status']) => {
+  const getStatusLabel = (status: 'upcoming' | 'ongoing' | 'past') => {
     switch (status) {
       case 'ongoing':
         return 'Ongoing';

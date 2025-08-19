@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaSearch, FaCheck, FaDollarSign } from "react-icons/fa";
+import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaSearch, FaCheck, FaDollarSign, FaSync } from "react-icons/fa";
 import { getMarkets, Market } from "@/app/api/markets";
 import UnAuthourized from "@/app/components/UnAuthourized";
 import { useUser } from "@/contexts/UserContext";
@@ -41,20 +41,38 @@ export default function SellerExploreMarkets() {
         params.search = searchTerm;
       }
 
-      if (statusFilter) {
-        params.status = statusFilter;
-      }
-
+      // Don't send status filter to backend since we calculate it dynamically
+      // const response = await getMarkets(params);
+      
+      // For now, we'll fetch all markets and filter by status on the frontend
+      // This ensures we get the most up-to-date status based on current time
       const response = await getMarkets(params);
       
-      if (isNewSearch) {
-        setMarkets(response.data);
-      } else {
-        setMarkets(prev => [...prev, ...response.data]);
+      let filteredData = response.data;
+      
+      // Apply status filter on the frontend using calculated status
+      if (statusFilter) {
+        filteredData = response.data.filter(market => 
+          calculateMarketStatus(market) === statusFilter
+        );
       }
       
-      setHasMore(response.pagination.hasNext);
-      setPage(pageNum);
+      if (isNewSearch) {
+        setMarkets(filteredData);
+      } else {
+        setMarkets(prev => [...prev, ...filteredData]);
+      }
+      
+      // Update pagination based on filtered results
+      if (isNewSearch) {
+        // For new searches, we need to recalculate pagination
+        setHasMore(filteredData.length === response.pagination.limit);
+        setPage(1);
+      } else {
+        // For pagination, check if we have more data
+        setHasMore(response.pagination.hasNext);
+        setPage(pageNum);
+      }
     } catch (error) {
       console.error('Error fetching markets:', error);
     } finally {
@@ -96,12 +114,43 @@ export default function SellerExploreMarkets() {
     fetchMarkets(1, true);
   };
 
-  const getStatusColor = (status: string) => {
+  // Calculate market status based on current date/time
+  const calculateMarketStatus = (market: Market): 'upcoming' | 'ongoing' | 'past' => {
+    const now = new Date();
+    const marketDate = new Date(market.date);
+    
+    // If market date is in the future, it's upcoming
+    if (marketDate > now) {
+      return 'upcoming';
+    }
+    
+    // If market date is today, check the time
+    if (marketDate.toDateString() === now.toDateString()) {
+      const currentTime = now.getHours() * 60 + now.getMinutes();
+      const [startHours, startMinutes] = market.startTime.split(':').map(Number);
+      const [endHours, endMinutes] = market.endTime.split(':').map(Number);
+      const startTimeInMinutes = startHours * 60 + startMinutes;
+      const endTimeInMinutes = endHours * 60 + endMinutes;
+      
+      if (currentTime < startTimeInMinutes) {
+        return 'upcoming';
+      } else if (currentTime >= startTimeInMinutes && currentTime < endTimeInMinutes) {
+        return 'ongoing';
+      } else {
+        return 'past';
+      }
+    }
+    
+    // If market date is in the past, it's past
+    return 'past';
+  };
+
+  const getStatusColor = (status: 'upcoming' | 'ongoing' | 'past') => {
     switch (status) {
-      case 'upcoming':
-        return 'bg-blue-100 text-blue-800';
       case 'ongoing':
         return 'bg-green-100 text-green-800';
+      case 'upcoming':
+        return 'bg-blue-100 text-blue-800';
       case 'past':
         return 'bg-gray-100 text-gray-800';
       default:
@@ -197,6 +246,7 @@ export default function SellerExploreMarkets() {
               Search
             </button>
           </form>
+          
         </div>
 
         {/* Markets Grid */}
@@ -273,8 +323,8 @@ export default function SellerExploreMarkets() {
                         <h3 className="text-lg font-semibold text-gray-900 line-clamp-2">
                           {market.name}
                         </h3>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(market.status)}`}>
-                          {market.status}
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(calculateMarketStatus(market))}`}>
+                          {calculateMarketStatus(market)}
                         </span>
                       </div>
                       

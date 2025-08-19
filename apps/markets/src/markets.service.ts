@@ -68,7 +68,9 @@ export class MarketsService {
             { isDeleted: false },           // Explicitly not deleted
             { isDeleted: { $exists: false } } // Field doesn't exist (legacy data)
           ]
-        }
+        },
+        // Always show only active markets by default
+        { isActive: true }
       ]
     };
     
@@ -84,13 +86,16 @@ export class MarketsService {
       });
     }
     
-    // Add status filter if provided
+    // Add status filter if provided (but calculate dynamically)
     if (status) {
-      filter.$and.push({ status });
+      // We'll filter by calculated status, not stored status
+      // This will be handled in the frontend
     }
     
-    // Add active filter if provided
+    // Override active filter if explicitly provided (for admin purposes)
     if (isActive !== undefined) {
+      // Remove the default isActive: true filter
+      filter.$and = filter.$and.filter(condition => !condition.hasOwnProperty('isActive'));
       filter.$and.push({ isActive: isActive === 'true' });
     }
 
@@ -151,6 +156,52 @@ export class MarketsService {
     }
     
     return market;
+  }
+
+  async joinMarket(marketId: string, userId: string, paymentInfo: any) {
+    // Check if market exists and is active
+    const market = await this.marketsRepository.findOne({ 
+      _id: new Types.ObjectId(marketId),
+      isActive: true,
+      $or: [
+        { isDeleted: false },
+        { isDeleted: { $exists: false } }
+      ]
+    });
+    
+    if (!market) {
+      throw new NotFoundException('Market not found or inactive');
+    }
+
+    // Check if user is already registered
+    if (market.registeredVendors.includes(new Types.ObjectId(userId))) {
+      throw new ForbiddenException('User is already registered for this market');
+    }
+
+    // Check if market has available slots
+    if (market.vendorLimit && market.registeredVendors.length >= market.vendorLimit) {
+      throw new ForbiddenException('Market is full - no available vendor slots');
+    }
+
+    // TODO: Process payment here when payment gateway is integrated
+    // For now, we'll simulate successful payment
+    console.log('Payment info received:', paymentInfo);
+
+    // Add user to market
+    const updatedMarket = await this.marketsRepository.findOneAndUpdate(
+      { _id: new Types.ObjectId(marketId) },
+      { $push: { registeredVendors: new Types.ObjectId(userId) } }
+    );
+
+    if (!updatedMarket) {
+      throw new ServiceUnavailableException('Failed to join market');
+    }
+
+    return {
+      success: true,
+      message: 'Successfully joined market',
+      market: updatedMarket
+    };
   }
 
   async updateRegisteredVendors(marketId: string, userIds: string[]) {

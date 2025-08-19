@@ -68,6 +68,17 @@ export class MarketsController {
     return this.marketsService.addUserToMarket(marketId, userId);
   }
 
+  @Post(':marketId/join')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('seller')
+  async joinMarket(
+    @Param('marketId') marketId: string,
+    @Request() req: any,
+    @Body() body: { paymentMethod: string; cardDetails: any }
+  ) {
+    return this.marketsService.joinMarket(marketId, req.user.userId, body);
+  }
+
   @Put(':marketId/registered-vendors')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')

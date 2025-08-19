@@ -99,6 +99,43 @@ export interface PaginatedVendorsResponse {
   };
 }
 
+export interface JoinMarketRequest {
+  marketId: string;
+  paymentMethod: 'card';
+  cardDetails: {
+    cardNumber: string;
+    expiryDate: string;
+    cvv: string;
+    cardholderName: string;
+  };
+}
+
+export async function joinMarket(request: JoinMarketRequest): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3953'}/markets/${request.marketId}/join`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+      },
+      body: JSON.stringify({
+        paymentMethod: request.paymentMethod,
+        cardDetails: request.cardDetails,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to join market');
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error joining market:', error);
+    throw error;
+  }
+}
+
 export async function getMarkets(params: GetMarketsParams = {}): Promise<PaginatedMarketsResponse> {
   try {
     const searchParams = new URLSearchParams();
