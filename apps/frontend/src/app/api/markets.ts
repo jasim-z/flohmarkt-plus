@@ -30,6 +30,7 @@ export interface GetMarketsParams {
   limit?: number;
   search?: string;
   status?: string;
+  category?: string;
   userId?: string; // To filter markets by user participation
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
@@ -144,6 +145,7 @@ export async function getMarkets(params: GetMarketsParams = {}): Promise<Paginat
     if (params.limit) searchParams.append('limit', params.limit.toString());
     if (params.search) searchParams.append('search', params.search);
     if (params.status) searchParams.append('status', params.status);
+    if (params.category) searchParams.append('category', params.category);
     if (params.userId) searchParams.append('userId', params.userId);
     if (params.sortBy) searchParams.append('sortBy', params.sortBy);
     if (params.sortOrder) searchParams.append('sortOrder', params.sortOrder);

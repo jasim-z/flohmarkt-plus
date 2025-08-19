@@ -175,15 +175,6 @@ export default function BuyerListingCard({ listing, onFavorite, onView }: BuyerL
             className={`w-4 h-4 ${isFavorite ? 'text-red-500 fill-current' : 'text-gray-400'}`} 
           />
         </button>
-
-        {/* Category Badge */}
-        <div className="absolute bottom-3 left-3">
-          <div className="bg-blue-600 px-3 py-1.5 rounded-full shadow-sm">
-            <span className="text-xs font-medium text-white uppercase tracking-wide">
-              {listing.category}
-            </span>
-          </div>
-        </div>
       </div>
 
       {/* Content Section */}
@@ -221,21 +212,9 @@ export default function BuyerListingCard({ listing, onFavorite, onView }: BuyerL
           <span className="text-gray-700">{listing.city}, {listing.neighborhood}</span>
         </div>
 
-        {/* Stats and Date */}
-        <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-100">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-1">
-              <FaEye className="w-3 h-3" />
-              <span>{listing.viewCount}</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <FaHeart className="w-3 h-3" />
-              <span>{listing.favoriteCount}</span>
-            </div>
-          </div>
-          <span className="text-gray-400">
-            {formatDate(listing.createdAt)}
-          </span>
+        {/* Posted Date */}
+        <div className="text-xs text-gray-400 pt-2 border-t border-gray-100">
+          {formatDate(listing.createdAt)}
         </div>
 
         {/* Action Button */}

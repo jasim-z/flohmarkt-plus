@@ -57,7 +57,9 @@ export class MarketsService {
   }
 
   async findAll(query: any = {}) {
-    const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', status, isActive } = query;
+    const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', status, category, isActive } = query;
+    
+    console.log('Backend received query:', query);
     
     // Build filter object with AND logic to ensure deleted markets are always filtered out
     const filter: any = {
@@ -86,10 +88,45 @@ export class MarketsService {
       });
     }
     
-    // Add status filter if provided (but calculate dynamically)
-    if (status) {
-      // We'll filter by calculated status, not stored status
-      // This will be handled in the frontend
+    // Add category filter if provided
+    if (category) {
+      filter.$and.push({
+        categories: { $in: [new RegExp(category, 'i')] }
+      });
+    }
+    
+    // Add status filter if provided
+    if (status && status !== 'all') {
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      
+      console.log('Status filtering:', { status, now: now.toISOString(), todayStart: todayStart.toISOString(), todayEnd: todayEnd.toISOString() });
+      
+      if (status === 'upcoming') {
+        // Markets that haven't started yet
+        filter.$and.push({
+          $or: [
+            { date: { $gt: todayEnd } }, // Future date (after today)
+            {
+              $and: [
+                { date: { $gte: todayStart, $lt: todayEnd } }, // Today
+                { startTime: { $gt: now.toTimeString().slice(0, 5) } } // Today but hasn't started
+              ]
+            }
+          ]
+        });
+      } else if (status === 'ongoing') {
+        // Markets that are currently happening
+        filter.$and.push({
+          $and: [
+            { date: { $gte: todayStart, $lt: todayEnd } }, // Today
+            { startTime: { $lte: now.toTimeString().slice(0, 5) } }, // Started
+            { endTime: { $gte: now.toTimeString().slice(0, 5) } } // Not ended
+          ]
+        });
+      }
+      // Note: We don't filter for 'past' status since we want to show upcoming and ongoing markets
     }
     
     // Override active filter if explicitly provided (for admin purposes)
@@ -98,6 +135,8 @@ export class MarketsService {
       filter.$and = filter.$and.filter(condition => !condition.hasOwnProperty('isActive'));
       filter.$and.push({ isActive: isActive === 'true' });
     }
+
+    console.log('Final filter:', JSON.stringify(filter, null, 2));
 
     // Get total count
     const total = await this.marketModel.countDocuments(filter);
@@ -114,16 +153,18 @@ export class MarketsService {
       .lean()
       .exec();
 
+    console.log(`Found ${markets.length} markets out of ${total} total`);
+
     return {
       data: markets,
       pagination: {
-        page,
-        limit,
+        page: Number(page),
+        limit: Number(limit),
         total,
         totalPages,
         hasNext: page < totalPages,
-        hasPrev: page > 1,
-      },
+        hasPrev: page > 1
+      }
     };
   }
 
