@@ -62,9 +62,14 @@ export class CreateListingDto {
   @IsEnum(ItemCondition)
   condition: ItemCondition;
 
+  @IsString()
+  @IsOptional()
+  marketId?: string;
+
   @IsArray()
   @IsString({ each: true })
-  images: string[];
+  @IsOptional()
+  images?: string[];
 
   @IsString()
   city: string;

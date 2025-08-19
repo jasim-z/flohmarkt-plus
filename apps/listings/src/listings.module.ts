@@ -6,6 +6,7 @@ import { ListingsController } from './listings.controller';
 import { SeedService } from './seeds/seed.service';
 import { SeedController } from './seeds/seed.controller';
 import { Listing, ListingSchema } from './schemas/listing.schema';
+import { ListingMarketIdMigrationService } from './migration/add-market-id-field';
 import { DatabaseModule, JwtStrategy, RolesGuard } from '@app/common';
 import { PassportModule } from '@nestjs/passport';
 import * as Joi from 'joi';
@@ -25,7 +26,7 @@ import * as Joi from 'joi';
     MongooseModule.forFeature([{ name: Listing.name, schema: ListingSchema }]),
   ],
   controllers: [ListingsController, SeedController],
-  providers: [ListingsService, SeedService, JwtStrategy, RolesGuard],
+  providers: [ListingsService, SeedService, JwtStrategy, RolesGuard, ListingMarketIdMigrationService],
   exports: [ListingsService],
 })
 export class ListingsModule {}

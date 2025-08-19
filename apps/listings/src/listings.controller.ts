@@ -11,18 +11,38 @@ import {
   Request,
 } from '@nestjs/common';
 import { ListingsService } from './listings.service';
+import { ListingMarketIdMigrationService } from './migration/add-market-id-field';
 import { JwtAuthGuard, RolesGuard, Roles } from '@app/common';
 import { CreateListingDto } from '@app/common/dto/listing/create-listing.dto';
 
 @Controller('listings')
 export class ListingsController {
-  constructor(private readonly listingsService: ListingsService) {}
+  constructor(
+    private readonly listingsService: ListingsService,
+    private readonly listingMarketIdMigrationService: ListingMarketIdMigrationService,
+  ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('seller')
   create(@Body() createListingDto: CreateListingDto, @Request() req) {
-    return this.listingsService.create(createListingDto, 'temp-seller-id');
+    return this.listingsService.create(createListingDto, req.user.userId);
+  }
+
+  @Post('market/:marketId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('seller')
+  createForMarket(
+    @Param('marketId') marketId: string,
+    @Body() createListingDto: CreateListingDto, 
+    @Request() req
+  ) {
+    // Add marketId to the listing data
+    const listingData = {
+      ...createListingDto,
+      marketId: marketId
+    };
+    return this.listingsService.create(listingData, req.user.userId);
   }
 
   @Get()
@@ -65,11 +85,35 @@ export class ListingsController {
     return this.listingsService.getTrending(limit);
   }
 
+  @Post('migrate/add-market-id-field')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  async addMarketIdFieldToExistingListings() {
+    return this.listingMarketIdMigrationService.addMarketIdFieldToExistingListings();
+  }
+
+  @Get('debug/all')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  async debugAllListings() {
+    return this.listingsService.debugAllListings();
+  }
+
   @Get('seller/:sellerId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('seller', 'buyer', 'admin')
   findBySeller(@Param('sellerId') sellerId: string) {
     return this.listingsService.findBySeller(sellerId);
+  }
+
+  @Get('seller/:sellerId/market/:marketId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('seller', 'buyer', 'admin')
+  findBySellerAndMarket(
+    @Param('sellerId') sellerId: string,
+    @Param('marketId') marketId: string,
+  ) {
+    return this.listingsService.findBySellerAndMarket(sellerId, marketId);
   }
 
   @Get(':id')
@@ -87,13 +131,13 @@ export class ListingsController {
     @Body() updateListingDto: any,
     @Request() req,
   ) {
-    return this.listingsService.update(id, updateListingDto, 'temp-seller-id');
+    return this.listingsService.update(id, updateListingDto, req.user.userId);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('seller')
   remove(@Param('id') id: string, @Request() req) {
-    return this.listingsService.remove(id, 'temp-seller-id');
+    return this.listingsService.remove(id, req.user.userId);
   }
 }

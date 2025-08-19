@@ -33,11 +33,14 @@ export class Listing {
   @Prop({ required: true, enum: ItemCondition, type: String })
   condition: ItemCondition;
 
-  @Prop({ type: [String], required: true })
-  images: string[];
+  @Prop({ type: [String], required: false, default: [] })
+  images?: string[];
 
   @Prop({ required: true, type: Types.ObjectId, ref: 'User' })
   sellerId: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'Market' })
+  marketId?: Types.ObjectId;
 
   @Prop({ required: true })
   city: string;

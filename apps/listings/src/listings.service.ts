@@ -11,13 +11,28 @@ export class ListingsService {
   ) {}
 
   async create(createListingDto: CreateListingDto, sellerId: string): Promise<Listing> {
-    const listing = new this.listingModel({
+    console.log('Creating listing with data:', createListingDto);
+    console.log('Seller ID:', sellerId);
+    
+    const listingData: any = {
       ...createListingDto,
       sellerId: new Types.ObjectId(sellerId),
       status: ListingStatus.ACTIVE,
       lastUpdated: new Date(),
-    });
-    return listing.save();
+    };
+
+    // Convert marketId to ObjectId if provided
+    if (createListingDto.marketId) {
+      console.log('Converting marketId to ObjectId:', createListingDto.marketId);
+      listingData.marketId = new Types.ObjectId(createListingDto.marketId);
+      console.log('Converted marketId:', listingData.marketId);
+    }
+
+    console.log('Final listing data:', listingData);
+    const listing = new this.listingModel(listingData);
+    const savedListing = await listing.save();
+    console.log('Saved listing:', savedListing);
+    return savedListing;
   }
 
   async findAll(query: any = {}): Promise<Listing[]> {
@@ -140,6 +155,28 @@ export class ListingsService {
       .exec();
   }
 
+  async findBySellerAndMarket(sellerId: string, marketId: string): Promise<Listing[]> {
+    console.log('Finding listings for seller:', sellerId, 'and market:', marketId);
+    
+    const query = {
+      sellerId: new Types.ObjectId(sellerId),
+      marketId: new Types.ObjectId(marketId),
+      status: { $ne: ListingStatus.DELETED },
+    };
+    
+    console.log('Query:', JSON.stringify(query, null, 2));
+    
+    const listings = await this.listingModel
+      .find(query)
+      .sort({ createdAt: -1 })
+      .exec();
+    
+    console.log('Found listings:', listings.length);
+    console.log('Listings:', listings);
+    
+    return listings;
+  }
+
   async update(id: string, updateListingDto: any, sellerId: string): Promise<Listing> {
     // Verify the listing belongs to the seller
     const listing = await this.listingModel.findById(id);
@@ -224,5 +261,10 @@ export class ListingsService {
       .sort({ viewCount: -1, favoriteCount: -1 })
       .limit(limit)
       .exec();
+  }
+
+  // Debug method to check all listings
+  async debugAllListings(): Promise<any[]> {
+    return this.listingModel.find({}).lean().exec();
   }
 }

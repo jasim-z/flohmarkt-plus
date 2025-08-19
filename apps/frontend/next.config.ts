@@ -2,6 +2,14 @@ import { NextConfig } from 'next';
 import createNextIntlPlugin from 'next-intl/plugin';
 
 const nextConfig: NextConfig = {
+  // Reduce memory usage during compilation
+  swcMinify: true,
+  
+  // Limit concurrent compilations
+  experimental: {
+    workerThreads: false,
+    cpus: 1
+  },
   // Enable hot reloading in development
   webpack: (config, { dev, isServer }) => {
     if (dev && !isServer) {
@@ -11,10 +19,6 @@ const nextConfig: NextConfig = {
       };
     }
     return config;
-  },
-  // Enable experimental features for better development experience
-  experimental: {
-    // Add any valid experimental features here if needed
   },
 };
 
