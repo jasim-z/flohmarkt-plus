@@ -10,6 +10,62 @@ export class ListingsService {
     @InjectModel(Listing.name) private listingModel: Model<ListingDocument>,
   ) {}
 
+  /**
+   * Helper method to create market filtering pipeline
+   * Filters for active markets that are ongoing or upcoming
+   */
+  private createMarketFilterPipeline() {
+    return [
+      // Lookup market information
+      {
+        $lookup: {
+          from: 'markets',
+          localField: 'marketId',
+          foreignField: '_id',
+          as: 'market'
+        }
+      },
+      
+      // Unwind market array
+      { $unwind: { path: '$market', preserveNullAndEmptyArrays: false } },
+      
+      // Filter markets based on criteria
+      {
+        $match: {
+          'market.isActive': true,
+          $and: [
+            {
+              $or: [
+                { 'market.isDeleted': false },
+                { 'market.isDeleted': { $exists: false } }
+              ]
+            },
+            {
+              $or: [
+                // Ongoing markets (current date is between start and end)
+                {
+                  $and: [
+                    { 'market.date': { $lte: new Date() } },
+                    {
+                      $expr: {
+                        $and: [
+                          { $lte: [{ $dateToString: { format: '%H:%M', date: new Date() } }, '$market.startTime'] },
+                          { $gte: [{ $dateToString: { format: '%H:%M', date: new Date() } }, '$market.endTime'] }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                // Upcoming markets (future date)
+                { 'market.date': { $gt: new Date() } }
+              ]
+            }
+          ]
+        }
+      }
+    ];
+  }
+
   async create(createListingDto: CreateListingDto, sellerId: string): Promise<Listing> {
     console.log('Creating listing with data:', createListingDto);
     console.log('Seller ID:', sellerId);
@@ -35,7 +91,7 @@ export class ListingsService {
     return savedListing;
   }
 
-  async findAll(query: any = {}): Promise<Listing[]> {
+  async findAll(query: any = {}): Promise<{ data: Listing[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
     const {
       category,
       condition,
@@ -78,12 +134,52 @@ export class ListingsService {
     const sort: any = {};
     sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
-    return this.listingModel
-      .find(filter)
-      .sort(sort)
-      .limit(Number(limit))
-      .skip((Number(page) - 1) * Number(limit))
+    // Get total count for pagination with market filtering
+    const totalCountPipeline = [
+      // Match listings based on basic filters
+      { $match: filter },
+      
+      // Add market filtering
+      ...this.createMarketFilterPipeline(),
+      
+      // Count total
+      { $count: 'total' }
+    ];
+
+    const totalCountResult = await this.listingModel.aggregate(totalCountPipeline).exec();
+    const total = totalCountResult.length > 0 ? totalCountResult[0].total : 0;
+    const totalPages = Math.ceil(total / Number(limit));
+    const currentPage = Number(page);
+
+    // Get paginated results with market filtering
+    const listings = await this.listingModel
+      .aggregate([
+        // Match listings based on basic filters
+        { $match: filter },
+        
+        // Add market filtering
+        ...this.createMarketFilterPipeline(),
+        
+        // Sort results
+        { $sort: sort },
+        
+        // Skip for pagination
+        { $skip: (currentPage - 1) * Number(limit) },
+        
+        // Limit results
+        { $limit: Number(limit) }
+      ])
       .exec();
+
+    return {
+      data: listings,
+      pagination: {
+        page: currentPage,
+        limit: Number(limit),
+        total,
+        totalPages
+      }
+    };
   }
 
   async findNearby(
@@ -135,9 +231,19 @@ export class ListingsService {
     }
 
     return this.listingModel
-      .find(filter)
-      .limit(Number(limit))
-      .skip((Number(page) - 1) * Number(limit))
+      .aggregate([
+        // Match listings based on basic filters
+        { $match: filter },
+        
+        // Add market filtering
+        ...this.createMarketFilterPipeline(),
+        
+        // Limit results
+        { $limit: Number(limit) },
+        
+        // Skip for pagination
+        { $skip: (Number(page) - 1) * Number(limit) }
+      ])
       .exec();
   }
 
@@ -325,15 +431,28 @@ export class ListingsService {
     }
 
     return this.listingModel
-      .find(filter)
-      .sort({ score: { $meta: 'textScore' } })
-      .limit(Number(limit))
-      .skip((Number(page) - 1) * Number(limit))
+      .aggregate([
+        // Match listings based on basic filters
+        { $match: filter },
+        
+        // Add market filtering
+        ...this.createMarketFilterPipeline(),
+        
+        // Sort by text score
+        { $sort: { score: { $meta: 'textScore' } } },
+        
+        // Limit results
+        { $limit: Number(limit) },
+        
+        // Skip for pagination
+        { $skip: (Number(page) - 1) * Number(limit) }
+      ])
       .exec();
   }
 
   async getCategories(): Promise<{ category: string; count: number }[]> {
     return this.listingModel.aggregate([
+      // Match active listings
       { 
         $match: { 
           status: ListingStatus.ACTIVE, 
@@ -344,24 +463,45 @@ export class ListingsService {
           ]
         } 
       },
+      
+      // Add market filtering
+      ...this.createMarketFilterPipeline(),
+      
+      // Group by category and count
       { $group: { _id: '$category', count: { $sum: 1 } } },
+      
+      // Project to desired format
       { $project: { category: '$_id', count: 1, _id: 0 } },
-      { $sort: { count: -1 } },
+      
+      // Sort by count
+      { $sort: { count: -1 } }
     ]);
   }
 
   async getTrending(limit = 10): Promise<Listing[]> {
     return this.listingModel
-      .find({ 
-        status: ListingStatus.ACTIVE, 
-        isActive: true, 
-        $or: [
-          { isDeleted: false },
-          { isDeleted: { $exists: false } }
-        ]
-      })
-      .sort({ viewCount: -1, favoriteCount: -1 })
-      .limit(limit)
+      .aggregate([
+        // Match active listings
+        { 
+          $match: { 
+            status: ListingStatus.ACTIVE, 
+            isActive: true, 
+            $or: [
+              { isDeleted: false },
+              { isDeleted: { $exists: false } }
+            ]
+          } 
+        },
+        
+        // Add market filtering
+        ...this.createMarketFilterPipeline(),
+        
+        // Sort by view count and favorite count
+        { $sort: { viewCount: -1, favoriteCount: -1 } },
+        
+        // Limit results
+        { $limit: limit }
+      ])
       .exec();
   }
 

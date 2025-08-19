@@ -1,6 +1,6 @@
 'use client';
 import { FaShoppingCart, FaHeart, FaUserCircle, FaBell, FaCog, FaChevronDown } from 'react-icons/fa';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
 import { logoutUser } from '../api/auth';
@@ -16,6 +16,7 @@ interface User {
 export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
+  const params = useParams();
   const { user, logout, isLoading } = useUser();
   const [loading, setLoading] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
@@ -66,13 +67,13 @@ export default function Header() {
             <nav className="hidden lg:flex space-x-8">
               {user?.role === 'admin' && (
                 <>
-                  <Link href="/en/dashboard" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link href={`/${params.locale}/dashboard`} className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
                     Dashboard
                   </Link>
-                  <Link href="/en/users" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link href={`/${params.locale}/users`} className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
                     Users
                   </Link>
-                  <Link href="/en/markets" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link href={`/${params.locale}/markets`} className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
                     Markets
                   </Link>
                 </>
@@ -80,16 +81,16 @@ export default function Header() {
               
               {user?.role === 'seller' && (
                 <>
-                  <Link href="/en/overview" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link href={`/${params.locale}/overview`} className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
                     Home
                   </Link>
-                  <Link href="/en/explore-markets" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link href={`/${params.locale}/explore-markets`} className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
                     Explore Markets
                   </Link>
-                  <Link href="/en/orders" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link href={`/${params.locale}/orders`} className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
                     Orders
                   </Link>
-                  <Link href="/en/messages" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link href={`/${params.locale}/messages`} className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
                     Messages
                   </Link>
                 </>
@@ -97,8 +98,17 @@ export default function Header() {
               
               {user?.role === 'buyer' && (
                 <>
-                  <Link href="/en/home" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
-                    Home
+                  <Link href={`/${params.locale}/home`} className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                    Browse
+                  </Link>
+                  <Link href={`/${params.locale}/user-markets`} className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                    Markets
+                  </Link>
+                  <Link href={`/${params.locale}/user-orders`} className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                    Orders
+                  </Link>
+                  <Link href={`/${params.locale}/user-messages`} className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                    Messages
                   </Link>
                 </>
               )}

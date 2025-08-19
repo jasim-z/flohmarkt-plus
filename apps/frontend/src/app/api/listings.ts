@@ -56,6 +56,55 @@ export interface GetListingsParams {
   search?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  category?: string;
+  condition?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  city?: string;
+  neighborhood?: string;
+  isFree?: boolean;
+  isNegotiable?: boolean;
+  deliveryOption?: string;
+}
+
+export async function getAllListings(params: GetListingsParams = {}): Promise<{ data: Listing[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
+  try {
+    const token = localStorage.getItem('auth_token');
+    
+    // Build query parameters
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.append('page', params.page.toString());
+    if (params.limit) queryParams.append('limit', params.limit.toString());
+    if (params.search) queryParams.append('search', params.search);
+    if (params.sortBy) queryParams.append('sortBy', params.sortBy);
+    if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
+    if (params.category) queryParams.append('category', params.category);
+    if (params.condition) queryParams.append('condition', params.condition);
+    if (params.minPrice !== undefined) queryParams.append('minPrice', params.minPrice.toString());
+    if (params.maxPrice !== undefined) queryParams.append('maxPrice', params.maxPrice.toString());
+    if (params.city) queryParams.append('city', params.city);
+    if (params.neighborhood) queryParams.append('neighborhood', params.neighborhood);
+    if (params.isFree !== undefined) queryParams.append('isFree', params.isFree.toString());
+    if (params.isNegotiable !== undefined) queryParams.append('isNegotiable', params.isNegotiable.toString());
+    if (params.deliveryOption) queryParams.append('deliveryOption', params.deliveryOption);
+    
+    const url = `http://localhost:3952/listings?${queryParams.toString()}`;
+    
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!res.ok) {
+      throw new Error('Failed to fetch listings');
+    }
+    return await res.json();
+  } catch (error) {
+    console.error('Error fetching listings:', error);
+    throw error;
+  }
 }
 
 export async function getListingsBySellerAndMarket(

@@ -9,6 +9,42 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['react-icons', '@radix-ui/react-icons'],
   },
   
+  // Image configuration
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'http',
+        hostname: '**',
+        port: '',
+        pathname: '/**',
+      },
+    ],
+    domains: [
+      'localhost',
+      '127.0.0.1',
+      'example.com',
+      'images.unsplash.com',
+      'picsum.photos',
+      'via.placeholder.com',
+      'placehold.co',
+      'imgur.com',
+      'i.imgur.com',
+      'cloudinary.com',
+      'res.cloudinary.com',
+      'amazonaws.com',
+      's3.amazonaws.com',
+    ],
+    dangerouslyAllowSVG: true,
+    contentDispositionType: 'attachment',
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+  },
+  
   // Development optimizations
   ...(process.env.NODE_ENV === 'development' && {
     compiler: {
