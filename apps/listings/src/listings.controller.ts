@@ -135,8 +135,24 @@ export class ListingsController {
   findBySellerAndMarket(
     @Param('sellerId') sellerId: string,
     @Param('marketId') marketId: string,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('search') search?: string,
+    @Query('sortBy') sortBy: string = 'createdAt',
+    @Query('sortOrder') sortOrder: 'asc' | 'desc' = 'desc',
   ) {
-    return this.listingsService.findBySellerAndMarket(sellerId, marketId);
+    console.log('Controller received search params:', { page, limit, search, sortBy, sortOrder });
+    console.log('Search term:', search, 'Type:', typeof search);
+    
+    return this.listingsService.findBySellerAndMarket(
+      sellerId, 
+      marketId, 
+      Number(page), 
+      Number(limit), 
+      search, 
+      sortBy, 
+      sortOrder
+    );
   }
 
   @Get(':id')

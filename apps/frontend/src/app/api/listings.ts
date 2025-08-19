@@ -50,10 +50,33 @@ export async function getListings() {
   }
 }
 
-export async function getListingsBySellerAndMarket(sellerId: string, marketId: string): Promise<Listing[]> {
+export interface GetListingsParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export async function getListingsBySellerAndMarket(
+  sellerId: string, 
+  marketId: string, 
+  params: GetListingsParams = {}
+): Promise<{ data: Listing[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
   try {
     const token = localStorage.getItem('auth_token');
-    const res = await fetch(`http://localhost:3952/listings/seller/${sellerId}/market/${marketId}`, {
+    
+    // Build query parameters
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.append('page', params.page.toString());
+    if (params.limit) queryParams.append('limit', params.limit.toString());
+    if (params.search) queryParams.append('search', params.search);
+    if (params.sortBy) queryParams.append('sortBy', params.sortBy);
+    if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
+    
+    const url = `http://localhost:3952/listings/seller/${sellerId}/market/${marketId}?${queryParams.toString()}`;
+    
+    const res = await fetch(url, {
       method: "GET",
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -66,7 +89,7 @@ export async function getListingsBySellerAndMarket(sellerId: string, marketId: s
     return await res.json();
   } catch (error) {
     console.error('Error fetching listings:', error);
-    return [];
+    throw error;
   }
 }
 

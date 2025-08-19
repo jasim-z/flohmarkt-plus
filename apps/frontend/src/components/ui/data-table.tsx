@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { FaSearch, FaChevronUp, FaChevronDown, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -77,6 +77,9 @@ export function DataTable<T extends Record<string, unknown>>({
     direction: 'asc' | 'desc';
   }>({ key: null, direction: 'asc' });
 
+  // Debouncing ref for search
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // Use external values if provided (server-side pagination)
   const isServerSide = !!onPageChange;
   const displayCurrentPage = isServerSide ? externalCurrentPage || 1 : currentPage;
@@ -85,6 +88,41 @@ export function DataTable<T extends Record<string, unknown>>({
     isServerSide ? externalSortConfig || { key: null, direction: 'asc' } : sortConfig,
     [isServerSide, externalSortConfig, sortConfig]
   );
+
+  // For server-side search, always use local search term for input control
+  // This ensures the input is properly controlled by the DataTable's own state
+  // We completely ignore external search term to prevent input clearing
+  // The input will always show what the user typed, regardless of external state
+  const displaySearchTerm = searchTerm;
+  
+  // Prevent external search term from interfering with local state
+  useEffect(() => {
+    // If external search term changes but we have a local search term, keep the local one
+    if (externalSearchTerm && searchTerm && externalSearchTerm !== searchTerm) {
+      // Keep local search term, don't sync with external
+    }
+  }, [externalSearchTerm, searchTerm]);
+  
+  // Ensure search term persists across re-renders - but only once to prevent loops
+  useEffect(() => {
+    // If we have a search term but it gets reset, restore it
+    if (searchTerm === '' && externalSearchTerm && externalSearchTerm !== '') {
+      setSearchTerm(externalSearchTerm);
+    }
+  }, [externalSearchTerm]); // Only depend on externalSearchTerm, not searchTerm
+
+  // For server-side search, we don't sync external search term to avoid conflicts
+  // The DataTable manages its own search input state independently
+  // The parent component only gets the search term when user explicitly searches
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
 
 
   // For client-side pagination, filter and sort data
@@ -139,11 +177,34 @@ export function DataTable<T extends Record<string, unknown>>({
   };
 
   const handleSearch = (value: string) => {
+    // Always update local search term for controlled input
+    setSearchTerm(value);
+    
     if (isServerSide && onSearch) {
-      onSearch(value);
+      // For server-side, implement debounced search
+      // Clear previous timeout
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+      
+      // Set new timeout for debounced search
+      searchTimeoutRef.current = setTimeout(() => {
+        onSearch(value);
+      }, 500); // 500ms delay
     } else {
-      setSearchTerm(value);
       setCurrentPage(1);
+    }
+  };
+
+  const handleSearchSubmit = () => {
+    if (isServerSide && onSearch) {
+      onSearch(searchTerm);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && isServerSide && onSearch) {
+      onSearch(searchTerm);
     }
   };
 
@@ -166,12 +227,40 @@ export function DataTable<T extends Record<string, unknown>>({
           <div className="relative flex-1 max-w-sm">
             <FaSearch className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="Search..."
-              value={searchTerm}
+              placeholder="Type to search, then click Search or press Enter"
+              value={displaySearchTerm}
               onChange={(e) => handleSearch(e.target.value)}
+              onKeyPress={handleKeyPress}
               className="pl-8"
             />
+
           </div>
+          {isServerSide && onSearch && (
+            <>
+              <button
+                onClick={handleSearchSubmit}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 text-sm font-medium"
+              >
+                Search
+              </button>
+              {displaySearchTerm && (
+                <button
+                  onClick={() => {
+                    console.log('Clear button clicked, clearing local search term');
+                    setSearchTerm('');
+                    // Call onSearch with the original search term to refresh results
+                    // This will show all results since searchTerm is now empty
+                    if (isServerSide && onSearch) {
+                      onSearch('');
+                    }
+                  }}
+                  className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors duration-200 text-sm font-medium"
+                >
+                  Clear
+                </button>
+              )}
+            </>
+          )}
         </div>
       )}
 

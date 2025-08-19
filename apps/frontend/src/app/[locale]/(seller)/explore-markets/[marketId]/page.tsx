@@ -1,11 +1,11 @@
 'use client';
 
 import { useTranslations } from "next-intl";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaArrowLeft, FaCheck, FaTimes, FaDollarSign, FaInfoCircle, FaBox, FaEdit, FaTrash } from "react-icons/fa";
 import { Market, getMarketDetails, joinMarket } from "../../../../api/markets";
-import { Listing, getListingsBySellerAndMarket, deleteListing } from "../../../../api/listings";
+import { Listing, getListingsBySellerAndMarket, deleteListing, GetListingsParams } from "../../../../api/listings";
 import UnAuthourized from "@/app/components/UnAuthourized";
 import { useUser } from "@/contexts/UserContext";
 import { formatPrice } from "@/lib/utils";
@@ -62,6 +62,7 @@ export default function MarketDetail() {
   const [toast, setToast] = useState<{ message: string; type: ToastType; isVisible: boolean } | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
   const [listingsLoading, setListingsLoading] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [showAddListingModal, setShowAddListingModal] = useState(false);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [showListingDetailsModal, setShowListingDetailsModal] = useState(false);
@@ -69,9 +70,89 @@ export default function MarketDetail() {
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
   const [showDeleteConfirmationModal, setShowDeleteConfirmationModal] = useState(false);
   const [deletingListing, setDeletingListing] = useState<Listing | null>(null);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof Listing | null;
+    direction: 'asc' | 'desc';
+  }>({ key: null, direction: 'desc' });
 
-  // Early return after all hooks
-  if (role !== 'seller' && isLoaded) return <UnAuthourized />;
+  // Debouncing ref for search
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+
+
+  // Fetch listings for the seller in this market
+  const fetchListings = useCallback(async (params: GetListingsParams = {}) => {
+    if (!market || !user?._id) return;
+    
+    try {
+      setListingsLoading(true);
+      const response = await getListingsBySellerAndMarket(user._id, market._id, params);
+      setListings(response.data);
+      setTotalPages(response.pagination.totalPages);
+      setTotalItems(response.pagination.total);
+      setCurrentPage(response.pagination.page);
+    } catch (error) {
+      console.error('Error fetching listings:', error);
+    } finally {
+      setListingsLoading(false);
+    }
+  }, [market, user]);
+
+  // Handle page change
+  const handlePageChange = useCallback((page: number) => {
+    const params: GetListingsParams = {
+      page,
+      limit: 10,
+      search: searchTerm || undefined,
+      sortBy: sortConfig.key as string || 'createdAt',
+      sortOrder: sortConfig.direction || 'desc',
+    };
+    fetchListings(params);
+  }, [fetchListings, searchTerm, sortConfig]);
+
+  // Handle search
+  const handleSearch = useCallback((term: string) => {
+    setSearchTerm(term);
+    
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    // Set new timeout for debounced search
+    searchTimeoutRef.current = setTimeout(() => {
+      setSearchLoading(true);
+      const params: GetListingsParams = {
+        page: 1,
+        limit: 10,
+        search: term || undefined,
+        sortBy: sortConfig.key as string || 'createdAt',
+        sortOrder: sortConfig.direction || 'desc',
+      };
+      fetchListings(params).finally(() => {
+        setSearchLoading(false);
+      });
+    }, 500); // 500ms delay
+  }, [fetchListings, sortConfig]);
+
+  // Handle sort
+  const handleSort = useCallback((key: string, direction: 'asc' | 'desc') => {
+    setSortConfig({ key: key as keyof Listing, direction });
+    const params: GetListingsParams = {
+      page: 1,
+      limit: 10,
+      search: searchTerm || undefined,
+      sortBy: key,
+      sortOrder: direction,
+    };
+    fetchListings(params);
+  }, [fetchListings, searchTerm]);
 
   // Check if seller is already joined
   const checkJoinStatus = useCallback(() => {
@@ -79,27 +160,19 @@ export default function MarketDetail() {
       const joined = market.registeredVendors?.includes(user._id || '');
       setIsJoined(!!joined);
       
-      // If joined, fetch listings
+      // If joined, fetch listings with current pagination
       if (joined && user._id) {
-        fetchListings();
+        const params: GetListingsParams = {
+          page: currentPage,
+          limit: 10,
+          search: searchTerm || undefined,
+          sortBy: sortConfig.key as string || 'createdAt',
+          sortOrder: sortConfig.direction || 'desc',
+        };
+        fetchListings(params);
       }
     }
-  }, [market, user]);
-
-  // Fetch listings for the seller in this market
-  const fetchListings = useCallback(async () => {
-    if (!market || !user?._id) return;
-    
-    try {
-      setListingsLoading(true);
-      const sellerListings = await getListingsBySellerAndMarket(user._id, market._id);
-      setListings(sellerListings);
-    } catch (error) {
-      console.error('Error fetching listings:', error);
-    } finally {
-      setListingsLoading(false);
-    }
-  }, [market, user]);
+  }, [market, user, currentPage, searchTerm, sortConfig, fetchListings]);
 
   // Handle row click to show listing details
   const handleRowClick = useCallback((listing: Record<string, unknown>) => {
@@ -127,8 +200,15 @@ export default function MarketDetail() {
       // Call the delete API
       await deleteListing(deletingListing._id);
       
-      // Remove from local state
-      setListings(prev => prev.filter(l => l._id !== deletingListing._id));
+      // Refresh listings with current pagination after deletion
+      const params: GetListingsParams = {
+        page: currentPage,
+        limit: 10,
+        search: searchTerm || undefined,
+        sortBy: sortConfig.key as string || 'createdAt',
+        sortOrder: sortConfig.direction || 'desc',
+      };
+      fetchListings(params);
       
       // Show success toast
       setToast({
@@ -164,6 +244,15 @@ export default function MarketDetail() {
   useEffect(() => {
     checkJoinStatus();
   }, [checkJoinStatus]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const fetchMarketData = useCallback(async () => {
     try {
@@ -258,6 +347,11 @@ export default function MarketDetail() {
       // You can add error handling here
     }
   };
+
+  // Authorization check after all hooks
+  if (role !== 'seller' && isLoaded) {
+    return <UnAuthourized />;
+  }
 
   if (!isLoaded) {
     return (
@@ -708,32 +802,56 @@ export default function MarketDetail() {
                   <p className="text-gray-600">Loading your listings...</p>
                 </div>
               </div>
-            ) : listings.length > 0 ? (
+            ) : (
+              <>
+                {/* Search Status */}
+                {searchLoading && (
+                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <div className="loader border-2 border-blue-600 border-t-transparent rounded-full w-4 h-4 animate-spin"></div>
+                      <span className="text-sm text-blue-700">Searching...</span>
+                    </div>
+                  </div>
+                )}
+                
               <DataTable
                 data={listings as unknown as Record<string, unknown>[]}
                 columns={listingColumns}
                 pageSize={10}
                 searchable={true}
                 className="mb-4"
-                emptyStateMessage="No listings found"
-                emptyStateDescription="Try adjusting your search terms."
+                emptyStateMessage={searchTerm ? 'No Search Results' : 'No Items Listed'}
+                emptyStateDescription={
+                  searchTerm 
+                    ? `No listings found matching "${searchTerm}". Try adjusting your search terms.`
+                    : "You haven't listed any items in this market yet. Start selling by adding your first listing!"
+                }
                 onRowClick={handleRowClick}
+                // Server-side pagination props
+                totalItems={totalItems}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+                onSearch={handleSearch}
+                onSort={handleSort}
+                sortConfig={sortConfig}
+                loading={listingsLoading || searchLoading}
+                searchTerm={searchTerm}
               />
-            ) : (
-              <div className="text-center py-12">
-                <FaBox className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Items Listed</h3>
-                <p className="text-gray-600 mb-6">
-                  You haven't listed any items in this market yet. Start selling by adding your first listing!
-                </p>
-                <button
-                  onClick={() => setShowAddListingModal(true)}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-medium flex items-center space-x-2 mx-auto"
-                >
-                  <FaBox className="h-4 w-4" />
-                  <span>Add Your First Listing</span>
-                </button>
-              </div>
+              
+              {/* Add Your First Listing button - only show when no listings and no search term */}
+              {listings.length === 0 && !searchTerm && !listingsLoading && !searchLoading && (
+                <div className="text-center py-6">
+                  <button
+                    onClick={() => setShowAddListingModal(true)}
+                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-medium flex items-center space-x-2 mx-auto"
+                  >
+                    <FaBox className="h-4 w-4" />
+                    <span>Add Your First Listing</span>
+                  </button>
+                </div>
+              )}
+              </>
             )}
           </div>
         )}
@@ -823,8 +941,15 @@ export default function MarketDetail() {
         isOpen={showAddListingModal}
         onClose={() => setShowAddListingModal(false)}
         onSuccess={(message) => {
-          // Refresh listings after successful creation
-          fetchListings();
+          // Refresh listings after successful creation with current pagination
+          const params: GetListingsParams = {
+            page: currentPage,
+            limit: 10,
+            search: searchTerm || undefined,
+            sortBy: sortConfig.key as string || 'createdAt',
+            sortOrder: sortConfig.direction || 'desc',
+          };
+          fetchListings(params);
           
           // Show success toast if message provided
           if (message) {
@@ -857,8 +982,15 @@ export default function MarketDetail() {
         isOpen={showEditListingModal}
         onClose={() => setShowEditListingModal(false)}
         onSuccess={(message) => {
-          // Refresh listings after successful update
-          fetchListings();
+          // Refresh listings after successful update with current pagination
+          const params: GetListingsParams = {
+            page: currentPage,
+            limit: 10,
+            search: searchTerm || undefined,
+            sortBy: sortConfig.key as string || 'createdAt',
+            sortOrder: sortConfig.direction || 'desc',
+          };
+          fetchListings(params);
           
           // Show success toast if message provided
           if (message) {
