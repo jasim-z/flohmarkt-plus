@@ -3,7 +3,8 @@ import { FaShoppingCart, FaHeart, FaUserCircle, FaBell, FaCog, FaChevronDown } f
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
-import { logoutUser, getCurrentUser } from '../api/auth';
+import { logoutUser } from '../api/auth';
+import { useUser } from '@/contexts/UserContext';
 import HeaderLanguageSwitcher from './HeaderLanguageSwitcher';
 
 interface User {
@@ -15,18 +16,10 @@ interface User {
 export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
+  const { user, logout, isLoading } = useUser();
   const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    async function fetchUser() {
-      const currentUser = await getCurrentUser();
-      setUser(currentUser);
-    }
-    fetchUser();
-  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -42,10 +35,16 @@ export default function Header() {
 
   async function handleLogout() {
     setLoading(true);
-    await logoutUser();
-    setLoading(false);
-    const locale = pathname.split('/')[1] || 'en';
-    router.replace(`/${locale}/login`);
+    try {
+      await logoutUser();
+      logout(); // Use the context logout method
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still logout locally even if API call fails
+      logout();
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (

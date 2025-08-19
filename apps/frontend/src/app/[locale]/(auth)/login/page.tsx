@@ -4,6 +4,7 @@ import { getCurrentUser, loginUser } from "@/app/api/auth";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useUser } from "@/contexts/UserContext";
 import LanguageSwitcher from "../../../components/LanguageSwitcher";
 import FleaMarketIllustration from "../../../components/FleaMarketIllustration";
 
@@ -11,6 +12,7 @@ export default function Login() {
   const t = useTranslations();
   const router = useRouter();
   const params = useParams();
+  const { setUserData } = useUser();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -39,12 +41,18 @@ export default function Login() {
     try {
       await loginUser(email, password);
       const user = await getCurrentUser();
-      if (user && user.role === "buyer") {
-        router.replace(`/${params.locale}/home`);
-      } else if (user && user.role === "seller") {
-        router.replace(`/${params.locale}/overview`);
-      } else if (user && user.role === "admin") {
-        router.replace(`/${params.locale}/dashboard`);
+      if (user) {
+        // Immediately set user data in context to prevent unauthorized redirect
+        setUserData(user);
+        
+        // Now redirect based on role
+        if (user.role === "buyer") {
+          router.replace(`/${params.locale}/home`);
+        } else if (user.role === "seller") {
+          router.replace(`/${params.locale}/overview`);
+        } else if (user.role === "admin") {
+          router.replace(`/${params.locale}/dashboard`);
+        }
       }
       // Optionally redirect or fetch user data here
     } catch (err: unknown) {

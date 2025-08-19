@@ -1,7 +1,33 @@
+'use client';
+
+import { useUser } from '@/contexts/UserContext';
+import { useRouter, useParams } from 'next/navigation';
+import { useEffect } from 'react';
 import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
+import Loading from '@/app/components/loading';
 
 export default function SellerLayout({ children }: { children: React.ReactNode }) {
+  const { role, isLoaded, isLoading } = useUser();
+  const router = useRouter();
+  const params = useParams();
+
+  useEffect(() => {
+    if (isLoaded && !isLoading && role !== 'seller') {
+      router.push(`/${params.locale}/unauthorized`);
+    }
+  }, [role, isLoaded, isLoading, router, params.locale]);
+
+  // Show loading while checking authentication
+  if (isLoading || !isLoaded) {
+    return <Loading />;
+  }
+
+  // Show unauthorized if not seller
+  if (role !== 'seller') {
+    return null; // Will redirect to unauthorized
+  }
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header />

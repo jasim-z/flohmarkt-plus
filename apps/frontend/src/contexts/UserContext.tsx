@@ -3,12 +3,22 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 
+interface User {
+  _id: string;
+  email: string;
+  displayName: string;
+  role: string;
+  [key: string]: unknown;
+}
+
 interface UserContextType {
   role: string;
   isLoaded: boolean;
   isLoading: boolean;
-  user: any | null;
+  user: User | null;
   checkUserRole: () => Promise<void>;
+  setUserData: (userData: User) => void;
+  refreshUser: () => Promise<void>;
   logout: () => void;
 }
 
@@ -18,7 +28,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState('');
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<any | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -69,6 +79,19 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Method to set user data immediately after login (prevents unauthorized redirect)
+  const setUserData = (userData: User) => {
+    setUser(userData);
+    setRole(userData.role || '');
+    setIsLoaded(true);
+    setIsLoading(false);
+  };
+
+  // Method to refresh user data
+  const refreshUser = async () => {
+    await checkUserRole();
+  };
+
   const logout = () => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('token');
@@ -76,7 +99,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
     setRole('');
     setUser(null);
     setIsLoaded(false);
-    router.push('/login');
+    
+    // Extract locale from current pathname for proper redirect
+    const pathSegments = pathname.split('/');
+    const locale = pathSegments[1] || 'en';
+    router.push(`/${locale}/login`);
   };
 
   // Check user role when component mounts
@@ -86,10 +113,25 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   // Auto-check user role when pathname changes (for route protection)
   useEffect(() => {
-    if (isLoaded && pathname) {
+    if (isLoaded && pathname && !isLoading) {
       // Extract locale from pathname
       const pathSegments = pathname.split('/');
       const locale = pathSegments[1]; // e.g., 'en', 'de'
+      
+      // Don't redirect if we're still loading or if user is not loaded yet
+      if (isLoading || !isLoaded) {
+        return;
+      }
+      
+      // Don't redirect if we're on auth pages
+      if (pathname.includes('/login') || pathname.includes('/signup')) {
+        return;
+      }
+      
+      // Don't redirect if we're on the unauthorized page
+      if (pathname.includes('/unauthorized')) {
+        return;
+      }
       
       // Protect admin routes
       if (pathname.includes('/admin') && role !== 'admin') {
@@ -109,10 +151,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
         return;
       }
     }
-  }, [pathname, role, isLoaded, router]);
+  }, [pathname, role, isLoaded, isLoading, router]);
 
   return (
-    <UserContext.Provider value={{ role, isLoaded, isLoading, user, checkUserRole, logout }}>
+    <UserContext.Provider value={{ role, isLoaded, isLoading, user, checkUserRole, setUserData, refreshUser, logout }}>
       {children}
     </UserContext.Provider>
   );
