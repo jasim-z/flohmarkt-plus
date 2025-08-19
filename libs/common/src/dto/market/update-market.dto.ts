@@ -1,5 +1,6 @@
-import { IsString, IsOptional, IsDateString, IsBoolean, IsArray, IsEnum, IsNumber } from 'class-validator';
+import { IsString, IsOptional, IsDateString, IsBoolean, IsArray, IsEnum, IsNumber, ValidateIf, Validate } from 'class-validator';
 import { MarketStatus } from './create-market.dto';
+import { IsVendorBoothRatioValid } from '../validators/vendor-booth-ratio.validator';
 
 export class UpdateMarketDto {
   @IsString()
@@ -44,7 +45,13 @@ export class UpdateMarketDto {
 
   @IsNumber()
   @IsOptional()
+  @ValidateIf((o) => o.vendorLimit !== undefined)
+  @Validate(IsVendorBoothRatioValid)
   boothsAvailable?: number;
+
+  @IsNumber()
+  @IsOptional()
+  price?: number; // Will be converted to Decimal128 in the backend
 
   @IsArray()
   @IsString({ each: true })
@@ -59,4 +66,8 @@ export class UpdateMarketDto {
   @IsString({ each: true })
   @IsOptional()
   registeredVendors?: string[];
+
+  @IsBoolean()
+  @IsOptional()
+  isDeleted?: boolean;
 } 

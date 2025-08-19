@@ -26,5 +26,8 @@
     "headline": "Welcome to Munich Flea Market!",
     "sub": "Discover, buy and sell treasures from your neighborhood.",
     "cta": "Haggle, browse, experience community."
+  },
+  "dashboard": {
+    "title": "Dashboard"
   }
 } 

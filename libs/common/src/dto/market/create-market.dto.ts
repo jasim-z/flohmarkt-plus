@@ -8,7 +8,10 @@ import {
   IsNumber,
   Min,
   Max,
+  ValidateIf,
+  Validate,
 } from 'class-validator';
+import { IsVendorBoothRatioValid } from '../validators/vendor-booth-ratio.validator';
 
 export enum MarketStatus {
   UPCOMING = 'upcoming',
@@ -50,7 +53,14 @@ export class CreateMarketDto {
 
   @IsNumber()
   @IsOptional()
+  @ValidateIf((o) => o.vendorLimit !== undefined)
+  @Validate(IsVendorBoothRatioValid)
   boothsAvailable?: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  price?: number; // Will be converted to Decimal128 in the backend, defaults to 0
 
   @IsArray()
   @IsString({ each: true })
@@ -62,4 +72,8 @@ export class CreateMarketDto {
   @IsArray()
   @IsString({ each: true })
   registeredVendors: string[]; // seller user IDs (ObjectId as string)
+
+  @IsBoolean()
+  @IsOptional()
+  isDeleted?: boolean;
 } 

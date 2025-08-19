@@ -33,11 +33,14 @@ export class Listing {
   @Prop({ required: true, enum: ItemCondition, type: String })
   condition: ItemCondition;
 
-  @Prop({ type: [String], required: true })
-  images: string[];
+  @Prop({ type: [String], required: false, default: [] })
+  images?: string[];
 
   @Prop({ required: true, type: Types.ObjectId, ref: 'User' })
   sellerId: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'Market' })
+  marketId?: Types.ObjectId;
 
   @Prop({ required: true })
   city: string;
@@ -113,6 +116,9 @@ export class Listing {
 
   @Prop({ type: Date })
   lastUpdated: Date;
+
+  @Prop({ default: false })
+  isDeleted: boolean;
 }
 
 export const ListingSchema = SchemaFactory.createForClass(Listing);
@@ -125,4 +131,5 @@ ListingSchema.index({ sellerId: 1 });
 ListingSchema.index({ status: 1 });
 ListingSchema.index({ price: 1 });
 ListingSchema.index({ createdAt: -1 });
-ListingSchema.index({ title: 'text', description: 'text', tags: 'text' }); 
+ListingSchema.index({ title: 'text', description: 'text', tags: 'text' });
+ListingSchema.index({ isDeleted: 1 }); 

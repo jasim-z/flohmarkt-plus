@@ -18,12 +18,24 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
+        // Extract from cookies first
         (request: any) => {
-          console.log('request =====>', request.cookies.Authentication);
-          const token = request?.cookies?.Authentication;
-          return token;
+          if (request?.cookies?.authentication) {
+            return request.cookies.authentication;
+          }
+          if (request?.cookies?.Authentication) {
+            return request.cookies.Authentication;
+          }
+          return null;
         },
-        ExtractJwt.fromAuthHeaderAsBearerToken(),
+        // Extract from Authorization header as fallback
+        (request: any) => {
+          return ExtractJwt.fromAuthHeaderAsBearerToken()(request);
+        },
+        // Legacy support for custom header
+        (request: any) => {
+          return request?.Authentication || request?.authentication;
+        },
       ]),
       secretOrKey: configService.get('JWT_SECRET'),
     });
@@ -35,6 +47,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     try {
+      
       // If user service is available, use it to get full user details
       if (this.usersService) {
         const user = await this.usersService.getUser({
@@ -45,13 +58,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
       // Otherwise, return a user object with data from the token
       // This is secure because the role comes from the signed JWT token
-      return {
+      const userFromToken = {
         _id: userId,
         userId: userId,
         role: role || 'buyer', // Use role from token
         email: email || 'user@example.com',
         displayName: 'User', // Placeholder
       };
+      return userFromToken;
     } catch (err) {
       throw new UnauthorizedException();
     }

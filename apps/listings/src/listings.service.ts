@@ -11,13 +11,28 @@ export class ListingsService {
   ) {}
 
   async create(createListingDto: CreateListingDto, sellerId: string): Promise<Listing> {
-    const listing = new this.listingModel({
+    console.log('Creating listing with data:', createListingDto);
+    console.log('Seller ID:', sellerId);
+    
+    const listingData: any = {
       ...createListingDto,
       sellerId: new Types.ObjectId(sellerId),
       status: ListingStatus.ACTIVE,
       lastUpdated: new Date(),
-    });
-    return listing.save();
+    };
+
+    // Convert marketId to ObjectId if provided
+    if (createListingDto.marketId) {
+      console.log('Converting marketId to ObjectId:', createListingDto.marketId);
+      listingData.marketId = new Types.ObjectId(createListingDto.marketId);
+      console.log('Converted marketId:', listingData.marketId);
+    }
+
+    console.log('Final listing data:', listingData);
+    const listing = new this.listingModel(listingData);
+    const savedListing = await listing.save();
+    console.log('Saved listing:', savedListing);
+    return savedListing;
   }
 
   async findAll(query: any = {}): Promise<Listing[]> {
@@ -37,7 +52,14 @@ export class ListingsService {
       sortOrder = 'desc',
     } = query;
 
-    const filter: any = { status: ListingStatus.ACTIVE, isActive: true };
+    const filter: any = { 
+      status: ListingStatus.ACTIVE, 
+      isActive: true, 
+      $or: [
+        { isDeleted: false },
+        { isDeleted: { $exists: false } }
+      ]
+    };
 
     if (category) filter.category = category;
     if (condition) filter.condition = condition;
@@ -85,6 +107,10 @@ export class ListingsService {
     const filter: any = {
       status: ListingStatus.ACTIVE,
       isActive: true,
+      $or: [
+        { isDeleted: false },
+        { isDeleted: { $exists: false } }
+      ],
       location: {
         $near: {
           $geometry: {
@@ -135,9 +161,97 @@ export class ListingsService {
       .find({
         sellerId: new Types.ObjectId(sellerId),
         status: { $ne: ListingStatus.DELETED },
+        $or: [
+          { isDeleted: false },
+          { isDeleted: { $exists: false } }
+        ],
       })
       .sort({ createdAt: -1 })
       .exec();
+  }
+
+  async findBySellerAndMarket(
+    sellerId: string, 
+    marketId: string, 
+    page: number = 1, 
+    limit: number = 10,
+    search?: string,
+    sortBy: string = 'createdAt',
+    sortOrder: 'asc' | 'desc' = 'desc'
+  ): Promise<{ data: Listing[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
+    console.log('Finding listings for seller:', sellerId, 'and market:', marketId);
+    
+    const query: any = {
+      sellerId: new Types.ObjectId(sellerId),
+      marketId: new Types.ObjectId(marketId),
+      status: { $ne: ListingStatus.DELETED },
+      $or: [
+        { isDeleted: false },
+        { isDeleted: { $exists: false } }
+      ],
+    };
+
+    // Add search functionality
+    if (search && search.trim()) {
+      // Create a separate $or for search conditions
+      const searchConditions = [
+        { title: { $regex: search.trim(), $options: 'i' } },
+        { description: { $regex: search.trim(), $options: 'i' } },
+        { category: { $regex: search.trim(), $options: 'i' } },
+        { tags: { $in: [new RegExp(search.trim(), 'i')] } }
+      ];
+      
+      // Use $and to combine deletion filter with search conditions
+      query.$and = [
+        {
+          $or: [
+            { isDeleted: false },
+            { isDeleted: { $exists: false } }
+          ]
+        },
+        {
+          $or: searchConditions
+        }
+      ];
+      
+      // Remove the original $or since we're using $and now
+      delete query.$or;
+    }
+    
+    console.log('Final Query:', JSON.stringify(query, null, 2));
+    console.log('Search term used:', search);
+    console.log('Query type:', typeof query);
+    
+    // Calculate skip value for pagination
+    const skip = (page - 1) * limit;
+    
+    // Get total count for pagination
+    const total = await this.listingModel.countDocuments(query);
+    const totalPages = Math.ceil(total / limit);
+    
+    // Build sort object
+    const sort: any = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+    
+    const listings = await this.listingModel
+      .find(query)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .exec();
+    
+    console.log('Found listings:', listings.length);
+    console.log('Listings:', listings);
+    
+    return {
+      data: listings,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages
+      }
+    };
   }
 
   async update(id: string, updateListingDto: any, sellerId: string): Promise<Listing> {
@@ -166,7 +280,12 @@ export class ListingsService {
     return this.listingModel
       .findByIdAndUpdate(
         id,
-        { status: ListingStatus.DELETED, isActive: false },
+        { 
+          status: ListingStatus.DELETED, 
+          isActive: false, 
+          isDeleted: true,
+          lastUpdated: new Date()
+        },
         { new: true },
       )
       .exec();
@@ -187,6 +306,10 @@ export class ListingsService {
     const filter: any = {
       status: ListingStatus.ACTIVE,
       isActive: true,
+      $or: [
+        { isDeleted: false },
+        { isDeleted: { $exists: false } }
+      ],
       $text: { $search: searchTerm },
     };
 
@@ -211,7 +334,16 @@ export class ListingsService {
 
   async getCategories(): Promise<{ category: string; count: number }[]> {
     return this.listingModel.aggregate([
-      { $match: { status: ListingStatus.ACTIVE, isActive: true } },
+      { 
+        $match: { 
+          status: ListingStatus.ACTIVE, 
+          isActive: true, 
+          $or: [
+            { isDeleted: false },
+            { isDeleted: { $exists: false } }
+          ]
+        } 
+      },
       { $group: { _id: '$category', count: { $sum: 1 } } },
       { $project: { category: '$_id', count: 1, _id: 0 } },
       { $sort: { count: -1 } },
@@ -220,9 +352,21 @@ export class ListingsService {
 
   async getTrending(limit = 10): Promise<Listing[]> {
     return this.listingModel
-      .find({ status: ListingStatus.ACTIVE, isActive: true })
+      .find({ 
+        status: ListingStatus.ACTIVE, 
+        isActive: true, 
+        $or: [
+          { isDeleted: false },
+          { isDeleted: { $exists: false } }
+        ]
+      })
       .sort({ viewCount: -1, favoriteCount: -1 })
       .limit(limit)
       .exec();
+  }
+
+  // Debug method to check all listings
+  async debugAllListings(): Promise<any[]> {
+    return this.listingModel.find({}).lean().exec();
   }
 }
