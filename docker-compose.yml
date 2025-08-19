@@ -238,10 +238,14 @@ services:
     build:
       context: ./apps/frontend
       target: development
+      args:
+        - NODE_OPTIONS=--max-old-space-size=1024
     command: pnpm dev
     environment:
       - NODE_ENV=development
       - WATCHPACK_POLLING=true
+      - NEXT_TELEMETRY_DISABLED=1
+      - NODE_OPTIONS=--max-old-space-size=2048
     depends_on:
       - auth
       - listings
@@ -253,6 +257,22 @@ services:
       - /app/.next
     ports:
       - '3000:3000'
+    # Performance and stability improvements
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 volumes:
   mongodb_master_data:
