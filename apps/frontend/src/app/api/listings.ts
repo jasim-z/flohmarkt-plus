@@ -29,6 +29,7 @@ export interface Listing {
   favoriteCount: number;
   offerCount: number;
   soldAt?: string;
+  isDeleted: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -132,6 +133,69 @@ export async function debugAllListings(): Promise<any[]> {
     return await res.json();
   } catch (error) {
     console.error('Error fetching debug listings:', error);
-    return [];
+    throw error;
+  }
+}
+
+export async function deleteListing(listingId: string): Promise<void> {
+  try {
+    const token = localStorage.getItem('auth_token');
+    const res = await fetch(`http://localhost:3952/listings/${listingId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!res.ok) {
+      throw new Error('Failed to delete listing');
+    }
+  } catch (error) {
+    console.error('Error deleting listing:', error);
+    throw error;
+  }
+}
+
+export async function checkMigrationStatus(): Promise<{
+  needsMigration: boolean;
+  totalListings: number;
+  listingsWithField: number;
+  listingsWithoutField: number;
+}> {
+  try {
+    const token = localStorage.getItem('auth_token');
+    const res = await fetch('http://localhost:3952/listings/migrate/status', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!res.ok) {
+      throw new Error('Failed to check migration status');
+    }
+    return await res.json();
+  } catch (error) {
+    console.error('Error checking migration status:', error);
+    throw error;
+  }
+}
+
+export async function runIsDeletedMigration(): Promise<void> {
+  try {
+    const token = localStorage.getItem('auth_token');
+    const res = await fetch('http://localhost:3952/listings/migrate/add-is-deleted-field', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!res.ok) {
+      throw new Error('Failed to run isDeleted migration');
+    }
+  } catch (error) {
+    console.error('Error running isDeleted migration:', error);
+    throw error;
   }
 }

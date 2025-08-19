@@ -52,7 +52,14 @@ export class ListingsService {
       sortOrder = 'desc',
     } = query;
 
-    const filter: any = { status: ListingStatus.ACTIVE, isActive: true };
+    const filter: any = { 
+      status: ListingStatus.ACTIVE, 
+      isActive: true, 
+      $or: [
+        { isDeleted: false },
+        { isDeleted: { $exists: false } }
+      ]
+    };
 
     if (category) filter.category = category;
     if (condition) filter.condition = condition;
@@ -100,6 +107,10 @@ export class ListingsService {
     const filter: any = {
       status: ListingStatus.ACTIVE,
       isActive: true,
+      $or: [
+        { isDeleted: false },
+        { isDeleted: { $exists: false } }
+      ],
       location: {
         $near: {
           $geometry: {
@@ -150,6 +161,10 @@ export class ListingsService {
       .find({
         sellerId: new Types.ObjectId(sellerId),
         status: { $ne: ListingStatus.DELETED },
+        $or: [
+          { isDeleted: false },
+          { isDeleted: { $exists: false } }
+        ],
       })
       .sort({ createdAt: -1 })
       .exec();
@@ -162,6 +177,10 @@ export class ListingsService {
       sellerId: new Types.ObjectId(sellerId),
       marketId: new Types.ObjectId(marketId),
       status: { $ne: ListingStatus.DELETED },
+      $or: [
+        { isDeleted: false },
+        { isDeleted: { $exists: false } }
+      ],
     };
     
     console.log('Query:', JSON.stringify(query, null, 2));
@@ -203,7 +222,12 @@ export class ListingsService {
     return this.listingModel
       .findByIdAndUpdate(
         id,
-        { status: ListingStatus.DELETED, isActive: false },
+        { 
+          status: ListingStatus.DELETED, 
+          isActive: false, 
+          isDeleted: true,
+          lastUpdated: new Date()
+        },
         { new: true },
       )
       .exec();
@@ -224,6 +248,10 @@ export class ListingsService {
     const filter: any = {
       status: ListingStatus.ACTIVE,
       isActive: true,
+      $or: [
+        { isDeleted: false },
+        { isDeleted: { $exists: false } }
+      ],
       $text: { $search: searchTerm },
     };
 
@@ -248,7 +276,16 @@ export class ListingsService {
 
   async getCategories(): Promise<{ category: string; count: number }[]> {
     return this.listingModel.aggregate([
-      { $match: { status: ListingStatus.ACTIVE, isActive: true } },
+      { 
+        $match: { 
+          status: ListingStatus.ACTIVE, 
+          isActive: true, 
+          $or: [
+            { isDeleted: false },
+            { isDeleted: { $exists: false } }
+          ]
+        } 
+      },
       { $group: { _id: '$category', count: { $sum: 1 } } },
       { $project: { category: '$_id', count: 1, _id: 0 } },
       { $sort: { count: -1 } },
@@ -257,7 +294,14 @@ export class ListingsService {
 
   async getTrending(limit = 10): Promise<Listing[]> {
     return this.listingModel
-      .find({ status: ListingStatus.ACTIVE, isActive: true })
+      .find({ 
+        status: ListingStatus.ACTIVE, 
+        isActive: true, 
+        $or: [
+          { isDeleted: false },
+          { isDeleted: { $exists: false } }
+        ]
+      })
       .sort({ viewCount: -1, favoriteCount: -1 })
       .limit(limit)
       .exec();

@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ListingsService } from './listings.service';
 import { ListingMarketIdMigrationService } from './migration/add-market-id-field';
+import { ListingIsDeletedMigrationService } from './migration/add-is-deleted-field';
 import { JwtAuthGuard, RolesGuard, Roles } from '@app/common';
 import { CreateListingDto } from '@app/common/dto/listing/create-listing.dto';
 
@@ -20,6 +21,7 @@ export class ListingsController {
   constructor(
     private readonly listingsService: ListingsService,
     private readonly listingMarketIdMigrationService: ListingMarketIdMigrationService,
+    private readonly listingIsDeletedMigrationService: ListingIsDeletedMigrationService,
   ) {}
 
   @Post()
@@ -90,6 +92,27 @@ export class ListingsController {
   @Roles('admin')
   async addMarketIdFieldToExistingListings() {
     return this.listingMarketIdMigrationService.addMarketIdFieldToExistingListings();
+  }
+
+  @Post('migrate/add-is-deleted-field')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  async addIsDeletedFieldToExistingListings() {
+    return this.listingIsDeletedMigrationService.addIsDeletedFieldToExistingListings();
+  }
+
+  @Post('migrate/update-deleted-listings')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  async updateDeletedListings() {
+    return this.listingIsDeletedMigrationService.updateDeletedListings();
+  }
+
+  @Get('migrate/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  async checkMigrationStatus() {
+    return this.listingIsDeletedMigrationService.checkMigrationStatus();
   }
 
   @Get('debug/all')

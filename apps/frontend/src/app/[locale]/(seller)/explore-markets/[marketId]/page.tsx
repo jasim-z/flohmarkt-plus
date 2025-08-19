@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaArrowLeft, FaCheck, FaTimes, FaDollarSign, FaInfoCircle, FaBox, FaEdit, FaTrash } from "react-icons/fa";
 import { Market, getMarketDetails, joinMarket } from "../../../../api/markets";
-import { Listing, getListingsBySellerAndMarket } from "../../../../api/listings";
+import { Listing, getListingsBySellerAndMarket, deleteListing } from "../../../../api/listings";
 import UnAuthourized from "@/app/components/UnAuthourized";
 import { useUser } from "@/contexts/UserContext";
 import { formatPrice } from "@/lib/utils";
@@ -13,6 +13,9 @@ import PaymentModal from "@/app/components/PaymentModal";
 import Toast, { ToastType } from "@/app/components/Toast";
 import { DataTable, Column } from "@/components/ui/data-table";
 import AddListingModal from "@/app/components/AddListingModal";
+import ListingDetailsModal from "@/app/components/ListingDetailsModal";
+import EditListingModal from "@/app/components/EditListingModal";
+import DeleteConfirmationModal from "@/app/components/DeleteConfirmationModal";
 
 // Utility function to calculate market status based on current date/time
 const calculateMarketStatus = (market: Market): 'upcoming' | 'ongoing' | 'past' => {
@@ -60,6 +63,12 @@ export default function MarketDetail() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [listingsLoading, setListingsLoading] = useState(false);
   const [showAddListingModal, setShowAddListingModal] = useState(false);
+  const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
+  const [showListingDetailsModal, setShowListingDetailsModal] = useState(false);
+  const [showEditListingModal, setShowEditListingModal] = useState(false);
+  const [editingListing, setEditingListing] = useState<Listing | null>(null);
+  const [showDeleteConfirmationModal, setShowDeleteConfirmationModal] = useState(false);
+  const [deletingListing, setDeletingListing] = useState<Listing | null>(null);
 
   // Early return after all hooks
   if (role !== 'seller' && isLoaded) return <UnAuthourized />;
@@ -91,6 +100,66 @@ export default function MarketDetail() {
       setListingsLoading(false);
     }
   }, [market, user]);
+
+  // Handle row click to show listing details
+  const handleRowClick = useCallback((listing: Record<string, unknown>) => {
+    setSelectedListing(listing as unknown as Listing);
+    setShowListingDetailsModal(true);
+  }, []);
+
+  // Handle edit listing
+  const handleEditListing = useCallback((listing: Record<string, unknown>) => {
+    setEditingListing(listing as unknown as Listing);
+    setShowEditListingModal(true);
+  }, []);
+
+  // Handle delete listing
+  const handleDeleteListing = useCallback((listing: Record<string, unknown>) => {
+    setDeletingListing(listing as unknown as Listing);
+    setShowDeleteConfirmationModal(true);
+  }, []);
+
+  // Confirm delete listing
+  const confirmDeleteListing = useCallback(async () => {
+    if (!deletingListing) return;
+
+    try {
+      // Call the delete API
+      await deleteListing(deletingListing._id);
+      
+      // Remove from local state
+      setListings(prev => prev.filter(l => l._id !== deletingListing._id));
+      
+      // Show success toast
+      setToast({
+        message: 'Listing deleted successfully!',
+        type: 'success',
+        isVisible: true,
+      });
+      
+      // Auto-hide toast after 3 seconds
+      setTimeout(() => {
+        setToast(null);
+      }, 3000);
+    } catch (error) {
+      console.error('Error deleting listing:', error);
+      
+      // Show error toast
+      setToast({
+        message: 'Failed to delete listing. Please try again.',
+        type: 'error',
+        isVisible: true,
+      });
+      
+      // Auto-hide toast after 5 seconds
+      setTimeout(() => {
+        setToast(null);
+      }, 5000);
+    } finally {
+      setShowDeleteConfirmationModal(false);
+      setDeletingListing(null);
+    }
+  }, [deletingListing]);
 
   useEffect(() => {
     checkJoinStatus();
@@ -412,8 +481,7 @@ export default function MarketDetail() {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              // TODO: Implement edit listing
-              console.log('Edit listing:', row._id);
+              handleEditListing(row);
             }}
             className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors duration-200"
             title="Edit Listing"
@@ -423,8 +491,7 @@ export default function MarketDetail() {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              // TODO: Implement delete listing
-              console.log('Delete listing:', row._id);
+              handleDeleteListing(row);
             }}
             className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors duration-200"
             title="Delete Listing"
@@ -650,6 +717,7 @@ export default function MarketDetail() {
                 className="mb-4"
                 emptyStateMessage="No listings found"
                 emptyStateDescription="Try adjusting your search terms."
+                onRowClick={handleRowClick}
               />
             ) : (
               <div className="text-center py-12">
@@ -775,6 +843,54 @@ export default function MarketDetail() {
         marketId={market?._id || ''}
         marketName={market?.name || ''}
         marketLocation={market?.location || ''}
+      />
+
+      {/* Listing Details Modal */}
+      <ListingDetailsModal
+        isOpen={showListingDetailsModal}
+        onClose={() => setShowListingDetailsModal(false)}
+        listing={selectedListing}
+      />
+
+      {/* Edit Listing Modal */}
+      <EditListingModal
+        isOpen={showEditListingModal}
+        onClose={() => setShowEditListingModal(false)}
+        onSuccess={(message) => {
+          // Refresh listings after successful update
+          fetchListings();
+          
+          // Show success toast if message provided
+          if (message) {
+            setToast({
+              message,
+              type: 'success',
+              isVisible: true,
+            });
+            
+            // Auto-hide toast after 3 seconds
+            setTimeout(() => {
+              setToast(null);
+            }, 3000);
+          }
+        }}
+        listing={editingListing}
+        marketId={market?._id || ''}
+        marketName={market?.name || ''}
+        marketLocation={market?.location || ''}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={showDeleteConfirmationModal}
+        onClose={() => {
+          setShowDeleteConfirmationModal(false);
+          setDeletingListing(null);
+        }}
+        onConfirm={confirmDeleteListing}
+        title="Delete Listing"
+        message="You are about to permanently delete this listing. This action will remove the listing from the market and cannot be undone."
+        itemName={deletingListing?.title || ''}
       />
 
       {/* Toast Notifications */}

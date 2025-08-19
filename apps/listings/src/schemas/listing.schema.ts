@@ -116,6 +116,9 @@ export class Listing {
 
   @Prop({ type: Date })
   lastUpdated: Date;
+
+  @Prop({ default: false })
+  isDeleted: boolean;
 }
 
 export const ListingSchema = SchemaFactory.createForClass(Listing);
@@ -128,4 +131,5 @@ ListingSchema.index({ sellerId: 1 });
 ListingSchema.index({ status: 1 });
 ListingSchema.index({ price: 1 });
 ListingSchema.index({ createdAt: -1 });
-ListingSchema.index({ title: 'text', description: 'text', tags: 'text' }); 
+ListingSchema.index({ title: 'text', description: 'text', tags: 'text' });
+ListingSchema.index({ isDeleted: 1 }); 
