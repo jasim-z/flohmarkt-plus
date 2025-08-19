@@ -139,6 +139,27 @@ export async function createListingForMarket(marketId: string, listingData: Crea
   }
 }
 
+export async function updateListing(listingId: string, listingData: Partial<CreateListingRequest>): Promise<Listing> {
+  try {
+    const token = localStorage.getItem('auth_token');
+    const res = await fetch(`http://localhost:3952/listings/${listingId}`, {
+      method: "PATCH",
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(listingData),
+    });
+    if (!res.ok) {
+      throw new Error('Failed to update listing');
+    }
+    return await res.json();
+  } catch (error) {
+    console.error('Error updating listing:', error);
+    throw error;
+  }
+}
+
 // Debug function to check all listings
 export async function debugAllListings(): Promise<any[]> {
   try {

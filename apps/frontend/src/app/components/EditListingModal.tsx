@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { FaTimes, FaUpload, FaMapMarkerAlt, FaCalendar, FaClock, FaDollarSign, FaBox, FaTag, FaTruck, FaInfoCircle } from 'react-icons/fa';
-import { Listing, CreateListingRequest, createListingForMarket } from '../api/listings';
+import { Listing, CreateListingRequest, updateListing } from '../api/listings';
 import { formatPrice } from '@/lib/utils';
 
 interface EditListingModalProps {
@@ -144,17 +144,16 @@ export default function EditListingModal({
     
     if (!validateForm()) return;
     
+    if (!listing?._id) {
+      console.error('No listing ID found for update');
+      return;
+    }
+    
     setIsSubmitting(true);
     
     try {
-      // TODO: Implement update API call instead of create
-      // For now, we'll create a new listing (this should be updated to use an update endpoint)
-      const listingData: CreateListingRequest = {
-        ...formData,
-        marketId,
-      };
-      
-      await createListingForMarket(marketId, listingData);
+      // Update the existing listing
+      await updateListing(listing._id, formData);
       
       // Close modal and refresh listings immediately
       onSuccess('Listing updated successfully!');
@@ -193,7 +192,7 @@ export default function EditListingModal({
     } finally {
       setIsSubmitting(false);
     }
-  }, [formData, marketId, onSuccess, onClose]);
+  }, [formData, listing?._id, onSuccess, onClose]);
 
   if (!isOpen) return null;
 
