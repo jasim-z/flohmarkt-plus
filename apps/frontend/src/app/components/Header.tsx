@@ -67,13 +67,34 @@ export default function Header() {
             <nav className="hidden lg:flex space-x-8">
               {user?.role === 'admin' && (
                 <>
-                  <Link href={`/${params.locale}/dashboard`} className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link 
+                    href={`/${params.locale}/dashboard`} 
+                    className={`font-medium transition-colors duration-200 ${
+                      pathname.includes('/dashboard') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
                     Dashboard
                   </Link>
-                  <Link href={`/${params.locale}/users`} className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link 
+                    href={`/${params.locale}/users`} 
+                    className={`font-medium transition-colors duration-200 ${
+                      pathname.includes('/users') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
                     Users
                   </Link>
-                  <Link href={`/${params.locale}/markets`} className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link 
+                    href={`/${params.locale}/markets`} 
+                    className={`font-medium transition-colors duration-200 ${
+                      pathname.includes('/markets') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
                     Markets
                   </Link>
                 </>
@@ -81,16 +102,44 @@ export default function Header() {
               
               {user?.role === 'seller' && (
                 <>
-                  <Link href={`/${params.locale}/overview`} className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link 
+                    href={`/${params.locale}/overview`} 
+                    className={`font-medium transition-colors duration-200 ${
+                      pathname.includes('/overview') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
                     Home
                   </Link>
-                  <Link href={`/${params.locale}/explore-markets`} className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link 
+                    href={`/${params.locale}/explore-markets`} 
+                    className={`font-medium transition-colors duration-200 ${
+                      pathname.includes('/explore-markets') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
                     Explore Markets
                   </Link>
-                  <Link href={`/${params.locale}/orders`} className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link 
+                    href={`/${params.locale}/orders`} 
+                    className={`font-medium transition-colors duration-200 ${
+                      pathname.includes('/orders') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
                     Orders
                   </Link>
-                  <Link href={`/${params.locale}/messages`} className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link 
+                    href={`/${params.locale}/messages`} 
+                    className={`font-medium transition-colors duration-200 ${
+                      pathname.includes('/messages') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
                     Messages
                   </Link>
                 </>
@@ -98,16 +147,44 @@ export default function Header() {
               
               {user?.role === 'buyer' && (
                 <>
-                  <Link href={`/${params.locale}/home`} className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
-                    Browse
-                  </Link>
-                  <Link href={`/${params.locale}/user-markets`} className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link 
+                    href={`/${params.locale}/user-markets`} 
+                    className={`font-medium transition-colors duration-200 ${
+                      pathname.includes('/user-markets') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
                     Markets
                   </Link>
-                  <Link href={`/${params.locale}/user-orders`} className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link 
+                    href={`/${params.locale}/home`} 
+                    className={`font-medium transition-colors duration-200 ${
+                      pathname.includes('/home') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
+                    Browse
+                  </Link>
+                  <Link 
+                    href={`/${params.locale}/user-orders`} 
+                    className={`font-medium transition-colors duration-200 ${
+                      pathname.includes('/user-orders') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
                     Orders
                   </Link>
-                  <Link href={`/${params.locale}/user-messages`} className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link 
+                    href={`/${params.locale}/user-messages`} 
+                    className={`font-medium transition-colors duration-200 ${
+                      pathname.includes('/user-messages') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
                     Messages
                   </Link>
                 </>

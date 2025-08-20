@@ -69,7 +69,7 @@ export default function BuyerHome() {
   const lastListingRef = useRef<HTMLDivElement | null>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Check authentication
+  // Check authentication and redirect to markets for buyers
   useEffect(() => {
     if (isLoaded && !authLoading) {
       if (!user) {
@@ -78,6 +78,8 @@ export default function BuyerHome() {
         router.replace(`/${params.locale}/overview`);
       } else if (user.role === 'admin') {
         router.replace(`/${params.locale}/dashboard`);
+      } else if (user.role === 'buyer') {
+        router.replace(`/${params.locale}/home`);
       }
     }
   }, [user, isLoaded, authLoading, router, params.locale]);

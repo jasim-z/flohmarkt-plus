@@ -51,6 +51,13 @@ export class MarketsController {
     return this.marketsService.seed();
   }
 
+  @Post('bulk')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  createBulk(@Body() body: { markets: any[] }, @Request() req) {
+    return this.marketsService.createBulk(body.markets, req.user);
+  }
+
   @Post('update-statuses')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')

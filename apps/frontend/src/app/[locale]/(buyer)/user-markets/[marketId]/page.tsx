@@ -550,14 +550,6 @@ export default function MarketDetails() {
                         )}
                       </div>
 
-                      {/* Location */}
-                      {vendor.city && (
-                        <div className="flex items-center text-sm text-gray-600 mb-2">
-                          <FaMapMarkerAlt className="w-3 h-3 mr-1 text-red-500" />
-                          <span>{vendor.city}{vendor.neighborhood && `, ${vendor.neighborhood}`}</span>
-                        </div>
-                      )}
-
                       {/* Rating with Total Reviews */}
                       {vendor.rating && (
                         <div className="flex items-center space-x-1 mb-3">
@@ -587,11 +579,7 @@ export default function MarketDetails() {
 
                       {/* Badges */}
                       <div className="flex flex-wrap gap-2 mb-3">
-                        {vendor.isVerified && (
-                          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
-                            Verified
-                          </span>
-                        )}
+                        
                         {vendor.badges && vendor.badges.length > 0 && (
                           vendor.badges.slice(0, 3).map((badge, index) => (
                             <span 

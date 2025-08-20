@@ -56,6 +56,83 @@ export class MarketsService {
     });
   }
 
+  async createBulk(marketsData: any[], user: any) {
+    if (user.role !== 'admin') {
+      throw new ForbiddenException('Only admins can create markets in bulk');
+    }
+
+    if (!Array.isArray(marketsData) || marketsData.length === 0) {
+      throw new ForbiddenException('Markets data must be a non-empty array');
+    }
+
+    if (marketsData.length > 100) {
+      throw new ForbiddenException('Cannot create more than 100 markets at once');
+    }
+
+    const createdMarkets = [];
+    const errors = [];
+
+    for (let i = 0; i < marketsData.length; i++) {
+      try {
+        const marketData = marketsData[i];
+        
+        // Validate required fields
+        if (!marketData.name || !marketData.description || !marketData.location || !marketData.date) {
+          errors.push(`Market ${i + 1}: Missing required fields (name, description, location, or date)`);
+          continue;
+        }
+
+        // Enforce 1:1 relationship between vendor limit and booths available
+        if (marketData.vendorLimit && marketData.boothsAvailable) {
+          if (marketData.vendorLimit !== marketData.boothsAvailable) {
+            marketData.boothsAvailable = marketData.vendorLimit;
+          }
+        } else if (marketData.vendorLimit) {
+          marketData.boothsAvailable = marketData.vendorLimit;
+        } else if (marketData.boothsAvailable) {
+          marketData.vendorLimit = marketData.boothsAvailable;
+        }
+
+        // Calculate market status based on date and time
+        const marketDate = new Date(marketData.date);
+        const now = new Date();
+        const marketStartTime = new Date(marketData.date + 'T' + marketData.startTime);
+        const marketEndTime = new Date(marketData.date + 'T' + marketData.endTime);
+        
+        let status: string;
+        if (marketDate < now && now < marketEndTime) {
+          status = 'ongoing';
+        } else if (marketDate > now || (marketDate.getTime() === now.getTime() && marketStartTime > now)) {
+          status = 'upcoming';
+        } else {
+          status = 'past';
+        }
+
+        const market = await this.marketsRepository.create({
+          ...marketData,
+          status,
+          createdBy: new Types.ObjectId(user.userId),
+          registeredVendors: (marketData.registeredVendors || []).map(id => new Types.ObjectId(id)),
+          isDeleted: false,
+          isActive: marketData.isActive !== undefined ? marketData.isActive : true,
+        });
+
+        createdMarkets.push(market);
+      } catch (error) {
+        errors.push(`Market ${i + 1}: ${error.message}`);
+      }
+    }
+
+    return {
+      success: true,
+      totalRequested: marketsData.length,
+      created: createdMarkets.length,
+      failed: errors.length,
+      createdMarkets: createdMarkets,
+      errors: errors
+    };
+  }
+
   async findAll(query: any = {}) {
     const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', status, category, isActive } = query;
     

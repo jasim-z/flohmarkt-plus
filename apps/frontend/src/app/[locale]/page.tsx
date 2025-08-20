@@ -16,7 +16,7 @@ export default function Home({ params }: PageProps) {
       const { locale } = await params;
       const user = await getCurrentUser();
       if (user && user.role === 'buyer') {
-        router.replace(`/${locale}/home`);
+        router.replace(`/${locale}/user-markets`);
       } else if (user && user.role === 'seller') {
         router.replace(`/${locale}/seller/overview`);
       } else if (user && user.role === 'admin') {
