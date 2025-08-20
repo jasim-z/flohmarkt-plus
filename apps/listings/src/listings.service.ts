@@ -360,6 +360,86 @@ export class ListingsService {
     };
   }
 
+  async findByMarket(
+    marketId: string, 
+    page: number = 1, 
+    limit: number = 10,
+    search?: string,
+    sortBy: string = 'createdAt',
+    sortOrder: 'asc' | 'desc' = 'desc'
+  ): Promise<{ data: Listing[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
+    console.log('Finding listings for market:', marketId);
+    
+    const query: any = {
+      marketId: new Types.ObjectId(marketId),
+      status: { $ne: ListingStatus.DELETED },
+      $or: [
+        { isDeleted: false },
+        { isDeleted: { $exists: false } }
+      ],
+    };
+
+    // Add search functionality
+    if (search && search.trim()) {
+      // Create a separate $or for search conditions
+      const searchConditions = [
+        { title: { $regex: search.trim(), $options: 'i' } },
+        { description: { $regex: search.trim(), $options: 'i' } },
+        { category: { $regex: search.trim(), $options: 'i' } },
+        { tags: { $in: [new RegExp(search.trim(), 'i')] } }
+      ];
+      
+      // Use $and to combine deletion filter with search conditions
+      query.$and = [
+        {
+          $or: [
+            { isDeleted: false },
+            { isDeleted: { $exists: false } }
+          ]
+        },
+        {
+          $or: searchConditions
+        }
+      ];
+      
+      // Remove the original $or since we're using $and now
+      delete query.$or;
+    }
+    
+    console.log('Final Query:', JSON.stringify(query, null, 2));
+    console.log('Search term used:', search);
+    
+    // Calculate skip value for pagination
+    const skip = (page - 1) * limit;
+    
+    // Get total count for pagination
+    const total = await this.listingModel.countDocuments(query);
+    const totalPages = Math.ceil(total / limit);
+    
+    // Build sort object
+    const sort: any = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+    
+    const listings = await this.listingModel
+      .find(query)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .exec();
+    
+    console.log('Found listings:', listings.length);
+    
+    return {
+      data: listings,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages
+      }
+    };
+  }
+
   async update(id: string, updateListingDto: any, sellerId: string): Promise<Listing> {
     // Verify the listing belongs to the seller
     const listing = await this.listingModel.findById(id);

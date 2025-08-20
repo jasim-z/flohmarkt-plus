@@ -67,6 +67,48 @@ export interface GetListingsParams {
   deliveryOption?: string;
 }
 
+export async function getListingsByMarket(marketId: string, params: GetListingsParams = {}): Promise<{ data: Listing[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
+  try {
+    const token = localStorage.getItem('auth_token');
+    
+    // Build query parameters
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.append('page', params.page.toString());
+    if (params.limit) queryParams.append('limit', params.limit.toString());
+    if (params.search) queryParams.append('search', params.search);
+    if (params.sortBy) queryParams.append('sortBy', params.sortBy);
+    if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
+    if (params.category) queryParams.append('category', params.category);
+    if (params.condition) queryParams.append('condition', params.condition);
+    if (params.minPrice !== undefined) queryParams.append('minPrice', params.minPrice.toString());
+    if (params.maxPrice !== undefined) queryParams.append('maxPrice', params.maxPrice.toString());
+    if (params.city) queryParams.append('city', params.city);
+    if (params.neighborhood) queryParams.append('neighborhood', params.neighborhood);
+    if (params.isFree !== undefined) queryParams.append('isFree', params.isFree.toString());
+    if (params.isNegotiable !== undefined) queryParams.append('isNegotiable', params.isNegotiable.toString());
+    if (params.deliveryOption) queryParams.append('deliveryOption', params.deliveryOption);
+    
+    const url = `http://localhost:3952/listings/market/${marketId}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!res.ok) {
+      throw new Error('Failed to fetch listings');
+    }
+    
+    const data = await res.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching listings by market:', error);
+    return { data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } };
+  }
+}
+
 export async function getAllListings(params: GetListingsParams = {}): Promise<{ data: Listing[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
   try {
     const token = localStorage.getItem('auth_token');

@@ -18,9 +18,12 @@ import {
   FaListUl,
   FaCheck,
   FaInfoCircle,
-  FaTimes
+  FaTimes,
+  FaBox,
+  FaEye
 } from 'react-icons/fa';
 import { getMarketDetails, Market, Vendor } from '@/app/api/markets';
+import { getListingsByMarket, Listing } from '@/app/api/listings';
 
 interface MarketDetailsResponse {
   market: Market;
@@ -81,6 +84,15 @@ export default function MarketDetails() {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
+  const [exploreMode, setExploreMode] = useState<'vendors' | 'items'>('vendors');
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [listingsLoading, setListingsLoading] = useState(false);
+  const [listingsPagination, setListingsPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 0
+  });
 
   // Check authentication
   useEffect(() => {
@@ -102,6 +114,13 @@ export default function MarketDetails() {
     }
   }, [user, params.marketId]);
 
+  // Fetch listings when explore mode changes to items
+  useEffect(() => {
+    if (exploreMode === 'items' && params.marketId) {
+      fetchListings();
+    }
+  }, [exploreMode, params.marketId]);
+
   const fetchMarketDetails = async () => {
     try {
       setLoading(true);
@@ -112,6 +131,25 @@ export default function MarketDetails() {
       setError('Failed to load market details. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchListings = async () => {
+    if (!params.marketId) return;
+    
+    try {
+      setListingsLoading(true);
+      const response = await getListingsByMarket(params.marketId as string, {
+        page: listingsPagination.page,
+        limit: listingsPagination.limit,
+        search: searchTerm || undefined,
+      });
+      setListings(response.data);
+      setListingsPagination(response.pagination);
+    } catch (err) {
+      console.error('Error fetching listings:', err);
+    } finally {
+      setListingsLoading(false);
     }
   };
 
@@ -159,6 +197,12 @@ export default function MarketDetails() {
     vendor.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     vendor.neighborhood?.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
+
+  const filteredListings = listings.filter(listing =>
+    listing.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    listing.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    listing.category.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   // Loading state
   if (authLoading || !isLoaded) {
@@ -347,31 +391,70 @@ export default function MarketDetails() {
         {/* Market Statistics Section */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-6 sm:mb-8">
           <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">Market Statistics</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div className="bg-gray-50 rounded-lg p-3 text-center">
               <div className="text-2xl font-bold text-gray-900">{marketDetails.statistics.totalVendors}</div>
               <div className="text-sm text-gray-600">Total Vendors</div>
             </div>
             <div className="bg-gray-50 rounded-lg p-3 text-center">
               <div className="text-2xl font-bold text-blue-600">{marketDetails.statistics.verifiedVendors}</div>
-              <div className="text-sm text-gray-600">Verified</div>
+              <div className="text-sm text-gray-600">Verified Vendors</div>
             </div>
             <div className="bg-gray-50 rounded-lg p-3 text-center">
               <div className="text-2xl font-bold text-yellow-600">{marketDetails.statistics.averageRating.toFixed(1)}</div>
-              <div className="text-sm text-gray-600">Avg Rating</div>
+              <div className="text-sm text-gray-600">Avg Vendor Ratings</div>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-3 text-center">
+              <div className="text-2xl font-bold text-purple-600">{listings.length}</div>
+              <div className="text-sm text-gray-600">Total Items</div>
             </div>
           </div>
         </div>
 
-        {/* Explore Vendors Section */}
+        {/* Explore Section */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-6 sm:mb-8">
-          {/* Section Header */}
+          {/* Section Header with Toggle */}
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Explore Vendors</h2>
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
+                {exploreMode === 'vendors' ? 'Explore Vendors' : 'Explore Items'}
+              </h2>
               <p className="text-sm text-gray-600">
-                Discover unique vendors and their offerings at this flea market
+                {exploreMode === 'vendors' 
+                  ? 'Discover unique vendors and their offerings at this flea market'
+                  : 'Browse all items available at this flea market'
+                }
               </p>
+            </div>
+            
+            {/* Explore Mode Toggle */}
+            <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setExploreMode('vendors')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                  exploreMode === 'vendors'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <FaUsers className="w-4 h-4" />
+                  <span>Vendors</span>
+                </div>
+              </button>
+              <button
+                onClick={() => setExploreMode('items')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                  exploreMode === 'items'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <FaBox className="w-4 h-4" />
+                  <span>Items</span>
+                </div>
+              </button>
             </div>
           </div>
 
@@ -383,7 +466,7 @@ export default function MarketDetails() {
                 <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
-                  placeholder="Search vendors..."
+                  placeholder={exploreMode === 'vendors' ? 'Search vendors...' : 'Search items...'}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -416,123 +499,216 @@ export default function MarketDetails() {
             </div>
           </div>
 
-          {/* Vendors Grid/List */}
-          {filteredVendors.length === 0 ? (
-            <div className="text-center py-12">
-              <FaStore className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No vendors found</h3>
-              <p className="text-gray-500">Try adjusting your search terms</p>
-            </div>
-          ) : (
-            <div className={viewMode === 'grid' 
-              ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' 
-              : 'space-y-4'
-            }>
-              {filteredVendors.map((vendor) => (
-                <div
-                  key={vendor._id}
-                  className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all duration-300 cursor-pointer ${
-                    viewMode === 'list' ? 'flex items-center p-4' : 'p-6'
-                  }`}
-                >
-                  {/* Vendor Avatar */}
-                  <div className={`${viewMode === 'list' ? 'mr-4' : 'mb-4'}`}>
-                    <div className={`bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center ${
-                      viewMode === 'list' ? 'w-16 h-16' : 'w-20 h-20'
-                    }`}>
-                      {vendor.avatar ? (
-                        <img 
-                          src={vendor.avatar} 
-                          alt={vendor.displayName}
-                          className="w-full h-full object-cover rounded-full"
-                        />
-                      ) : (
-                        <FaStore className={`text-blue-600 ${viewMode === 'list' ? 'w-6 h-6' : 'w-8 h-8'}`} />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Vendor Info */}
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="font-semibold text-gray-900 text-lg">
-                        {vendor.displayName}
-                      </h3>
-                      {vendor.isVerified && (
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
-                          Verified
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Location */}
-                    {vendor.city && (
-                      <div className="flex items-center text-sm text-gray-600 mb-2">
-                        <FaMapMarkerAlt className="w-3 h-3 mr-1 text-red-500" />
-                        <span>{vendor.city}{vendor.neighborhood && `, ${vendor.neighborhood}`}</span>
-                      </div>
-                    )}
-
-                    {/* Rating with Total Reviews */}
-                    {vendor.rating && (
-                      <div className="flex items-center space-x-1 mb-3">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <FaStar 
-                            key={i} 
-                            className={`w-4 h-4 ${
-                              i < Math.floor(vendor.rating!) 
-                                ? 'text-yellow-400' 
-                                : 'text-gray-300'
-                            }`} 
+          {/* Conditional Content: Vendors or Items */}
+          {exploreMode === 'vendors' ? (
+            /* Vendors Display */
+            filteredVendors.length === 0 ? (
+              <div className="text-center py-12">
+                <FaStore className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No vendors found</h3>
+                <p className="text-gray-500">Try adjusting your search terms</p>
+              </div>
+            ) : (
+              <div className={viewMode === 'grid' 
+                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' 
+                : 'space-y-4'
+              }>
+                {filteredVendors.map((vendor) => (
+                  <div
+                    key={vendor._id}
+                    className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all duration-300 cursor-pointer ${
+                      viewMode === 'list' ? 'flex items-center p-4' : 'p-6'
+                    }`}
+                  >
+                    {/* Vendor Avatar */}
+                    <div className={`${viewMode === 'list' ? 'mr-4' : 'mb-4'}`}>
+                      <div className={`bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center ${
+                        viewMode === 'list' ? 'w-16 h-16' : 'w-20 h-20'
+                      }`}>
+                        {vendor.avatar ? (
+                          <img 
+                            src={vendor.avatar} 
+                            alt={vendor.displayName}
+                            className="w-full h-full object-cover rounded-full"
                           />
-                        ))}
-                        <span className="text-sm text-gray-600 ml-2">
-                          {vendor.rating.toFixed(1)} ({vendor.totalReviews || 0} reviews)
+                        ) : (
+                          <FaStore className={`text-blue-600 ${viewMode === 'list' ? 'w-6 h-6' : 'w-8 h-8'}`} />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Vendor Info */}
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className="font-semibold text-gray-900 text-lg">
+                          {vendor.displayName}
+                        </h3>
+                        {vendor.isVerified && (
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
+                            Verified
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Location */}
+                      {vendor.city && (
+                        <div className="flex items-center text-sm text-gray-600 mb-2">
+                          <FaMapMarkerAlt className="w-3 h-3 mr-1 text-red-500" />
+                          <span>{vendor.city}{vendor.neighborhood && `, ${vendor.neighborhood}`}</span>
+                        </div>
+                      )}
+
+                      {/* Rating with Total Reviews */}
+                      {vendor.rating && (
+                        <div className="flex items-center space-x-1 mb-3">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <FaStar 
+                              key={i} 
+                              className={`w-4 h-4 ${
+                                i < Math.floor(vendor.rating!) 
+                                  ? 'text-yellow-400' 
+                                  : 'text-gray-300'
+                              }`} 
+                            />
+                          ))}
+                          <span className="text-sm text-gray-600 ml-2">
+                            {vendor.rating.toFixed(1)} ({vendor.totalReviews || 0} reviews)
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Total Sales */}
+                      <div className="flex items-center space-x-2 mb-3">
+                        <FaStore className="w-3 h-3 text-green-500" />
+                        <span className="text-sm text-gray-600">
+                          {vendor.totalSales || 0} sales
                         </span>
                       </div>
-                    )}
 
-                    {/* Total Sales */}
-                    <div className="flex items-center space-x-2 mb-3">
-                      <FaStore className="w-3 h-3 text-green-500" />
-                      <span className="text-sm text-gray-600">
-                        {vendor.totalSales || 0} sales
-                      </span>
-                    </div>
-
-                    {/* Badges */}
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {vendor.isVerified && (
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
-                          Verified
-                        </span>
-                      )}
-                      {vendor.badges && vendor.badges.length > 0 && (
-                        vendor.badges.slice(0, 3).map((badge, index) => (
-                          <span 
-                            key={index}
-                            className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full font-medium"
-                          >
-                            {badge}
+                      {/* Badges */}
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {vendor.isVerified && (
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
+                            Verified
                           </span>
-                        ))
-                      )}
-                      {/* Mock badges for demonstration - remove in production */}
-                      {(!vendor.badges || vendor.badges.length === 0) && (
-                        <>
-                          <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full font-medium">
-                            Top Seller
-                          </span>
-                          <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">
-                            Fast Shipping
-                          </span>
-                        </>
-                      )}
+                        )}
+                        {vendor.badges && vendor.badges.length > 0 && (
+                          vendor.badges.slice(0, 3).map((badge, index) => (
+                            <span 
+                              key={index}
+                              className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full font-medium"
+                            >
+                              {badge}
+                            </span>
+                          ))
+                        )}
+                        {/* Mock badges for demonstration - remove in production */}
+                        {(!vendor.badges || vendor.badges.length === 0) && (
+                          <>
+                            <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full font-medium">
+                              Top Seller
+                            </span>
+                            <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">
+                              Fast Shipping
+                            </span>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
+                ))}
+              </div>
+            )
+          ) : (
+            /* Items Display */
+            listingsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-center">
+                  <div className="loader border-4 border-blue-600 border-t-transparent rounded-full w-8 h-8 mx-auto mb-4 animate-spin"></div>
+                  <p className="text-gray-600">Loading items...</p>
                 </div>
-              ))}
-            </div>
+              </div>
+            ) : filteredListings.length === 0 ? (
+              <div className="text-center py-12">
+                <FaBox className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No items found</h3>
+                <p className="text-gray-500">Try adjusting your search terms</p>
+              </div>
+            ) : (
+              <div className={viewMode === 'grid' 
+                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' 
+                : 'space-y-4'
+              }>
+                {filteredListings.map((listing) => (
+                  <div
+                    key={listing._id}
+                    className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all duration-300 cursor-pointer ${
+                      viewMode === 'list' ? 'flex items-center p-4' : 'p-6'
+                    }`}
+                  >
+                    {/* Item Image */}
+                    <div className={`${viewMode === 'list' ? 'mr-4' : 'mb-4'}`}>
+                      <div className={`bg-gradient-to-br from-green-100 to-green-200 rounded-lg flex items-center justify-center ${
+                        viewMode === 'list' ? 'w-16 h-16' : 'w-20 h-20'
+                      }`}>
+                        {listing.images && listing.images.length > 0 ? (
+                          <img 
+                            src={listing.images[0]} 
+                            alt={listing.title}
+                            className="w-full h-full object-cover rounded-lg"
+                          />
+                        ) : (
+                          <FaBox className={`text-green-600 ${viewMode === 'list' ? 'w-6 h-6' : 'w-8 h-8'}`} />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Item Info */}
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className="font-semibold text-gray-900 text-lg">
+                          {listing.title}
+                        </h3>
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
+                          {listing.category}
+                        </span>
+                      </div>
+
+                      {/* Description */}
+                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                        {listing.description}
+                      </p>
+
+                      {/* Price & Condition */}
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          {listing.isFree ? (
+                            <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">Free</span>
+                          ) : (
+                            <span className="text-lg font-bold text-gray-900">
+                              ${listing.price.toFixed(2)}
+                            </span>
+                          )}
+                          <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full font-medium">
+                            {listing.condition}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* Action Buttons */}
+                      <div className="flex items-center space-x-2">
+                        <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors duration-200">
+                          Buy Now
+                        </button>
+                        <button className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium py-2 px-3 rounded-lg transition-colors duration-200">
+                          Message Vendor
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
           )}
         </div>
       </div>
