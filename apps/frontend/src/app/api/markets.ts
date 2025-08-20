@@ -66,8 +66,8 @@ export interface PaginatedMarketsResponse {
 
 export interface Vendor {
   _id: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
   displayName: string;
   email: string;
   avatar?: string;
@@ -76,8 +76,12 @@ export interface Vendor {
   city?: string;
   neighborhood?: string;
   rating?: number;
+  totalReviews?: number;
+  totalSales?: number;
   isVerified?: boolean;
+  badges?: string[];
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface GetVendorsParams {
