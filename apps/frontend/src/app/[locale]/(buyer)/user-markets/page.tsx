@@ -46,9 +46,13 @@ export default function BuyerMarkets() {
   const router = useRouter();
   const params = useParams();
   const [markets, setMarkets] = useState<Market[]>([]);
+  const [featuredMarkets, setFeaturedMarkets] = useState<Market[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState<FilterState>({
     search: '',
     category: 'All Markets',
@@ -85,15 +89,22 @@ export default function BuyerMarkets() {
   useEffect(() => {
     if (user && user.role === 'buyer') {
       fetchMarkets();
+      fetchFeaturedMarkets();
     }
   }, [user]); // Remove filters dependency since we handle it separately above
 
-  const fetchMarkets = async () => {
+  const fetchMarkets = async (page: number = 1, append: boolean = false) => {
     try {
-      setLoading(true);
+      if (page === 1) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
       
       // Prepare API parameters
       const apiParams = {
+        page,
+        limit: 10,
         search: filters.search || undefined,
         status: filters.status === 'all' ? undefined : filters.status,
         sortBy: filters.sortBy,
@@ -107,12 +118,37 @@ export default function BuyerMarkets() {
       );
       
       const response = await getMarkets(cleanParams);
-      setMarkets(response.data || []);
+      
+      if (append) {
+        setMarkets(prev => [...prev, ...(response.data || [])]);
+      } else {
+        setMarkets(response.data || []);
+      }
+      
+      // Check if there are more pages
+      setHasMore(response.pagination && response.pagination.page < response.pagination.totalPages);
+      setCurrentPage(page);
     } catch (err) {
       console.error('Error fetching markets:', err);
       setError('Failed to load markets. Please try again.');
     } finally {
       setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const fetchFeaturedMarkets = async () => {
+    try {
+      const response = await getMarkets({ isFeatured: 'true', limit: 4 });
+      setFeaturedMarkets(response.data || []);
+    } catch (err) {
+      console.error('Error fetching featured markets:', err);
+    }
+  };
+
+  const loadMoreMarkets = () => {
+    if (!loadingMore && hasMore) {
+      fetchMarkets(currentPage + 1, true);
     }
   };
 
@@ -121,6 +157,9 @@ export default function BuyerMarkets() {
 
   const handleFilterChange = (key: keyof FilterState, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
+    // Reset pagination when filters change
+    setCurrentPage(1);
+    setHasMore(true);
   };
 
   const handleSortChange = (sortBy: string) => {
@@ -129,6 +168,9 @@ export default function BuyerMarkets() {
       sortBy,
       sortOrder: prev.sortBy === sortBy && prev.sortOrder === 'asc' ? 'desc' : 'asc'
     }));
+    // Reset pagination when sorting changes
+    setCurrentPage(1);
+    setHasMore(true);
   };
 
   const clearFilters = () => {
@@ -139,6 +181,9 @@ export default function BuyerMarkets() {
       sortBy: 'date',
       sortOrder: 'asc'
     });
+    // Reset pagination when clearing filters
+    setCurrentPage(1);
+    setHasMore(true);
   };
 
   const hasActiveFilters = filters.search || filters.category !== 'All Markets' || filters.status !== 'all';
@@ -350,11 +395,11 @@ export default function BuyerMarkets() {
       </div>
 
       {/* Featured Markets Section - Only show when no filters are applied */}
-      {filteredMarkets.length > 0 && !hasActiveFilters && (
+      {featuredMarkets.length > 0 && !hasActiveFilters && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-6">Featured Markets</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 mb-12">
-            {filteredMarkets.slice(0, 4).map((market) => (
+            {featuredMarkets.map((market) => (
               <MarketCard
                 key={market._id}
                 market={market}
@@ -388,7 +433,7 @@ export default function BuyerMarkets() {
           <div className="text-center py-12">
             <div className="text-red-500 text-lg font-semibold mb-2">{error}</div>
             <button
-              onClick={fetchMarkets}
+              onClick={() => fetchMarkets(1, false)}
               className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
             >
               Try Again
@@ -412,16 +457,38 @@ export default function BuyerMarkets() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-            {filteredMarkets.map((market) => (
-              <MarketCard
-                key={market._id}
-                market={market}
-                variant="compact"
-                onClick={() => handleMarketClick(market._id)}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+              {filteredMarkets.map((market) => (
+                <MarketCard
+                  key={market._id}
+                  market={market}
+                  variant="compact"
+                  onClick={() => handleMarketClick(market._id)}
+                />
+              ))}
+            </div>
+            
+            {/* Load More Button */}
+            {hasMore && (
+              <div className="text-center mt-8">
+                <button
+                  onClick={loadMoreMarkets}
+                  disabled={loadingMore}
+                  className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loadingMore ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Loading...</span>
+                    </div>
+                  ) : (
+                    'Load More Markets'
+                  )}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

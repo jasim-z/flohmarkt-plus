@@ -12,6 +12,7 @@ export interface Market {
   startTime: string;
   endTime: string;
   isActive: boolean;
+  isFeatured?: boolean;
   createdBy: string;
   bannerImage: string;
   vendorLimit?: number;
@@ -34,6 +35,7 @@ export interface GetMarketsParams {
   userId?: string; // To filter markets by user participation
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  isFeatured?: string;
 }
 
 export interface CreateMarketRequest {

@@ -133,8 +133,36 @@ export class MarketsService {
     };
   }
 
+  async getFeaturedMarkets() {
+    const filter = {
+      $and: [
+        { isDeleted: false },
+        { isActive: true },
+        { isFeatured: true },
+        // Only show upcoming and ongoing featured markets
+        {
+          $or: [
+            { status: 'upcoming' },
+            { status: 'ongoing' }
+          ]
+        }
+      ]
+    };
+
+    const markets = await this.marketsRepository.find(filter);
+    return {
+      data: markets.slice(0, 10),
+      pagination: {
+        page: 1,
+        limit: 10,
+        total: markets.length,
+        totalPages: Math.ceil(markets.length / 10)
+      }
+    };
+  }
+
   async findAll(query: any = {}) {
-    const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', status, category, isActive } = query;
+    const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', status, category, isActive, isFeatured, userRole } = query;
     
     console.log('Backend received query:', query);
     
@@ -153,6 +181,38 @@ export class MarketsService {
       ]
     };
     
+    // For non-admin users, automatically filter for ongoing and upcoming markets only
+    if (userRole !== 'admin') {
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      
+      filter.$and.push({
+        $or: [
+          // Upcoming markets (future dates or today but hasn't started)
+          {
+            $or: [
+              { date: { $gt: todayEnd } }, // Future date (after today)
+              {
+                $and: [
+                  { date: { $gte: todayStart, $lt: todayEnd } }, // Today
+                  { startTime: { $gt: now.toTimeString().slice(0, 5) } } // Today but hasn't started
+                ]
+              }
+            ]
+          },
+          // Ongoing markets (today and currently happening)
+          {
+            $and: [
+              { date: { $gte: todayStart, $lt: todayEnd } }, // Today
+              { startTime: { $lte: now.toTimeString().slice(0, 5) } }, // Started
+              { endTime: { $gte: now.toTimeString().slice(0, 5) } } // Not ended
+            ]
+          }
+        ]
+      });
+    }
+    
     // Add search filter if provided
     if (search) {
       filter.$and.push({
@@ -170,6 +230,11 @@ export class MarketsService {
       filter.$and.push({
         categories: { $in: [new RegExp(category, 'i')] }
       });
+    }
+    
+    // Add featured filter if provided
+    if (isFeatured !== undefined) {
+      filter.$and.push({ isFeatured: isFeatured === 'true' });
     }
     
     // Add status filter if provided

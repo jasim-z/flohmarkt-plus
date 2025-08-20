@@ -33,8 +33,17 @@ export class MarketsController {
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'seller', 'buyer')
-  findAll(@Query() query: any) {
+  findAll(@Query() query: any, @Request() req) {
+    // Add user role to query for proper filtering
+    query.userRole = req.user.role;
     return this.marketsService.findAll(query);
+  }
+
+  @Get('featured')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'seller', 'buyer')
+  getFeaturedMarkets() {
+    return this.marketsService.getFeaturedMarkets();
   }
 
   @Get('user/:userId')
