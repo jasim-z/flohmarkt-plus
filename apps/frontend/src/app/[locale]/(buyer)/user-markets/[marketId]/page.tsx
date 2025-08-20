@@ -310,44 +310,36 @@ export default function MarketDetails() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 <div className="space-y-3">
                   <div className="flex items-center space-x-3">
-                    <FaMapMarkerAlt className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                    <span className="text-gray-700 break-words">{market.location}</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <FaCalendar className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  <FaCalendar className="h-4 w-4 text-gray-400 flex-shrink-0" />
                     <span className="text-gray-700">
                       {formatDate(market.date)}
                     </span>
                   </div>
                   <div className="flex items-center space-x-3">
-                    <FaClock className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                    <span className="text-gray-700">
-                      {formatTime(market.startTime)} - {formatTime(market.endTime)}
-                    </span>
+                  <FaMapMarkerAlt className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  <span className="text-gray-700 break-words">{market.location}</span>
                   </div>
                 </div>
                 
                 <div className="space-y-3">
                   <div className="flex items-center space-x-3">
-                    <FaUsers className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  <FaClock className="h-4 w-4 text-gray-400 flex-shrink-0" />
                     <span className="text-gray-700">
-                      {marketDetails.statistics.totalVendors} vendors registered
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <FaStore className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                    <span className="text-gray-700">
-                      {market.boothsAvailable || 0} booths available
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <FaStar className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                    <span className="text-gray-700">
-                      Average Rating: {marketDetails.statistics.averageRating.toFixed(1)}/5
+                      {formatTime(market.startTime)} - {formatTime(market.endTime)}
                     </span>
                   </div>
                 </div>
               </div>
+              <div className="flex flex-wrap gap-2 mt-6">
+              {market.categories.map((category, index) => (
+                <span
+                  key={index}
+                  className="px-3 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-medium break-words"
+                >
+                  {category}
+                </span>
+              ))}
+            </div>
             </div>
           </div>
         </div>
@@ -355,14 +347,10 @@ export default function MarketDetails() {
         {/* Market Statistics Section */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-6 sm:mb-8">
           <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">Market Statistics</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-gray-50 rounded-lg p-3 text-center">
               <div className="text-2xl font-bold text-gray-900">{marketDetails.statistics.totalVendors}</div>
               <div className="text-sm text-gray-600">Total Vendors</div>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-3 text-center">
-              <div className="text-2xl font-bold text-green-600">{marketDetails.statistics.activeVendors}</div>
-              <div className="text-sm text-gray-600">Active Vendors</div>
             </div>
             <div className="bg-gray-50 rounded-lg p-3 text-center">
               <div className="text-2xl font-bold text-blue-600">{marketDetails.statistics.verifiedVendors}</div>
@@ -546,73 +534,6 @@ export default function MarketDetails() {
               ))}
             </div>
           )}
-        </div>
-
-        {/* Market Categories */}
-        {market.categories && market.categories.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-6 sm:mb-8">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">Market Categories</h2>
-            <div className="flex flex-wrap gap-2">
-              {market.categories.map((category, index) => (
-                <span
-                  key={index}
-                  className="px-3 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-medium break-words"
-                >
-                  {category}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Market Information */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">Market Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">What to Expect</h3>
-              <ul className="space-y-2 text-gray-600">
-                <li className="flex items-start space-x-2">
-                  <FaCheck className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Professional market environment</span>
-                </li>
-                <li className="flex items-start space-x-2">
-                  <FaCheck className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Organized vendor spaces</span>
-                </li>
-                <li className="flex items-start space-x-2">
-                  <FaCheck className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Customer traffic and exposure</span>
-                </li>
-                <li className="flex items-start space-x-2">
-                  <FaCheck className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Marketing and promotion support</span>
-                </li>
-              </ul>
-            </div>
-            
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Market Highlights</h3>
-              <ul className="space-y-2 text-gray-600">
-                <li className="flex items-start space-x-2">
-                  <FaInfoCircle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                  <span>Diverse vendor selection</span>
-                </li>
-                <li className="flex items-start space-x-2">
-                  <FaInfoCircle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                  <span>Quality products and services</span>
-                </li>
-                <li className="flex items-start space-x-2">
-                  <FaInfoCircle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                  <span>Family-friendly atmosphere</span>
-                </li>
-                <li className="flex items-start space-x-2">
-                  <FaInfoCircle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                  <span>Regular events and activities</span>
-                </li>
-              </ul>
-            </div>
-          </div>
         </div>
       </div>
     </div>
