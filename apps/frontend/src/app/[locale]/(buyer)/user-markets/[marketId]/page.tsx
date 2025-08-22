@@ -93,6 +93,10 @@ export default function MarketDetails() {
     total: 0,
     totalPages: 0
   });
+  const [hasMoreListings, setHasMoreListings] = useState(true);
+  const [loadingMoreListings, setLoadingMoreListings] = useState(false);
+  const [hasMoreVendors, setHasMoreVendors] = useState(true);
+  const [loadingMoreVendors, setLoadingMoreVendors] = useState(false);
 
   // Check authentication
   useEffect(() => {
@@ -121,6 +125,8 @@ export default function MarketDetails() {
     }
   }, [exploreMode, params.marketId]);
 
+
+
   const fetchMarketDetails = async () => {
     try {
       setLoading(true);
@@ -134,24 +140,100 @@ export default function MarketDetails() {
     }
   };
 
-  const fetchListings = async () => {
+  const fetchListings = async (append: boolean = false) => {
     if (!params.marketId) return;
     
     try {
-      setListingsLoading(true);
+      if (append) {
+        setLoadingMoreListings(true);
+      } else {
+        setListingsLoading(true);
+      }
+      
       const response = await getListingsByMarket(params.marketId as string, {
-        page: listingsPagination.page,
+        page: append ? listingsPagination.page + 1 : 1,
         limit: listingsPagination.limit,
         search: searchTerm || undefined,
       });
-      setListings(response.data);
-      setListingsPagination(response.pagination);
+      
+      if (append) {
+        setListings(prev => [...prev, ...response.data]);
+        setListingsPagination(prev => ({
+          ...prev,
+          page: prev.page + 1,
+          total: response.pagination.total,
+          totalPages: response.pagination.totalPages
+        }));
+      } else {
+        setListings(response.data);
+        setListingsPagination(response.pagination);
+      }
+      
+      setHasMoreListings(response.pagination.page < response.pagination.totalPages);
     } catch (err) {
       console.error('Error fetching listings:', err);
     } finally {
-      setListingsLoading(false);
+      if (append) {
+        setLoadingMoreListings(false);
+      } else {
+        setListingsLoading(false);
+      }
     }
   };
+
+  const loadMoreVendors = async () => {
+    if (!marketDetails || loadingMoreVendors || !hasMoreVendors) return;
+    
+    try {
+      setLoadingMoreVendors(true);
+      const currentVendorPage = Math.ceil(marketDetails.vendors.length / 20) + 1;
+      
+      const response = await getMarketDetails(params.marketId as string, {
+        page: currentVendorPage,
+        limit: 20,
+        search: searchTerm || undefined,
+      });
+      
+      if (response.vendors && response.vendors.length > 0) {
+        setMarketDetails(prev => ({
+          ...prev!,
+          vendors: [...prev!.vendors, ...response.vendors],
+          pagination: response.pagination
+        }));
+        setHasMoreVendors(response.pagination.hasNext);
+      }
+    } catch (err) {
+      console.error('Error loading more vendors:', err);
+    } finally {
+      setLoadingMoreVendors(false);
+    }
+  };
+
+  // Infinite scroll handlers
+  useEffect(() => {
+    const handleScroll = () => {
+      if (exploreMode === 'items' && hasMoreListings && !loadingMoreListings) {
+        const scrollTop = window.scrollY;
+        const windowHeight = window.innerHeight;
+        const documentHeight = document.documentElement.scrollHeight;
+        
+        if (scrollTop + windowHeight >= documentHeight - 100) {
+          fetchListings(true);
+        }
+      } else if (exploreMode === 'vendors' && hasMoreVendors && !loadingMoreVendors) {
+        const scrollTop = window.scrollY;
+        const windowHeight = window.innerHeight;
+        const documentHeight = document.documentElement.scrollHeight;
+        
+        if (scrollTop + windowHeight >= documentHeight - 100) {
+          loadMoreVendors();
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [exploreMode, hasMoreListings, loadingMoreListings, hasMoreVendors, loadingMoreVendors, fetchListings, loadMoreVendors]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -624,6 +706,23 @@ export default function MarketDetails() {
                     </div>
                   </div>
                 ))}
+                
+                {/* Infinite Scroll Loading Indicator for Vendors */}
+                {loadingMoreVendors && (
+                  <div className="mt-8 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="border-4 border-blue-600 border-t-transparent rounded-full w-8 h-8 mx-auto mb-4 animate-spin"></div>
+                      <p className="text-gray-600">Loading more vendors...</p>
+                    </div>
+                  </div>
+                )}
+                
+                {/* End of Results for Vendors */}
+                {!hasMoreVendors && filteredVendors.length > 0 && (
+                  <div className="mt-8 text-center">
+                    <p className="text-gray-500 text-sm">You&apos;ve reached the end of all vendors</p>
+                  </div>
+                )}
               </div>
             )
           ) : (
@@ -631,7 +730,7 @@ export default function MarketDetails() {
             listingsLoading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="text-center">
-                  <div className="loader border-4 border-blue-600 border-t-transparent rounded-full w-8 h-8 mx-auto mb-4 animate-spin"></div>
+                  <div className="border-4 border-blue-600 border-t-transparent rounded-full w-8 h-8 mx-auto mb-4 animate-spin"></div>
                   <p className="text-gray-600">Loading items...</p>
                 </div>
               </div>
@@ -649,6 +748,14 @@ export default function MarketDetails() {
                 {filteredListings.map((listing) => (
                   <div
                     key={listing._id}
+                    onClick={() => {
+                      // Find the seller for this listing
+                      const seller = marketDetails?.vendors.find(v => v._id === listing.sellerId);
+                      if (seller) {
+                        const vendorData = encodeURIComponent(JSON.stringify(seller));
+                        router.push(`/${params.locale}/user-markets/${params.marketId}/seller/${listing.sellerId}/item/${listing._id}?vendor=${vendorData}`);
+                      }
+                    }}
                     className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all duration-300 cursor-pointer ${
                       viewMode === 'list' ? 'flex items-center p-4' : 'p-6'
                     }`}
@@ -714,6 +821,23 @@ export default function MarketDetails() {
                     </div>
                   </div>
                 ))}
+                
+                {/* Infinite Scroll Loading Indicator for Items */}
+                {loadingMoreListings && (
+                  <div className="mt-8 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="border-4 border-blue-600 border-t-transparent rounded-full w-8 h-8 mx-auto mb-4 animate-spin"></div>
+                      <p className="text-gray-600">Loading more items...</p>
+                    </div>
+                  </div>
+                )}
+                
+                {/* End of Results for Items */}
+                {!hasMoreListings && filteredListings.length > 0 && (
+                  <div className="mt-8 text-center">
+                    <p className="text-gray-500 text-sm">You&apos;ve reached the end of all items</p>
+                  </div>
+                )}
               </div>
             )
           )}

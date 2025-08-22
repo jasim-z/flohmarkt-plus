@@ -30,6 +30,8 @@ export default function SellerItems() {
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [searchLoading, setSearchLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // Debouncing ref for search
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -87,22 +89,62 @@ export default function SellerItems() {
   }, [searchParams, sellerId]);
 
   // Fetch listings for the seller in this market
-  const fetchListings = useCallback(async (params: GetListingsParams = {}) => {
+  const fetchListings = useCallback(async (params: GetListingsParams = {}, append: boolean = false) => {
     if (!marketId || !sellerId) return;
     
     try {
-      setListingsLoading(true);
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setListingsLoading(true);
+      }
+      
       const response = await getListingsBySellerAndMarket(sellerId as string, marketId as string, params);
-      setListings(response.data);
+      
+      if (append) {
+        setListings(prev => [...prev, ...response.data]);
+      } else {
+        setListings(response.data);
+      }
+      
       setTotalPages(response.pagination.totalPages);
       setTotalItems(response.pagination.total);
       setCurrentPage(response.pagination.page);
+      setHasMore(response.pagination.page < response.pagination.totalPages);
     } catch (error) {
       console.error('Error fetching listings:', error);
     } finally {
-      setListingsLoading(false);
+      if (append) {
+        setLoadingMore(false);
+      } else {
+        setListingsLoading(false);
+      }
     }
   }, [marketId, sellerId]);
+  
+  // Infinite scroll handler
+  const handleScroll = useCallback(() => {
+    if (loadingMore || !hasMore) return;
+    
+    const scrollTop = window.scrollY;
+    const windowHeight = window.innerHeight;
+    const documentHeight = document.documentElement.scrollHeight;
+    
+    // Load more when user is near the bottom (within 100px)
+    if (scrollTop + windowHeight >= documentHeight - 100) {
+      const nextPage = currentPage + 1;
+      if (nextPage <= totalPages) {
+        const params: GetListingsParams = {
+          page: nextPage,
+          limit: 10,
+          search: searchTerm || undefined,
+          sortBy: sortBy || 'createdAt',
+          sortOrder: sortOrder || 'desc',
+        };
+        fetchListings(params, true);
+      }
+    }
+  }, [loadingMore, hasMore, currentPage, totalPages, searchTerm, sortBy, sortOrder, fetchListings]);
 
   // Initial data fetch - only for buyers
   useEffect(() => {
@@ -112,18 +154,14 @@ export default function SellerItems() {
       fetchListings();
     }
   }, [user, marketId, sellerId, fetchMarket, getSellerFromURL, fetchListings]);
+  
+  // Add scroll event listener for infinite scroll
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
 
-  // Handle page change
-  const handlePageChange = useCallback((page: number) => {
-    const params: GetListingsParams = {
-      page,
-      limit: 10,
-      search: searchTerm || undefined,
-      sortBy: sortBy || 'createdAt',
-      sortOrder: sortOrder || 'desc',
-    };
-    fetchListings(params);
-  }, [fetchListings, searchTerm, sortBy, sortOrder]);
+
 
   // Handle search
   const handleSearch = useCallback((term: string) => {
@@ -444,6 +482,10 @@ export default function SellerItems() {
                 {filteredListings.map((listing) => (
                   <div
                     key={listing._id}
+                    onClick={() => {
+                      const vendorData = encodeURIComponent(JSON.stringify(seller));
+                      router.push(`/${locale}/user-markets/${marketId}/seller/${sellerId}/item/${listing._id}?vendor=${vendorData}`);
+                    }}
                     tabIndex={0}
                     role="button"
                     aria-label={`View details for ${listing.title}`}
@@ -514,30 +556,20 @@ export default function SellerItems() {
                 ))}
               </div>
 
-              {/* Pagination */}
-              {totalPages > 1 && (
+              {/* Infinite Scroll Loading Indicator */}
+              {loadingMore && (
                 <div className="mt-8 flex items-center justify-center">
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => handlePageChange(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Previous
-                    </button>
-                    
-                    <span className="px-3 py-2 text-sm text-gray-700">
-                      Page {currentPage} of {totalPages}
-                    </span>
-                    
-                    <button
-                      onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Next
-                    </button>
+                  <div className="text-center">
+                    <div className="border-4 border-blue-600 border-t-transparent rounded-full w-8 h-8 mx-auto mb-4 animate-spin"></div>
+                    <p className="text-gray-600">Loading more items...</p>
                   </div>
+                </div>
+              )}
+              
+              {/* End of Results */}
+              {!hasMore && listings.length > 0 && (
+                <div className="mt-8 text-center">
+                  <p className="text-gray-500 text-sm">You&apos;ve reached the end of all items</p>
                 </div>
               )}
             </>
