@@ -76,6 +76,32 @@ export class UsersService {
     return user;
   }
 
+  async getPublicUserInfo(userId: string) {
+    const user = await this.usersRepository.findOne({ _id: userId });
+    if (!user) {
+      throw new UnprocessableEntityException('User not found');
+    }
+    
+    // Return only public information
+    return {
+      _id: user._id,
+      displayName: user.displayName,
+      avatar: user.avatar,
+      bio: user.bio,
+      role: user.role,
+      city: user.city,
+      neighborhood: user.neighborhood,
+      isVerified: user.isVerified,
+      rating: user.rating,
+      totalSales: user.totalSales,
+      totalReviews: user.totalReviews,
+      badges: user.badges,
+      isActive: user.isActive,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+  }
+
   async getUsers(query: GetUsersDto): Promise<PaginatedUsersResponse> {
     const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', role, isActive } = query;
     

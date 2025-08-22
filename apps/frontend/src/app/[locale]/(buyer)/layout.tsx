@@ -13,8 +13,14 @@ export default function BuyerLayout({ children }: { children: React.ReactNode })
   const params = useParams();
 
   useEffect(() => {
-    if (isLoaded && !isLoading && role !== 'buyer') {
-      router.push(`/${params.locale}/unauthorized`);
+    console.log('BuyerLayout - role:', role, 'isLoaded:', isLoaded, 'isLoading:', isLoading);
+    // Only redirect if we're sure the user is not a buyer
+    // Give more time for the UserContext to load user data
+    if (isLoaded && !isLoading) {
+      if (role && role !== 'buyer') {
+        console.log('user is not buyer, redirecting to unauthorized');
+        router.push(`/${params.locale}/unauthorized`);
+      }
     }
   }, [role, isLoaded, isLoading, router, params.locale]);
 
@@ -23,9 +29,18 @@ export default function BuyerLayout({ children }: { children: React.ReactNode })
     return <Loading />;
   }
 
-  // Show unauthorized if not buyer
-  if (role !== 'buyer') {
+  // Give more time for the role to load before redirecting
+  // This prevents premature redirects when role is still loading
+  if (role && role !== 'buyer') {
+    console.log('BuyerLayout - role loaded but not buyer, redirecting');
     return null; // Will redirect to unauthorized
+  }
+
+  // If we don't have a role yet but we're loaded, show loading
+  // This gives the UserContext more time to fetch the role
+  if (isLoaded && !role) {
+    console.log('BuyerLayout - loaded but no role yet, showing loading');
+    return <Loading />;
   }
 
   return (

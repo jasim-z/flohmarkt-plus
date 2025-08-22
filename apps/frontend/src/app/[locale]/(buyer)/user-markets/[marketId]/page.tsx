@@ -516,7 +516,21 @@ export default function MarketDetails() {
                 {filteredVendors.map((vendor) => (
                   <div
                     key={vendor._id}
-                    className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all duration-300 cursor-pointer ${
+                    onClick={() => {
+                      const vendorData = encodeURIComponent(JSON.stringify(vendor));
+                      router.push(`/${params.locale}/user-markets/${params.marketId}/seller/${vendor._id}?vendor=${vendorData}`);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        const vendorData = encodeURIComponent(JSON.stringify(vendor));
+                        router.push(`/${params.locale}/user-markets/${params.marketId}/seller/${vendor._id}?vendor=${vendorData}`);
+                      }
+                    }}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`View all items from ${vendor.displayName}`}
+                    className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg hover:scale-[1.02] transition-all duration-300 cursor-pointer group focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                       viewMode === 'list' ? 'flex items-center p-4' : 'p-6'
                     }`}
                   >
@@ -601,6 +615,11 @@ export default function MarketDetails() {
                             </span>
                           </>
                         )}
+                      </div>
+                      
+                      {/* Click hint */}
+                      <div className="text-xs text-gray-400 group-hover:text-blue-500 transition-colors">
+                        Click to view all items from this seller
                       </div>
                     </div>
                   </div>

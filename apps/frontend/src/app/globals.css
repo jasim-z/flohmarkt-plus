@@ -91,6 +91,26 @@
   }
 }
 
+/* Hero section enhancements */
+.search-input {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.search-input:focus {
+  transform: scale(1.02);
+}
+
+/* Enhanced shadows */
+.shadow-3xl {
+  box-shadow: 0 35px 60px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* Text gradient support */
+.bg-clip-text {
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
 @keyframes slideInRight {
   from {
     opacity: 0;

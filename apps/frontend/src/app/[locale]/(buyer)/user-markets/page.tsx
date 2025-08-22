@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { useRouter, useParams } from 'next/navigation';
 import { 
@@ -60,6 +60,9 @@ export default function BuyerMarkets() {
     sortBy: 'date',
     sortOrder: 'asc'
   });
+  
+  // Ref for the sentinel element (trigger for infinite scroll)
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Check authentication
   useEffect(() => {
@@ -95,6 +98,8 @@ export default function BuyerMarkets() {
 
   const fetchMarkets = async (page: number = 1, append: boolean = false) => {
     try {
+      console.log(`Fetching markets: page=${page}, append=${append}`);
+      
       if (page === 1) {
         setLoading(true);
       } else {
@@ -117,16 +122,26 @@ export default function BuyerMarkets() {
         Object.entries(apiParams).filter(([_, value]) => value !== undefined)
       );
       
+      console.log('API params:', cleanParams);
       const response = await getMarkets(cleanParams);
+      console.log('API response:', response);
       
       if (append) {
-        setMarkets(prev => [...prev, ...(response.data || [])]);
+        setMarkets(prev => {
+          const newMarkets = [...prev, ...(response.data || [])];
+          console.log(`Appending markets: prev=${prev.length}, new=${response.data?.length}, total=${newMarkets.length}`);
+          return newMarkets;
+        });
       } else {
         setMarkets(response.data || []);
+        console.log(`Setting markets: ${response.data?.length} markets`);
       }
       
       // Check if there are more pages
-      setHasMore(response.pagination && response.pagination.page < response.pagination.totalPages);
+      const hasMorePages = response.pagination && response.pagination.page < response.pagination.totalPages;
+      console.log(`Pagination: page=${response.pagination?.page}, totalPages=${response.pagination?.totalPages}, hasMore=${hasMorePages}`);
+      
+      setHasMore(hasMorePages);
       setCurrentPage(page);
     } catch (err) {
       console.error('Error fetching markets:', err);
@@ -146,11 +161,56 @@ export default function BuyerMarkets() {
     }
   };
 
-  const loadMoreMarkets = () => {
+  const loadMoreMarkets = useCallback(() => {
     if (!loadingMore && hasMore) {
       fetchMarkets(currentPage + 1, true);
     }
-  };
+  }, [loadingMore, hasMore, currentPage]);
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    // Only set up observer if we have more markets to load
+    if (!hasMore || loadingMore) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const target = entries[0];
+        console.log('Intersection observer triggered:', {
+          isIntersecting: target.isIntersecting,
+          hasMore,
+          loadingMore,
+          currentPage
+        });
+        
+        if (target.isIntersecting && hasMore && !loadingMore) {
+          console.log('Loading more markets...');
+          loadMoreMarkets();
+        }
+      },
+      {
+        rootMargin: '100px', // Start loading 100px before reaching the bottom
+        threshold: 0.1
+      }
+    );
+
+    // Small delay to ensure DOM is ready
+    const timeoutId = setTimeout(() => {
+      if (sentinelRef.current) {
+        observer.observe(sentinelRef.current);
+        console.log('Observer attached to sentinel element');
+      }
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (sentinelRef.current) {
+        observer.unobserve(sentinelRef.current);
+        console.log('Observer detached from sentinel element');
+      }
+    };
+  }, [loadMoreMarkets, hasMore, loadingMore, currentPage, markets.length]);
 
   // Use markets directly from backend - no frontend filtering
   const filteredMarkets = markets;
@@ -212,28 +272,33 @@ export default function BuyerMarkets() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Hero Section with Search */}
-      <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
-          <div className="text-center mb-8 md:mb-12">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
+      <div className="bg-gradient-to-br from-blue-500 to-purple-600 text-white relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-purple-500/20"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent"></div>
+        
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
+          <div className="text-center mb-10 md:mb-16">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent drop-shadow-lg">
               Discover Local Markets
             </h1>
-            <p className="text-lg md:text-xl text-primary-100 max-w-2xl mx-auto">
-              Find the best flea markets near you
+            <p className="text-xl md:text-2xl text-blue-50 max-w-3xl mx-auto leading-relaxed">
+              Find the best flea markets, craft fairs, and local events near you
             </p>
           </div>
           
           {/* Search Bar */}
-          <div className="max-w-2xl mx-auto">
-            <div className="relative">
-              <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <div className="max-w-3xl mx-auto">
+            <div className="relative group">
+              <FaSearch className="absolute left-5 top-1/2 transform -translate-y-1/2 text-blue-400 w-6 h-6 transition-colors group-focus-within:text-blue-500" />
               <input
                 type="text"
                 placeholder="Search markets, locations, or categories..."
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
-                className="w-full pl-12 pr-4 py-3 md:py-4 text-gray-900 rounded-2xl border-0 shadow-lg focus:ring-2 focus:ring-primary-300 focus:outline-none text-base md:text-lg search-input"
+                className="w-full pl-16 pr-6 py-4 md:py-5 text-gray-900 rounded-3xl border-0 shadow-2xl focus:ring-4 focus:ring-blue-300/50 focus:outline-none text-lg md:text-xl bg-white/95 backdrop-blur-sm transition-all duration-300 hover:bg-white hover:shadow-3xl search-input"
               />
+              <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-blue-400/20 to-purple-500/20 opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 -z-10"></div>
             </div>
           </div>
         </div>
@@ -469,23 +534,29 @@ export default function BuyerMarkets() {
               ))}
             </div>
             
-            {/* Load More Button */}
+            {/* Infinite Scroll Sentinel */}
             {hasMore && (
-              <div className="text-center mt-8">
-                <button
-                  onClick={loadMoreMarkets}
-                  disabled={loadingMore}
-                  className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loadingMore ? (
-                    <div className="flex items-center space-x-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Loading...</span>
+              <div ref={sentinelRef} className="py-8 min-h-[100px]">
+                {loadingMore ? (
+                  <div className="text-center">
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
+                      <span className="text-gray-600">Loading more markets...</span>
                     </div>
-                  ) : (
-                    'Load More Markets'
-                  )}
-                </button>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <div className="text-gray-400 text-sm mb-3">
+                      Scroll down to load more markets
+                    </div>
+                    <button
+                      onClick={() => loadMoreMarkets()}
+                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm"
+                    >
+                      Load More Manually
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </>

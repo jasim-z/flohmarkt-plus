@@ -29,6 +29,12 @@ export class UsersController {
     return this.usersService.getUserById(id);
   }
 
+  @Get(':id/public')
+  @UseGuards(JwtAuthGuard)
+  async getPublicUserInfo(@Param('id') id: string) {
+    return this.usersService.getPublicUserInfo(id);
+  }
+
   @Post('batch')
   async getUsersByIds(@Body() request: GetUsersByIdsRequest): Promise<GetUsersResponse> {
     return this.usersService.getUsersByIds(request);

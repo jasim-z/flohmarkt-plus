@@ -83,7 +83,7 @@ export async function getUsers(params: GetUsersParams = {}): Promise<PaginatedUs
 
 export async function getUserById(userId: string): Promise<User> {
   try {
-    const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3950'}/users/${userId}`;
+    const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3950'}/users/${userId}/public`;
     
     const response = await fetch(url, {
       method: 'GET',
