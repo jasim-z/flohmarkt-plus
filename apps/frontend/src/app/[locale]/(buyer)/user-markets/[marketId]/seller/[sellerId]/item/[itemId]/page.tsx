@@ -25,6 +25,7 @@ import {
   FaCheckCircle,
   FaTimes
 } from 'react-icons/fa';
+import { getOrCreateConversation } from '@/app/api/messages';
 import { getListingsBySellerAndMarket, GetListingsParams } from '@/app/api/listings';
 import { getMarketDetails } from '@/app/api/markets';
 import { Listing } from '@/app/api/listings';
@@ -164,8 +165,13 @@ export default function ItemDetail() {
     }
   };
 
-  const handleContact = () => {
-    setShowContactModal(true);
+  const handleMessageSeller = async () => {
+    try {
+      const convo = await getOrCreateConversation({ sellerId: sellerId as string, listingId: itemId as string });
+      router.push(`/${locale}/user-messages?conversationId=${convo._id}`);
+    } catch (e) {
+      console.error('failed to start conversation', e);
+    }
   };
 
   const handleBuyNow = () => {
@@ -493,11 +499,11 @@ export default function ItemDetail() {
                   <span>Buy Now</span>
                 </button>
                 <button
-                  onClick={handleContact}
+                  onClick={handleMessageSeller}
                   className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2"
                 >
                   <FaHandshake className="w-5 h-5" />
-                  <span>Contact Seller</span>
+                  <span>Message Seller</span>
                 </button>
               </div>
             </div>
@@ -711,45 +717,7 @@ export default function ItemDetail() {
           </div>
         )}
 
-        {/* Contact Modal */}
-        {showContactModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl max-w-md w-full p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Contact Seller</h3>
-                <button
-                  onClick={() => setShowContactModal(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <FaTimes className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                  <FaPhone className="text-blue-600 w-4 h-4" />
-                  <span className="text-gray-700">Call Seller</span>
-                </div>
-                
-                <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                  <FaEnvelope className="text-blue-600 w-4 h-4" />
-                  <span className="text-gray-700">Send Email</span>
-                </div>
-                
-                <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                  <FaWhatsapp className="text-green-600 w-4 h-4" />
-                  <span className="text-gray-700">WhatsApp</span>
-                </div>
-              </div>
-              
-              <div className="mt-6 pt-4 border-t border-gray-200">
-                <p className="text-sm text-gray-600 text-center">
-                  Contact information will be provided after purchase or by the seller
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Removed old Contact Modal */}
       </div>
     </div>
   );

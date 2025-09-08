@@ -1,13 +1,18 @@
 'use client';
 
 import { useUser } from '@/contexts/UserContext';
-import { useRouter, useParams } from 'next/navigation';
-import { FaEnvelope, FaComments, FaUser } from 'react-icons/fa';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { ConversationsList } from '@/app/components/ConversationsList';
+import { listConversations } from '@/app/api/messages';
 
 export default function BuyerMessages() {
   const { user, isLoaded, isLoading: authLoading } = useUser();
   const router = useRouter();
   const params = useParams();
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [loadingConvos, setLoadingConvos] = useState(true);
+  const search = useSearchParams();
 
   // Check authentication
   if (isLoaded && !authLoading) {
@@ -34,6 +39,27 @@ export default function BuyerMessages() {
     );
   }
 
+  // Deep link to conversation if provided
+  const convoId = search.get('conversationId');
+  if (convoId) {
+    router.replace(`/${params.locale}/user-messages/${convoId}`);
+    return null;
+  }
+
+  // Load conversations for buyer
+  useEffect(() => {
+    (async () => {
+      if (!user || user.role !== 'buyer') return;
+      try {
+        setLoadingConvos(true);
+        const res = await listConversations(1, 50);
+        setConversations(res.data || []);
+      } finally {
+        setLoadingConvos(false);
+      }
+    })();
+  }, [user?._id, isLoaded]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -52,23 +78,13 @@ export default function BuyerMessages() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center py-12">
-          <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <FaEnvelope className="w-12 h-12 text-green-600" />
-          </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            No Messages Yet
-          </h3>
-          <p className="text-gray-600 mb-6 max-w-md mx-auto">
-            Start conversations with sellers about items you're interested in. 
-            You'll be able to ask questions, negotiate prices, and coordinate pickups.
-          </p>
-          <button
-            onClick={() => router.push(`/${params.locale}/home`)}
-            className="px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
-          >
-            Browse Listings
-          </button>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 font-semibold">Conversations</div>
+          <ConversationsList
+            conversations={conversations}
+            loading={loadingConvos}
+            onSelect={(id) => router.push(`/${params.locale}/user-messages/${id}`)}
+          />
         </div>
       </div>
     </div>
