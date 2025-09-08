@@ -49,6 +49,11 @@ export default function SellerExploreMarkets() {
       const response = await getMarkets(params);
       
       let filteredData = response.data;
+
+      // Exclude markets the seller already joined
+      if (user?._id) {
+        filteredData = filteredData.filter(m => !(m.registeredVendors || []).includes(user._id));
+      }
       
       // Apply status filter on the frontend using calculated status
       if (statusFilter) {
@@ -79,7 +84,7 @@ export default function SellerExploreMarkets() {
       setLoading(false);
       setIsInitialLoad(false);
     }
-  }, [searchTerm, statusFilter]);
+  }, [searchTerm, statusFilter, user?._id]);
 
   useEffect(() => {
     if (isLoaded) {

@@ -123,6 +123,16 @@ export default function Header() {
                     Explore Markets
                   </Link>
                   <Link 
+                    href={`/${params.locale}/my-markets`} 
+                    className={`font-medium transition-colors duration-200 ${
+                      pathname.includes('/my-markets') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
+                    My Markets
+                  </Link>
+                  <Link 
                     href={`/${params.locale}/orders`} 
                     className={`font-medium transition-colors duration-200 ${
                       pathname.includes('/orders') 

@@ -163,7 +163,7 @@ export class MarketsService {
   }
 
   async findAll(query: any = {}) {
-    const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', status, category, isActive, isFeatured, userRole } = query;
+    const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', status, category, isActive, isFeatured, userRole, userId } = query;
     
     console.log('Backend received query:', query);
     
@@ -182,6 +182,11 @@ export class MarketsService {
       ]
     };
     
+    // If we are filtering by a specific user's participation, add that filter
+    if (userId) {
+      filter.$and.push({ registeredVendors: new Types.ObjectId(userId) });
+    }
+
     // For non-admin users, automatically filter for ongoing and upcoming markets only
     if (userRole !== 'admin') {
       const now = new Date();
