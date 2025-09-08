@@ -9,6 +9,7 @@ export interface ConversationListItem {
   participantIds: string[];
   lastMessage?: string;
   lastMessageAt?: string;
+  unreadCount?: number;
 }
 
 export function ConversationsList({
@@ -65,8 +66,10 @@ export function ConversationsList({
             <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600">
               {(c.counterpart?.displayName || 'U').charAt(0)}
             </div>
-            {c.unread && (
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-600 rounded-full" />
+            {!!c.unreadCount && c.unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-blue-600 text-white text-[10px] rounded-full flex items-center justify-center">
+                {c.unreadCount}
+              </span>
             )}
           </div>
           <div className="flex-1 min-w-0">

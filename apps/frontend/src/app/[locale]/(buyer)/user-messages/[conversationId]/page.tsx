@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@/contexts/UserContext';
-import { listConversations, listMessages, sendMessage } from '@/app/api/messages';
+import { listConversations, listMessages, sendMessage, markRead } from '@/app/api/messages';
 import { ConversationsList } from '@/app/components/ConversationsList';
 
 interface Msg {
@@ -49,6 +49,8 @@ export default function BuyerChat() {
         setMessages(res.data);
         setPage(1);
         setHasPrev(res.pagination.hasPrev);
+        // mark as read when opening
+        try { await markRead(conversationId as string); } catch {}
       } finally {
         setLoading(false);
       }

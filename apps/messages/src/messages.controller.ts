@@ -27,5 +27,14 @@ export class MessagesController {
   ) {
     return this.messagesService.sendMessage(conversationId, user._id.toString(), body.text);
   }
+
+  @Post('read')
+  @Roles('buyer', 'seller', 'admin')
+  async markRead(
+    @Param('conversationId') conversationId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.messagesService.markRead(conversationId, user._id.toString());
+  }
 }
 

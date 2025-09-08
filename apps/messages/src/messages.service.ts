@@ -43,7 +43,7 @@ export class MessagesService {
   async listConversations(userId: string, page = 1, limit = 20) {
     const skip = (page - 1) * limit;
     const filter = { participantIds: new Types.ObjectId(userId) };
-    const [data, total] = await Promise.all([
+    const [conversations, total] = await Promise.all([
       this.conversationModel
         .find(filter)
         .sort({ lastMessageAt: -1 })
@@ -52,6 +52,19 @@ export class MessagesService {
         .lean(),
       this.conversationModel.countDocuments(filter),
     ]);
+
+    // Compute unread count per conversation for this user
+    const data = await Promise.all(
+      conversations.map(async (c: any) => {
+        const unreadCount = await this.messageModel.countDocuments({
+          conversationId: c._id,
+          receiverId: new Types.ObjectId(userId),
+          status: { $ne: 'read' },
+        });
+        return { ...c, unreadCount };
+      })
+    );
+
     return { data, pagination: { page, limit, total, totalPages: Math.ceil(total / limit), hasNext: page * limit < total, hasPrev: page > 1 } };
   }
 
@@ -89,6 +102,18 @@ export class MessagesService {
     );
 
     return msg;
+  }
+
+  async markRead(conversationId: string, userId: string) {
+    const conv = await this.conversationModel.findById(conversationId);
+    if (!conv) throw new NotFoundException('Conversation not found');
+    this.ensureParticipant(conv as any, userId);
+
+    await this.messageModel.updateMany(
+      { conversationId: new Types.ObjectId(conversationId), receiverId: new Types.ObjectId(userId), status: { $ne: 'read' } },
+      { $set: { status: 'read' } }
+    );
+    return { success: true };
   }
 }
 

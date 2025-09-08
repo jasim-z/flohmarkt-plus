@@ -63,3 +63,15 @@ export async function sendMessage(conversationId: string, text: string) {
   return resp.json();
 }
 
+export async function markRead(conversationId: string) {
+  const base = process.env.NEXT_PUBLIC_MESSAGES_API_URL || 'http://localhost:3954';
+  const resp = await fetch(`${base}/conversations/${conversationId}/messages/read`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+    },
+  });
+  if (!resp.ok) throw new Error('Failed to mark read');
+  return resp.json();
+}
+
