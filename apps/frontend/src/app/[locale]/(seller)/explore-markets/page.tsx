@@ -32,7 +32,7 @@ export default function SellerExploreMarkets() {
       
       const params: any = {
         page: pageNum,
-        limit: 20,
+        limit: 12,
         isActive: true,
         isDeleted: false,
       };
@@ -67,17 +67,10 @@ export default function SellerExploreMarkets() {
       } else {
         setMarkets(prev => [...prev, ...filteredData]);
       }
-      
-      // Update pagination based on filtered results
-      if (isNewSearch) {
-        // For new searches, we need to recalculate pagination
-        setHasMore(filteredData.length === response.pagination.limit);
-        setPage(1);
-      } else {
-        // For pagination, check if we have more data
-        setHasMore(response.pagination.hasNext);
-        setPage(pageNum);
-      }
+
+      // Update pagination using backend hasNext to support filters/exclusions
+      setHasMore(response.pagination.hasNext);
+      setPage(isNewSearch ? 1 : pageNum);
     } catch (error) {
       console.error('Error fetching markets:', error);
     } finally {
