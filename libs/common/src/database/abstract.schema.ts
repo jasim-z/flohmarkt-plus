@@ -5,4 +5,8 @@ import { SchemaTypes, Types } from 'mongoose';
 export class AbstractDocument {
   @Prop({ type: SchemaTypes.ObjectId })
   _id: Types.ObjectId;
+
+  // Added for schemas that enable timestamps: true
+  createdAt?: Date;
+  updatedAt?: Date;
 }

@@ -66,6 +66,13 @@ export class User extends AbstractDocument {
 
   @Prop({ type: Date })
   lastSeen?: Date;
+
+  // Timestamps added by Mongoose when timestamps: true is set
+  @Prop({ type: Date })
+  createdAt?: Date;
+
+  @Prop({ type: Date })
+  updatedAt?: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
@@ -73,5 +80,5 @@ export const UserSchema = SchemaFactory.createForClass(User);
 // Indexes for geospatial queries and search
 UserSchema.index({ location: '2dsphere' });
 UserSchema.index({ city: 1, neighborhood: 1 });
-UserSchema.index({ email: 1 }, { unique: true });
+// Unique index for email is already defined via @Prop({ unique: true })
 UserSchema.index({ role: 1 });

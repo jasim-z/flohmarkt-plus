@@ -186,11 +186,12 @@ services:
     ports:
       - '27017:27017'
     healthcheck:
-      test: ["CMD", "mongosh", "--username", "root", "--password", "password123", "--authenticationDatabase", "admin", "--eval", "rs.status().ok"]
+      # Use a simple ping to avoid failing before replica set initializes
+      test: ["CMD-SHELL", "mongosh --username root --password password123 --authenticationDatabase admin --eval \"db.runCommand({ ping: 1 }).ok\" | grep 1"]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 30s
+      retries: 12
+      start_period: 90s
 
   mongodb-secondary:
     image: mongo:5.0
