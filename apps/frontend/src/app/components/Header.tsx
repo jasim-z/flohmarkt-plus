@@ -7,6 +7,7 @@ import { logoutUser } from '../api/auth';
 import { useUser } from '@/contexts/UserContext';
 import HeaderLanguageSwitcher from './HeaderLanguageSwitcher';
 import { getUnreadTotal } from '@/app/api/messages';
+import { useSocket } from '@/app/hooks/useSocket';
 
 interface User {
   displayName?: string;
@@ -23,6 +24,11 @@ export default function Header() {
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
   const [unreadTotal, setUnreadTotal] = useState(0);
+  useSocket((socket) => {
+    socket.on('unread:total', ({ total }: any) => {
+      setUnreadTotal(typeof total === 'number' ? total : 0);
+    });
+  });
 
   // Close dropdown when clicking outside
   useEffect(() => {

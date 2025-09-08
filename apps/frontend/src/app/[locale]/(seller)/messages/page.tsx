@@ -7,6 +7,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { listConversations } from '@/app/api/messages';
 import { ConversationsList } from '@/app/components/ConversationsList';
+import { useSocket } from '@/app/hooks/useSocket';
 
 export default function SellerMessages() {
   const t = useTranslations();
@@ -16,6 +17,14 @@ export default function SellerMessages() {
   const search = useSearchParams();
   const [conversations, setConversations] = useState<any[]>([]);
   const [loadingConvos, setLoadingConvos] = useState(true);
+  useSocket((socket) => {
+    socket.on('message:new', () => {
+      listConversations(1, 50).then((res) => setConversations(res.data || [])).catch(() => {});
+    });
+    socket.on('unread:total', () => {
+      listConversations(1, 50).then((res) => setConversations(res.data || [])).catch(() => {});
+    });
+  });
 
   // Load conversations once (or when auth loaded)
   useEffect(() => {

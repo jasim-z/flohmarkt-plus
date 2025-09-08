@@ -5,6 +5,7 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ConversationsList } from '@/app/components/ConversationsList';
 import { listConversations } from '@/app/api/messages';
+import { useSocket } from '@/app/hooks/useSocket';
 
 export default function BuyerMessages() {
   const { user, isLoaded, isLoading: authLoading } = useUser();
@@ -13,6 +14,14 @@ export default function BuyerMessages() {
   const [conversations, setConversations] = useState<any[]>([]);
   const [loadingConvos, setLoadingConvos] = useState(true);
   const search = useSearchParams();
+  useSocket((socket) => {
+    socket.on('message:new', () => {
+      listConversations(1, 50).then((res) => setConversations(res.data || [])).catch(() => {});
+    });
+    socket.on('unread:total', () => {
+      listConversations(1, 50).then((res) => setConversations(res.data || [])).catch(() => {});
+    });
+  });
 
   // Check authentication
   if (isLoaded && !authLoading) {

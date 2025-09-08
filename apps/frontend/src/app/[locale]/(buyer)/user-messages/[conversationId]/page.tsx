@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@/contexts/UserContext';
 import { listConversations, listMessages, sendMessage, markRead } from '@/app/api/messages';
+import { useSocket } from '@/app/hooks/useSocket';
 import { ConversationsList } from '@/app/components/ConversationsList';
 
 interface Msg {
@@ -25,6 +26,49 @@ export default function BuyerChat() {
   const [page, setPage] = useState(1);
   const [hasPrev, setHasPrev] = useState(false);
   const topRef = useRef<HTMLDivElement | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const scrollToBottom = () => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+  const socketRef = useSocket((socket) => {
+    socket.on('connect', () => {
+      if (conversationId) {
+        socket.emit('conversation:join', { conversationId });
+      }
+    });
+    socket.on('message:new', (msg: any) => {
+      // Avoid double-adding for the sender: REST response will replace optimistic item
+      if (user?._id && String(msg.senderId) === String(user._id)) return;
+      const isSameConversation = String(msg.conversationId) === String(conversationId);
+      if (isSameConversation) {
+        setMessages((prev) => {
+          const next = prev.some((m) => m._id === msg._id) ? prev : [...prev, msg];
+          // defer scroll to after render
+          setTimeout(scrollToBottom, 0);
+          return next;
+        });
+      } else {
+        // Refresh conversations list for updated previews/unread
+        listConversations(1, 30).then((res) => setConversations(res.data || [])).catch(() => {});
+      }
+    });
+    socket.on('unread:total', () => {
+      // Update conversation list badges
+      listConversations(1, 30).then((res) => setConversations(res.data || [])).catch(() => {});
+    });
+    socket.on('message:read', ({ conversationId: cid, userId }: any) => {
+      // could update per-message read indicators later
+    });
+  });
+
+  // Join conversation room for realtime updates
+  useEffect(() => {
+    if (!conversationId) return;
+    socketRef.current?.emit('conversation:join', { conversationId });
+    return () => {
+      socketRef.current?.emit('conversation:leave', { conversationId });
+    };
+  }, [conversationId]);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -51,6 +95,8 @@ export default function BuyerChat() {
         setHasPrev(res.pagination.hasPrev);
         // mark as read when opening
         try { await markRead(conversationId as string); } catch {}
+        // Scroll to bottom to show latest
+        setTimeout(scrollToBottom, 0);
       } finally {
         setLoading(false);
       }
@@ -74,7 +120,11 @@ export default function BuyerChat() {
       text,
       createdAt: new Date().toISOString(),
     };
-    setMessages((prev) => [...prev, optimistic]);
+    setMessages((prev) => {
+      const next = [...prev, optimistic];
+      setTimeout(scrollToBottom, 0);
+      return next;
+    });
     setText('');
     try {
       const saved = await sendMessage(conversationId as string, optimistic.text);
@@ -117,6 +167,7 @@ export default function BuyerChat() {
                 );
               })
             )}
+            <div ref={bottomRef} />
           </div>
           <div className="border-t border-gray-200 p-3 flex items-center gap-2">
             <input

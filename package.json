@@ -29,7 +29,10 @@
     "@nestjs/mongoose": "^10.0.10",
     "@nestjs/passport": "^10.0.3",
     "@nestjs/platform-express": "^10.0.0",
+    "@nestjs/platform-socket.io": "^10.4.20",
     "@nestjs/typeorm": "^10.0.0",
+    "@nestjs/websockets": "10.4.20",
+    "@types/socket.io": "^3.0.2",
     "amqp-connection-manager": "^4.1.14",
     "amqplib": "^0.10.4",
     "bcrypt": "^5.1.1",
@@ -45,6 +48,8 @@
     "react-icons": "^5.5.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.2.0",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
     "typeorm": "^0.3.25"
   },
   "devDependencies": {

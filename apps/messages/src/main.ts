@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { MessagesModule } from './messages.module';
 import * as cookieParser from 'cookie-parser';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 
 async function bootstrap() {
   const app = await NestFactory.create(MessagesModule);
@@ -10,6 +11,7 @@ async function bootstrap() {
     origin: 'http://localhost:3000',
     credentials: true,
   });
+  app.useWebSocketAdapter(new IoAdapter(app));
   await app.listen(port);
   console.log(`Messages service is running on port ${port}`);
 }

@@ -9,6 +9,8 @@ import { ConversationsController } from './conversations.controller';
 import { Conversation, ConversationSchema } from './schemas/conversation.schema';
 import { Message, MessageSchema } from './schemas/message.schema';
 import { MessagesService } from './messages.service';
+import { MessagesGateway } from './messages.gateway';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
@@ -20,13 +22,14 @@ import { MessagesService } from './messages.service';
       }),
     }),
     DatabaseModule,
+    JwtModule.register({}),
     MongooseModule.forFeature([
       { name: Conversation.name, schema: ConversationSchema },
       { name: Message.name, schema: MessageSchema },
     ]),
   ],
   controllers: [MessagesController, ConversationsController],
-  providers: [MessagesService, JwtStrategy, RolesGuard],
+  providers: [MessagesService, JwtStrategy, RolesGuard, MessagesGateway],
 })
 export class MessagesModule {}
 
