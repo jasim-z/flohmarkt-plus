@@ -18,5 +18,12 @@ export class ConversationsController {
   async list(@CurrentUser() user: any, @Query('page') page = 1, @Query('limit') limit = 20) {
     return this.messagesService.listConversations(user._id.toString(), Number(page), Number(limit));
   }
+
+  @Get('unread-count')
+  @Roles('buyer', 'seller', 'admin')
+  async unreadCount(@CurrentUser() user: any) {
+    const total = await this.messagesService.getTotalUnread(user._id.toString());
+    return { total };
+  }
 }
 

@@ -75,3 +75,12 @@ export async function markRead(conversationId: string) {
   return resp.json();
 }
 
+export async function getUnreadTotal() {
+  const base = process.env.NEXT_PUBLIC_MESSAGES_API_URL || 'http://localhost:3954';
+  const resp = await fetch(`${base}/conversations/unread-count`, {
+    headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` },
+  });
+  if (!resp.ok) throw new Error('Failed to load unread total');
+  return resp.json();
+}
+

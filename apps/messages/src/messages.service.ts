@@ -115,5 +115,13 @@ export class MessagesService {
     );
     return { success: true };
   }
+
+  async getTotalUnread(userId: string) {
+    const total = await this.messageModel.countDocuments({
+      receiverId: new Types.ObjectId(userId),
+      status: { $ne: 'read' },
+    });
+    return total;
+  }
 }
 

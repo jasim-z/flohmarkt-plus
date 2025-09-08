@@ -6,6 +6,7 @@ import { useState, useEffect, useRef } from 'react';
 import { logoutUser } from '../api/auth';
 import { useUser } from '@/contexts/UserContext';
 import HeaderLanguageSwitcher from './HeaderLanguageSwitcher';
+import { getUnreadTotal } from '@/app/api/messages';
 
 interface User {
   displayName?: string;
@@ -21,6 +22,7 @@ export default function Header() {
   const [loading, setLoading] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
+  const [unreadTotal, setUnreadTotal] = useState(0);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -33,6 +35,21 @@ export default function Header() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Load unread total periodically
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await getUnreadTotal();
+        if (!cancelled) setUnreadTotal(res.total || 0);
+      } catch {}
+    };
+    load();
+    const id = setInterval(load, 30000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [user?._id]);
 
   async function handleLogout() {
     setLoading(true);
@@ -144,13 +161,18 @@ export default function Header() {
                   </Link>
                   <Link 
                     href={`/${params.locale}/messages`} 
-                    className={`font-medium transition-colors duration-200 ${
+                    className={`font-medium transition-colors duration-200 relative ${
                       pathname.includes('/messages') 
                         ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
                         : 'text-gray-600 hover:text-blue-600'
                     }`}
                   >
                     Messages
+                    {unreadTotal > 0 && (
+                      <span className="ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] text-[10px] px-1 rounded-full bg-blue-600 text-white align-middle">
+                        {unreadTotal}
+                      </span>
+                    )}
                   </Link>
                 </>
               )}
@@ -189,13 +211,18 @@ export default function Header() {
                   </Link>
                   <Link 
                     href={`/${params.locale}/user-messages`} 
-                    className={`font-medium transition-colors duration-200 ${
+                    className={`font-medium transition-colors duration-200 relative ${
                       pathname.includes('/user-messages') 
                         ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
                         : 'text-gray-600 hover:text-blue-600'
                     }`}
                   >
                     Messages
+                    {unreadTotal > 0 && (
+                      <span className="ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] text-[10px] px-1 rounded-full bg-blue-600 text-white align-middle">
+                        {unreadTotal}
+                      </span>
+                    )}
                   </Link>
                 </>
               )}
