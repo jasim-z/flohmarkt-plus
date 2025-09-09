@@ -1,6 +1,6 @@
 import { Injectable, ForbiddenException, NotFoundException, ServiceUnavailableException, Inject } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { InjectModel, InjectConnection } from '@nestjs/mongoose';
+import { Connection, Model, Types } from 'mongoose';
 import { MarketsRepository } from './markets.repository';
 import { CreateMarketDto, UpdateMarketDto, UsersServiceClient, GetUsersByIdsRequest } from '@app/common';
 import { MarketDocument } from './schemas/market.schema';
@@ -11,6 +11,7 @@ export class MarketsService {
     private readonly marketsRepository: MarketsRepository,
     @InjectModel('Market') private readonly marketModel: Model<MarketDocument>,
     @Inject('USERS_SERVICE_CLIENT') private readonly usersServiceClient: UsersServiceClient,
+    @InjectConnection() private readonly connection: Connection,
   ) {}
 
   async create(createMarketDto: CreateMarketDto, user: any) {
@@ -56,8 +57,115 @@ export class MarketsService {
     });
   }
 
+  async createBulk(marketsData: any[], user: any) {
+    if (user.role !== 'admin') {
+      throw new ForbiddenException('Only admins can create markets in bulk');
+    }
+
+    if (!Array.isArray(marketsData) || marketsData.length === 0) {
+      throw new ForbiddenException('Markets data must be a non-empty array');
+    }
+
+    if (marketsData.length > 100) {
+      throw new ForbiddenException('Cannot create more than 100 markets at once');
+    }
+
+    const createdMarkets = [];
+    const errors = [];
+
+    for (let i = 0; i < marketsData.length; i++) {
+      try {
+        const marketData = marketsData[i];
+        
+        // Validate required fields
+        if (!marketData.name || !marketData.description || !marketData.location || !marketData.date) {
+          errors.push(`Market ${i + 1}: Missing required fields (name, description, location, or date)`);
+          continue;
+        }
+
+        // Enforce 1:1 relationship between vendor limit and booths available
+        if (marketData.vendorLimit && marketData.boothsAvailable) {
+          if (marketData.vendorLimit !== marketData.boothsAvailable) {
+            marketData.boothsAvailable = marketData.vendorLimit;
+          }
+        } else if (marketData.vendorLimit) {
+          marketData.boothsAvailable = marketData.vendorLimit;
+        } else if (marketData.boothsAvailable) {
+          marketData.vendorLimit = marketData.boothsAvailable;
+        }
+
+        // Calculate market status based on date and time
+        const marketDate = new Date(marketData.date);
+        const now = new Date();
+        const marketStartTime = new Date(marketData.date + 'T' + marketData.startTime);
+        const marketEndTime = new Date(marketData.date + 'T' + marketData.endTime);
+        
+        let status: string;
+        if (marketDate < now && now < marketEndTime) {
+          status = 'ongoing';
+        } else if (marketDate > now || (marketDate.getTime() === now.getTime() && marketStartTime > now)) {
+          status = 'upcoming';
+        } else {
+          status = 'past';
+        }
+
+        const market = await this.marketsRepository.create({
+          ...marketData,
+          status,
+          createdBy: new Types.ObjectId(user.userId),
+          registeredVendors: (marketData.registeredVendors || []).map(id => new Types.ObjectId(id)),
+          isDeleted: false,
+          isActive: marketData.isActive !== undefined ? marketData.isActive : true,
+        });
+
+        createdMarkets.push(market);
+      } catch (error) {
+        errors.push(`Market ${i + 1}: ${error.message}`);
+      }
+    }
+
+    return {
+      success: true,
+      totalRequested: marketsData.length,
+      created: createdMarkets.length,
+      failed: errors.length,
+      createdMarkets: createdMarkets,
+      errors: errors
+    };
+  }
+
+  async getFeaturedMarkets() {
+    const filter = {
+      $and: [
+        { isDeleted: false },
+        { isActive: true },
+        { isFeatured: true },
+        // Only show upcoming and ongoing featured markets
+        {
+          $or: [
+            { status: 'upcoming' },
+            { status: 'ongoing' }
+          ]
+        }
+      ]
+    };
+
+    const markets = await this.marketsRepository.find(filter);
+    return {
+      data: markets.slice(0, 10),
+      pagination: {
+        page: 1,
+        limit: 10,
+        total: markets.length,
+        totalPages: Math.ceil(markets.length / 10)
+      }
+    };
+  }
+
   async findAll(query: any = {}) {
-    const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', status, isActive } = query;
+    const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', status, category, isActive, isFeatured, userRole, userId } = query;
+    
+    console.log('Backend received query:', query);
     
     // Build filter object with AND logic to ensure deleted markets are always filtered out
     const filter: any = {
@@ -74,6 +182,43 @@ export class MarketsService {
       ]
     };
     
+    // If we are filtering by a specific user's participation, add that filter
+    if (userId) {
+      filter.$and.push({ registeredVendors: new Types.ObjectId(userId) });
+    }
+
+    // For non-admin users, automatically filter for ongoing and upcoming markets only
+    if (userRole !== 'admin') {
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      
+      filter.$and.push({
+        $or: [
+          // Upcoming markets (future dates or today but hasn't started)
+          {
+            $or: [
+              { date: { $gt: todayEnd } }, // Future date (after today)
+              {
+                $and: [
+                  { date: { $gte: todayStart, $lt: todayEnd } }, // Today
+                  { startTime: { $gt: now.toTimeString().slice(0, 5) } } // Today but hasn't started
+                ]
+              }
+            ]
+          },
+          // Ongoing markets (today and currently happening)
+          {
+            $and: [
+              { date: { $gte: todayStart, $lt: todayEnd } }, // Today
+              { startTime: { $lte: now.toTimeString().slice(0, 5) } }, // Started
+              { endTime: { $gte: now.toTimeString().slice(0, 5) } } // Not ended
+            ]
+          }
+        ]
+      });
+    }
+    
     // Add search filter if provided
     if (search) {
       filter.$and.push({
@@ -86,10 +231,50 @@ export class MarketsService {
       });
     }
     
-    // Add status filter if provided (but calculate dynamically)
-    if (status) {
-      // We'll filter by calculated status, not stored status
-      // This will be handled in the frontend
+    // Add category filter if provided
+    if (category) {
+      filter.$and.push({
+        categories: { $in: [new RegExp(category, 'i')] }
+      });
+    }
+    
+    // Add featured filter if provided
+    if (isFeatured !== undefined) {
+      filter.$and.push({ isFeatured: isFeatured === 'true' });
+    }
+    
+    // Add status filter if provided
+    if (status && status !== 'all') {
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      
+      console.log('Status filtering:', { status, now: now.toISOString(), todayStart: todayStart.toISOString(), todayEnd: todayEnd.toISOString() });
+      
+      if (status === 'upcoming') {
+        // Markets that haven't started yet
+        filter.$and.push({
+          $or: [
+            { date: { $gt: todayEnd } }, // Future date (after today)
+            {
+              $and: [
+                { date: { $gte: todayStart, $lt: todayEnd } }, // Today
+                { startTime: { $gt: now.toTimeString().slice(0, 5) } } // Today but hasn't started
+              ]
+            }
+          ]
+        });
+      } else if (status === 'ongoing') {
+        // Markets that are currently happening
+        filter.$and.push({
+          $and: [
+            { date: { $gte: todayStart, $lt: todayEnd } }, // Today
+            { startTime: { $lte: now.toTimeString().slice(0, 5) } }, // Started
+            { endTime: { $gte: now.toTimeString().slice(0, 5) } } // Not ended
+          ]
+        });
+      }
+      // Note: We don't filter for 'past' status since we want to show upcoming and ongoing markets
     }
     
     // Override active filter if explicitly provided (for admin purposes)
@@ -98,6 +283,8 @@ export class MarketsService {
       filter.$and = filter.$and.filter(condition => !condition.hasOwnProperty('isActive'));
       filter.$and.push({ isActive: isActive === 'true' });
     }
+
+    console.log('Final filter:', JSON.stringify(filter, null, 2));
 
     // Get total count
     const total = await this.marketModel.countDocuments(filter);
@@ -114,16 +301,18 @@ export class MarketsService {
       .lean()
       .exec();
 
+    console.log(`Found ${markets.length} markets out of ${total} total`);
+
     return {
       data: markets,
       pagination: {
-        page,
-        limit,
+        page: Number(page),
+        limit: Number(limit),
         total,
         totalPages,
         hasNext: page < totalPages,
-        hasPrev: page > 1,
-      },
+        hasPrev: page > 1
+      }
     };
   }
 
@@ -502,67 +691,96 @@ export class MarketsService {
   }
 
   async seed() {
-    const existingMarkets = await this.marketsRepository.find({});
-    if (existingMarkets.length > 0) {
-      return { message: 'Markets already seeded', count: existingMarkets.length };
+    // Clear existing markets to ensure fresh seeding
+    await this.marketModel.deleteMany({});
+
+    // Fetch admin (creator) and seller users from users collection directly
+    const usersCollection = this.connection.collection('users');
+    const adminUser = await usersCollection.findOne({ role: 'admin' });
+    const sellerUsers = await usersCollection
+      .find({ role: 'seller', isActive: { $ne: false } })
+      .project({ _id: 1 })
+      .toArray();
+
+    const sellerIds = sellerUsers.map(u => new Types.ObjectId(u._id));
+
+    // Compute future dates (>= 2025-09-08)
+    const floorDate = new Date('2025-09-08T00:00:00Z');
+    const now = new Date();
+    const base = now > floorDate ? now : floorDate;
+
+    function futureDate(daysAhead: number): string {
+      const d = new Date(base);
+      d.setUTCDate(d.getUTCDate() + daysAhead);
+      // MarketsService.create expects date as string (later converted), so use ISO date (YYYY-MM-DD)
+      return d.toISOString().slice(0, 10);
     }
 
-    const testMarkets = [
+    // Helper to pick a subset of sellers for a market
+    function pickVendors(maxCount: number): string[] {
+      const shuffled = [...sellerIds].sort(() => Math.random() - 0.5);
+      return shuffled.slice(0, Math.min(maxCount, shuffled.length)).map(id => id.toString());
+    }
+
+    const adminId = adminUser ? new Types.ObjectId(adminUser._id).toString() : (sellerIds[0]?.toString() || new Types.ObjectId().toString());
+
+    const marketsData = [
       {
-        name: 'Spring Flea Market',
-        description: 'A vibrant spring market with local vendors and artisans showcasing handmade crafts, vintage items, and local produce.',
+        name: 'Autumn Flea Market',
+        description: 'Seasonal market featuring local vendors, crafts, and vintage goods.',
         location: 'Central Park, Downtown',
-        date: new Date('2024-03-15'),
+        date: futureDate(7),
         startTime: '09:00',
-        endTime: '18:00',
-        isActive: true,
-        createdBy: '507f1f77bcf86cd799439011', // Mock admin ID as string
-        bannerImage: 'https://example.com/spring-market.jpg',
-        vendorLimit: 50,
-        boothsAvailable: 50,
-        categories: ['Crafts', 'Vintage', 'Food', 'Art'],
-        status: 'upcoming',
-        registeredVendors: [],
-        isDeleted: false
-      },
-      {
-        name: 'Vintage Collectors Fair',
-        description: 'Specialized market for vintage and antique items, perfect for collectors and enthusiasts.',
-        location: 'Historic District',
-        date: new Date('2024-02-20'),
-        startTime: '10:00',
         endTime: '17:00',
         isActive: true,
-        createdBy: '507f1f77bcf86cd799439011',
-        bannerImage: 'https://example.com/vintage-fair.jpg',
+        createdBy: adminId,
+        bannerImage: 'https://example.com/autumn-market.jpg',
         vendorLimit: 30,
         boothsAvailable: 30,
-        categories: ['Vintage', 'Antiques', 'Collectibles'],
-        status: 'past',
-        registeredVendors: [],
-        isDeleted: false
+        categories: ['Crafts', 'Vintage', 'Food'],
+        status: 'upcoming',
+        registeredVendors: pickVendors(20),
+        isDeleted: false,
       },
       {
-        name: 'Artisan Craft Market',
-        description: 'Handmade crafts and unique artistic creations from local artisans and craftspeople.',
-        location: 'Arts Quarter',
-        date: new Date('2024-01-10'),
-        startTime: '11:00',
-        endTime: '19:00',
+        name: 'Tech & Games Bazaar',
+        description: 'Gadgets, gaming gear, and electronics by local sellers.',
+        location: 'Innovation Square',
+        date: futureDate(14),
+        startTime: '10:00',
+        endTime: '18:00',
         isActive: true,
-        createdBy: '507f1f77bcf86cd799439011',
-        bannerImage: 'https://example.com/artisan-market.jpg',
+        createdBy: adminId,
+        bannerImage: 'https://example.com/tech-bazaar.jpg',
+        vendorLimit: 25,
+        boothsAvailable: 25,
+        categories: ['Electronics', 'Gaming', 'Computers'],
+        status: 'upcoming',
+        registeredVendors: pickVendors(15),
+        isDeleted: false,
+      },
+      {
+        name: 'Home & Garden Fair',
+        description: 'Furniture, decor, and garden finds for every home.',
+        location: 'Greenfield Expo Grounds',
+        date: futureDate(21),
+        startTime: '08:30',
+        endTime: '16:00',
+        isActive: true,
+        createdBy: adminId,
+        bannerImage: 'https://example.com/home-garden.jpg',
         vendorLimit: 40,
         boothsAvailable: 40,
-        categories: ['Crafts', 'Art', 'Handmade', 'Jewelry'],
-        status: 'past',
-        registeredVendors: [],
-        isDeleted: false
-      }
+        categories: ['Home', 'Garden', 'Decor'],
+        status: 'upcoming',
+        registeredVendors: pickVendors(25),
+        isDeleted: false,
+      },
     ];
 
+    // Create markets via repository to apply conversions and defaults
     const createdMarkets = await Promise.all(
-      testMarkets.map(market => this.marketsRepository.create(market))
+      marketsData.map(market => this.marketsRepository.create(market))
     );
 
     return { message: 'Markets seeded successfully', count: createdMarkets.length };

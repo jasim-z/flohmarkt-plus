@@ -87,6 +87,27 @@ export class ListingsController {
     return this.listingsService.getTrending(limit);
   }
 
+  @Get('market/:marketId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('seller', 'buyer', 'admin')
+  findByMarket(
+    @Param('marketId') marketId: string,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('search') search?: string,
+    @Query('sortBy') sortBy: string = 'createdAt',
+    @Query('sortOrder') sortOrder: 'asc' | 'desc' = 'desc',
+  ) {
+    return this.listingsService.findByMarket(
+      marketId, 
+      Number(page), 
+      Number(limit), 
+      search, 
+      sortBy, 
+      sortOrder
+    );
+  }
+
   @Post('migrate/add-market-id-field')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')

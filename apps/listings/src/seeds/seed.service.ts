@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { InjectModel, InjectConnection } from '@nestjs/mongoose';
+import { Connection, Model, Types } from 'mongoose';
 import { Listing, ListingDocument } from '../schemas/listing.schema';
 import { ItemCategory, ItemCondition, DeliveryOption } from '@app/common';
 
@@ -8,23 +8,32 @@ import { ItemCategory, ItemCondition, DeliveryOption } from '@app/common';
 export class SeedService {
   constructor(
     @InjectModel(Listing.name) private listingModel: Model<ListingDocument>,
+    @InjectConnection() private readonly connection: Connection,
   ) {}
 
   async seedListings() {
     // Clear existing listings
     await this.listingModel.deleteMany({});
 
-    // Get user IDs from the seeded users (these are the actual IDs from the seeding response)
-    const sellerIds = [
-      '507f1f77bcf86cd799439011', // john.seller@example.com
-      '507f1f77bcf86cd799439012', // sarah.fashion@example.com
-      '507f1f77bcf86cd799439013', // mike.moving@example.com
-      '507f1f77bcf86cd799439014', // alex.gamer@example.com
-      '507f1f77bcf86cd799439015', // lisa.bike@example.com
-      '507f1f77bcf86cd799439016', // david.books@example.com
-      '507f1f77bcf86cd799439017', // anna.furniture@example.com
-      '507f1f77bcf86cd799439018', // peter.plants@example.com
-    ];
+    // Fetch sellers from users collection (role: 'seller')
+    const usersColl = this.connection.collection('users');
+    const sellers = await usersColl
+      .find({ role: 'seller', isActive: { $ne: false } })
+      .project({ _id: 1 })
+      .toArray();
+
+    if (!sellers || sellers.length === 0) {
+      throw new Error('No sellers found. Please seed users first.');
+    }
+
+    const sellerIds = sellers.map(u => new Types.ObjectId(u._id));
+
+    // Fetch markets to associate listings to; ensure markets are upcoming
+    const marketsColl = this.connection.collection('markets');
+    const markets = await marketsColl.find({}).project({ _id: 1, registeredVendors: 1, vendorLimit: 1 }).toArray();
+    if (!markets || markets.length === 0) {
+      throw new Error('No markets found. Please seed markets first.');
+    }
 
     const listings = [
       {
@@ -35,7 +44,6 @@ export class SeedService {
         category: ItemCategory.ELECTRONICS,
         condition: ItemCondition.EXCELLENT,
         images: ['https://example.com/iphone1.jpg', 'https://example.com/iphone2.jpg'],
-        sellerId: new Types.ObjectId(sellerIds[0]), // John Seller
         city: 'Munich',
         neighborhood: 'Schwabing',
         latitude: 48.1550,
@@ -56,7 +64,6 @@ export class SeedService {
         category: ItemCategory.CLOTHING,
         condition: ItemCondition.GOOD,
         images: ['https://example.com/jacket1.jpg'],
-        sellerId: new Types.ObjectId(sellerIds[1]), // Sarah Fashion
         city: 'Munich',
         neighborhood: 'Maxvorstadt',
         latitude: 48.1486,
@@ -75,7 +82,6 @@ export class SeedService {
         category: ItemCategory.HOME_GARDEN,
         condition: ItemCondition.GOOD,
         images: ['https://example.com/boxes1.jpg'],
-        sellerId: new Types.ObjectId(sellerIds[2]), // Mike Moving
         city: 'Munich',
         neighborhood: 'Haidhausen',
         latitude: 48.1333,
@@ -93,7 +99,6 @@ export class SeedService {
         category: ItemCategory.ELECTRONICS,
         condition: ItemCondition.EXCELLENT,
         images: ['https://example.com/pc1.jpg', 'https://example.com/pc2.jpg'],
-        sellerId: new Types.ObjectId(sellerIds[3]), // Alex Gamer
         city: 'Munich',
         neighborhood: 'Sendling',
         latitude: 48.1167,
@@ -113,7 +118,6 @@ export class SeedService {
         category: ItemCategory.SPORTS,
         condition: ItemCondition.GOOD,
         images: ['https://example.com/bike1.jpg'],
-        sellerId: new Types.ObjectId(sellerIds[4]), // Lisa Bike
         city: 'Munich',
         neighborhood: 'Bogenhausen',
         latitude: 48.1500,
@@ -133,7 +137,6 @@ export class SeedService {
         category: ItemCategory.BOOKS,
         condition: ItemCondition.EXCELLENT,
         images: ['https://example.com/books1.jpg'],
-        sellerId: new Types.ObjectId(sellerIds[5]), // David Books
         city: 'Munich',
         neighborhood: 'Ludwigsvorstadt',
         latitude: 48.1333,
@@ -151,7 +154,6 @@ export class SeedService {
         category: ItemCategory.HOME_GARDEN,
         condition: ItemCondition.GOOD,
         images: ['https://example.com/furniture1.jpg', 'https://example.com/furniture2.jpg'],
-        sellerId: new Types.ObjectId(sellerIds[6]), // Anna Furniture
         city: 'Munich',
         neighborhood: 'Neuhausen',
         latitude: 48.1500,
@@ -170,7 +172,6 @@ export class SeedService {
         category: ItemCategory.HOME_GARDEN,
         condition: ItemCondition.FAIR,
         images: ['https://example.com/pots1.jpg'],
-        sellerId: new Types.ObjectId(sellerIds[7]), // Peter Plants
         city: 'Munich',
         neighborhood: 'Au-Haidhausen',
         latitude: 48.1333,
@@ -182,7 +183,31 @@ export class SeedService {
       },
     ];
 
-    const createdListings = await this.listingModel.insertMany(listings);
+    // Assign sellers and markets
+    const prepared = [] as any[];
+    for (let i = 0; i < listings.length; i++) {
+      const listing = { ...listings[i] } as any;
+      const sellerId = sellerIds[i % sellerIds.length];
+      listing.sellerId = sellerId;
+
+      // Find a market where this seller is registered
+      let market = markets.find(m => Array.isArray(m.registeredVendors) && m.registeredVendors.some((v: any) => v.toString() === sellerId.toString()));
+
+      // If none, add seller to a random market (respect vendorLimit if present)
+      if (!market) {
+        const candidate = markets[Math.floor(Math.random() * markets.length)];
+        await marketsColl.updateOne(
+          { _id: candidate._id },
+          { $addToSet: { registeredVendors: sellerId } }
+        );
+        market = candidate;
+      }
+
+      listing.marketId = market._id as Types.ObjectId;
+      prepared.push(listing);
+    }
+
+    const createdListings = await this.listingModel.insertMany(prepared);
     console.log(`✅ Seeded ${createdListings.length} listings`);
     return createdListings;
   }

@@ -25,7 +25,15 @@ export default function SignupPage() {
     async function checkUser() {
       const user = await getCurrentUser();
       if (user) {
-        router.replace(`/${params.locale}/home`);
+        if (user.role === "buyer") {
+          router.replace(`/${params.locale}/user-markets`);
+        } else if (user.role === "seller") {
+          router.replace(`/${params.locale}/overview`);
+        } else if (user.role === "admin") {
+          router.replace(`/${params.locale}/dashboard`);
+        } else {
+          router.replace(`/${params.locale}/home`);
+        }
       }
     }
     checkUser();

@@ -113,6 +113,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   // Auto-check user role when pathname changes (for route protection)
   useEffect(() => {
+    console.log('UserContext route protection - pathname:', pathname, 'role:', role, 'isLoaded:', isLoaded, 'isLoading:', isLoading);
+    
     if (isLoaded && pathname && !isLoading) {
       // Extract locale from pathname
       const pathSegments = pathname.split('/');
@@ -120,36 +122,44 @@ export function UserProvider({ children }: { children: ReactNode }) {
       
       // Don't redirect if we're still loading or if user is not loaded yet
       if (isLoading || !isLoaded) {
+        console.log('UserContext - still loading, skipping route protection');
         return;
       }
       
       // Don't redirect if we're on auth pages
       if (pathname.includes('/login') || pathname.includes('/signup')) {
+        console.log('UserContext - on auth page, skipping route protection');
         return;
       }
       
       // Don't redirect if we're on the unauthorized page
       if (pathname.includes('/unauthorized')) {
+        console.log('UserContext - on unauthorized page, skipping route protection');
         return;
       }
       
       // Protect admin routes
       if (pathname.includes('/admin') && role !== 'admin') {
+        console.log('UserContext - admin route protection triggered, redirecting to unauthorized');
         router.push(`/${locale}/unauthorized`);
         return;
       }
       
-      // Protect buyer routes
+      // Protect buyer routes - but our seller items page is under /user-markets, not /buyer
       if (pathname.includes('/buyer') && role !== 'buyer') {
+        console.log('UserContext - buyer route protection triggered, redirecting to unauthorized');
         router.push(`/${locale}/unauthorized`);
         return;
       }
       
-      // Protect seller routes
-      if (pathname.includes('/seller') && role !== 'seller') {
+      // Protect seller routes - but exclude buyer pages that show seller info
+      if (pathname.includes('/seller') && !pathname.includes('/user-markets') && role !== 'seller') {
+        console.log('UserContext - seller route protection triggered, redirecting to unauthorized');
         router.push(`/${locale}/unauthorized`);
         return;
       }
+      
+      console.log('UserContext - route protection passed, no redirect needed');
     }
   }, [pathname, role, isLoaded, isLoading, router]);
 

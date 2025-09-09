@@ -10,7 +10,7 @@ export default function Home() {
     async function checkUser() {
       const user = await getCurrentUser();
       if (user && user.role === 'buyer') {
-        router.replace('/en/home');
+        router.replace('/en/user-markets');
       } else {
         router.replace('/en/login');
       }

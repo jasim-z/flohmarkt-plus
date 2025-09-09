@@ -63,6 +63,15 @@
       "compilerOptions": {
         "tsConfigPath": "apps/markets/tsconfig.app.json"
       }
+    },
+    "messages": {
+      "type": "application",
+      "root": "apps/messages",
+      "entryFile": "main",
+      "sourceRoot": "apps/messages/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/messages/tsconfig.app.json"
+      }
     }
   }
 }

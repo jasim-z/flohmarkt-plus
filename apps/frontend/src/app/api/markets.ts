@@ -12,6 +12,7 @@ export interface Market {
   startTime: string;
   endTime: string;
   isActive: boolean;
+  isFeatured?: boolean;
   createdBy: string;
   bannerImage: string;
   vendorLimit?: number;
@@ -30,9 +31,11 @@ export interface GetMarketsParams {
   limit?: number;
   search?: string;
   status?: string;
+  category?: string;
   userId?: string; // To filter markets by user participation
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  isFeatured?: string;
 }
 
 export interface CreateMarketRequest {
@@ -65,8 +68,8 @@ export interface PaginatedMarketsResponse {
 
 export interface Vendor {
   _id: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
   displayName: string;
   email: string;
   avatar?: string;
@@ -75,8 +78,12 @@ export interface Vendor {
   city?: string;
   neighborhood?: string;
   rating?: number;
+  totalReviews?: number;
+  totalSales?: number;
   isVerified?: boolean;
+  badges?: string[];
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface GetVendorsParams {
@@ -144,6 +151,7 @@ export async function getMarkets(params: GetMarketsParams = {}): Promise<Paginat
     if (params.limit) searchParams.append('limit', params.limit.toString());
     if (params.search) searchParams.append('search', params.search);
     if (params.status) searchParams.append('status', params.status);
+    if (params.category) searchParams.append('category', params.category);
     if (params.userId) searchParams.append('userId', params.userId);
     if (params.sortBy) searchParams.append('sortBy', params.sortBy);
     if (params.sortOrder) searchParams.append('sortOrder', params.sortOrder);

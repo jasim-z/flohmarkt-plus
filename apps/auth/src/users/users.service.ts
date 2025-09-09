@@ -76,6 +76,32 @@ export class UsersService {
     return user;
   }
 
+  async getPublicUserInfo(userId: string) {
+    const user = await this.usersRepository.findOne({ _id: userId });
+    if (!user) {
+      throw new UnprocessableEntityException('User not found');
+    }
+    
+    // Return only public information
+    return {
+      _id: user._id,
+      displayName: user.displayName,
+      avatar: user.avatar,
+      bio: user.bio,
+      role: user.role,
+      city: user.city,
+      neighborhood: user.neighborhood,
+      isVerified: user.isVerified,
+      rating: user.rating,
+      totalSales: user.totalSales,
+      totalReviews: user.totalReviews,
+      badges: user.badges,
+      isActive: user.isActive,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+  }
+
   async getUsers(query: GetUsersDto): Promise<PaginatedUsersResponse> {
     const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', role, isActive } = query;
     
@@ -117,6 +143,14 @@ export class UsersService {
         displayName: 1,
         role: 1,
         isActive: 1,
+        city: 1,
+        neighborhood: 1,
+        avatar: 1,
+        rating: 1,
+        totalSales: 1,
+        totalReviews: 1,
+        isVerified: 1,
+        badges: 1,
         createdAt: 1,
         updatedAt: 1,
       })
@@ -214,6 +248,14 @@ export class UsersService {
         displayName: 1,
         role: 1,
         isActive: 1,
+        city: 1,
+        neighborhood: 1,
+        avatar: 1,
+        rating: 1,
+        totalSales: 1,
+        totalReviews: 1,
+        isVerified: 1,
+        badges: 1,
         createdAt: 1,
         updatedAt: 1,
       })
@@ -227,6 +269,14 @@ export class UsersService {
       displayName: user.displayName || '',
       role: user.role || '',
       isActive: user.isActive ?? false,
+      city: user.city || '',
+      neighborhood: user.neighborhood || '',
+      avatar: user.avatar || '',
+      rating: user.rating || 0,
+      totalSales: user.totalSales || 0,
+      totalReviews: user.totalReviews || 0,
+      isVerified: user.isVerified || false,
+      badges: user.badges || [],
       createdAt: user.createdAt?.toISOString() || new Date().toISOString(),
       updatedAt: user.updatedAt?.toISOString() || new Date().toISOString(),
     }));

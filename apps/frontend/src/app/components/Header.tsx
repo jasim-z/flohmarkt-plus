@@ -1,11 +1,13 @@
 'use client';
 import { FaShoppingCart, FaHeart, FaUserCircle, FaBell, FaCog, FaChevronDown } from 'react-icons/fa';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
 import { logoutUser } from '../api/auth';
 import { useUser } from '@/contexts/UserContext';
 import HeaderLanguageSwitcher from './HeaderLanguageSwitcher';
+import { getUnreadTotal } from '@/app/api/messages';
+import { useSocket } from '@/app/hooks/useSocket';
 
 interface User {
   displayName?: string;
@@ -16,10 +18,17 @@ interface User {
 export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
+  const params = useParams();
   const { user, logout, isLoading } = useUser();
   const [loading, setLoading] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
+  const [unreadTotal, setUnreadTotal] = useState(0);
+  useSocket((socket) => {
+    socket.on('unread:total', ({ total }: any) => {
+      setUnreadTotal(typeof total === 'number' ? total : 0);
+    });
+  });
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -32,6 +41,21 @@ export default function Header() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Load unread total periodically
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await getUnreadTotal();
+        if (!cancelled) setUnreadTotal(res.total || 0);
+      } catch {}
+    };
+    load();
+    const id = setInterval(load, 30000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [user?._id]);
 
   async function handleLogout() {
     setLoading(true);
@@ -66,13 +90,34 @@ export default function Header() {
             <nav className="hidden lg:flex space-x-8">
               {user?.role === 'admin' && (
                 <>
-                  <Link href="/en/dashboard" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link 
+                    href={`/${params.locale}/dashboard`} 
+                    className={`font-medium transition-colors duration-200 ${
+                      pathname.includes('/dashboard') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
                     Dashboard
                   </Link>
-                  <Link href="/en/users" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link 
+                    href={`/${params.locale}/users`} 
+                    className={`font-medium transition-colors duration-200 ${
+                      pathname.includes('/users') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
                     Users
                   </Link>
-                  <Link href="/en/markets" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link 
+                    href={`/${params.locale}/markets`} 
+                    className={`font-medium transition-colors duration-200 ${
+                      pathname.includes('/markets') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
                     Markets
                   </Link>
                 </>
@@ -80,25 +125,110 @@ export default function Header() {
               
               {user?.role === 'seller' && (
                 <>
-                  <Link href="/en/overview" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link 
+                    href={`/${params.locale}/overview`} 
+                    className={`font-medium transition-colors duration-200 ${
+                      pathname.includes('/overview') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
                     Home
                   </Link>
-                  <Link href="/en/explore-markets" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link 
+                    href={`/${params.locale}/explore-markets`} 
+                    className={`font-medium transition-colors duration-200 ${
+                      pathname.includes('/explore-markets') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
                     Explore Markets
                   </Link>
-                  <Link href="/en/orders" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link 
+                    href={`/${params.locale}/my-markets`} 
+                    className={`font-medium transition-colors duration-200 ${
+                      pathname.includes('/my-markets') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
+                    My Markets
+                  </Link>
+                  <Link 
+                    href={`/${params.locale}/orders`} 
+                    className={`font-medium transition-colors duration-200 ${
+                      pathname.includes('/orders') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
                     Orders
                   </Link>
-                  <Link href="/en/messages" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
+                  <Link 
+                    href={`/${params.locale}/messages`} 
+                    className={`font-medium transition-colors duration-200 relative ${
+                      pathname.includes('/messages') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
                     Messages
+                    {unreadTotal > 0 && (
+                      <span className="ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] text-[10px] px-1 rounded-full bg-blue-600 text-white align-middle">
+                        {unreadTotal}
+                      </span>
+                    )}
                   </Link>
                 </>
               )}
               
               {user?.role === 'buyer' && (
                 <>
-                  <Link href="/en/home" className="text-gray-600 hover:text-blue-600 font-medium transition-colors duration-200">
-                    Home
+                  <Link 
+                    href={`/${params.locale}/user-markets`} 
+                    className={`font-medium transition-colors duration-200 ${
+                      pathname.includes('/user-markets') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
+                    Markets
+                  </Link>
+                  <Link 
+                    href={`/${params.locale}/home`} 
+                    className={`font-medium transition-colors duration-200 ${
+                      pathname.includes('/home') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
+                    Browse
+                  </Link>
+                  <Link 
+                    href={`/${params.locale}/user-orders`} 
+                    className={`font-medium transition-colors duration-200 ${
+                      pathname.includes('/user-orders') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
+                    Orders
+                  </Link>
+                  <Link 
+                    href={`/${params.locale}/user-messages`} 
+                    className={`font-medium transition-colors duration-200 relative ${
+                      pathname.includes('/user-messages') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
+                    Messages
+                    {unreadTotal > 0 && (
+                      <span className="ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] text-[10px] px-1 rounded-full bg-blue-600 text-white align-middle">
+                        {unreadTotal}
+                      </span>
+                    )}
                   </Link>
                 </>
               )}

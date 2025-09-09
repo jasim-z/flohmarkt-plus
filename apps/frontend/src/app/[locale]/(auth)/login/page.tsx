@@ -22,7 +22,7 @@ export default function Login() {
     async function checkUser() {
       const user = await getCurrentUser();
       if (user && user.role === "buyer") {
-        router.replace(`/${params.locale}/home`);
+        router.replace(`/${params.locale}/user-markets`);
       } else if (user && user.role === "seller") {
         router.replace(`/${params.locale}/overview`);
       } else if (user && user.role === "admin") {
@@ -47,7 +47,7 @@ export default function Login() {
         
         // Now redirect based on role
         if (user.role === "buyer") {
-          router.replace(`/${params.locale}/home`);
+          router.replace(`/${params.locale}/user-markets`);
         } else if (user.role === "seller") {
           router.replace(`/${params.locale}/overview`);
         } else if (user.role === "admin") {

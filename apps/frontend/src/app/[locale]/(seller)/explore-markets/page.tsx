@@ -32,7 +32,7 @@ export default function SellerExploreMarkets() {
       
       const params: any = {
         page: pageNum,
-        limit: 20,
+        limit: 12,
         isActive: true,
         isDeleted: false,
       };
@@ -49,6 +49,11 @@ export default function SellerExploreMarkets() {
       const response = await getMarkets(params);
       
       let filteredData = response.data;
+
+      // Exclude markets the seller already joined
+      if (user?._id) {
+        filteredData = filteredData.filter(m => !(m.registeredVendors || []).includes(user._id));
+      }
       
       // Apply status filter on the frontend using calculated status
       if (statusFilter) {
@@ -62,24 +67,17 @@ export default function SellerExploreMarkets() {
       } else {
         setMarkets(prev => [...prev, ...filteredData]);
       }
-      
-      // Update pagination based on filtered results
-      if (isNewSearch) {
-        // For new searches, we need to recalculate pagination
-        setHasMore(filteredData.length === response.pagination.limit);
-        setPage(1);
-      } else {
-        // For pagination, check if we have more data
-        setHasMore(response.pagination.hasNext);
-        setPage(pageNum);
-      }
+
+      // Update pagination using backend hasNext to support filters/exclusions
+      setHasMore(response.pagination.hasNext);
+      setPage(isNewSearch ? 1 : pageNum);
     } catch (error) {
       console.error('Error fetching markets:', error);
     } finally {
       setLoading(false);
       setIsInitialLoad(false);
     }
-  }, [searchTerm, statusFilter]);
+  }, [searchTerm, statusFilter, user?._id]);
 
   useEffect(() => {
     if (isLoaded) {
