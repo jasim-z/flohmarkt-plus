@@ -70,7 +70,7 @@ export default function BuyerMessages() {
   }, [user?._id, isLoaded]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50 min-h-full">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -87,13 +87,15 @@ export default function BuyerMessages() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 font-semibold">Conversations</div>
-          <ConversationsList
-            conversations={conversations}
-            loading={loadingConvos}
-            onSelect={(id) => router.push(`/${params.locale}/user-messages/${id}`)}
-          />
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 min-h-[500px] max-h-[calc(100vh-300px)] flex flex-col">
+          <div className="px-6 py-4 border-b border-gray-200 font-semibold flex-shrink-0">Conversations</div>
+          <div className="flex-1 overflow-y-auto">
+            <ConversationsList
+              conversations={conversations}
+              loading={loadingConvos}
+              onSelect={(id) => router.push(`/${params.locale}/user-messages/${id}`)}
+            />
+          </div>
         </div>
       </div>
     </div>

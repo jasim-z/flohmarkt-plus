@@ -278,6 +278,23 @@ export default function Header() {
                     </p>
                   </div>
                   
+                  {/* Profile */}
+                  <button 
+                    onClick={() => {
+                      setIsAccountOpen(false);
+                      const profilePath = user?.role === 'admin' 
+                        ? 'admin/profile' 
+                        : user?.role === 'seller' 
+                        ? 'seller-profile' 
+                        : 'user-profile';
+                      router.push(`/${params.locale}/${profilePath}`);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200 flex items-center space-x-2"
+                  >
+                    <FaUserCircle size={14} />
+                    <span>My Profile</span>
+                  </button>
+                  
                   {/* Settings */}
                   <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200 flex items-center space-x-2">
                     <FaCog size={14} />

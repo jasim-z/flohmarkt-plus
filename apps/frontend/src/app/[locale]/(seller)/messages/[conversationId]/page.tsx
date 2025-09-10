@@ -6,6 +6,7 @@ import { useUser } from '@/contexts/UserContext';
 import { listConversations, listMessages, sendMessage, markRead } from '@/app/api/messages';
 import { useSocket } from '@/app/hooks/useSocket';
 import { ConversationsList } from '@/app/components/ConversationsList';
+import { ChatHeader } from '@/app/components/ChatHeader';
 
 interface Msg {
   _id: string;
@@ -25,6 +26,7 @@ export default function SellerChat() {
   const [text, setText] = useState('');
   const [page, setPage] = useState(1);
   const [hasPrev, setHasPrev] = useState(false);
+  const [currentConversation, setCurrentConversation] = useState<any>(null);
   const topRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const scrollToBottom = () => {
@@ -77,6 +79,9 @@ export default function SellerChat() {
         setLoadingConvos(true);
         const res = await listConversations(1, 30);
         setConversations(res.data || []);
+        // Find current conversation
+        const current = res.data?.find(c => c._id === conversationId);
+        setCurrentConversation(current);
       } finally {
         setLoadingConvos(false);
       }
@@ -130,24 +135,34 @@ export default function SellerChat() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50 min-h-full">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Conversations list */}
-        <div className="hidden lg:block bg-white rounded-xl shadow-sm border border-gray-200 p-0 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-200 font-semibold">Conversations</div>
-          <ConversationsList conversations={conversations} loading={loadingConvos} onSelect={(id) => router.replace(`/${locale}/messages/${id}`)} activeId={conversationId} />
+        <div className="hidden lg:flex bg-white rounded-xl shadow-sm border border-gray-200 flex-col min-h-[500px] max-h-[calc(100vh-200px)]">
+          <div className="px-4 py-3 border-b border-gray-200 font-semibold flex-shrink-0">Conversations</div>
+          <div className="flex-1 overflow-y-auto">
+            <ConversationsList conversations={conversations} loading={loadingConvos} onSelect={(id) => router.replace(`/${locale}/messages/${id}`)} activeId={conversationId} />
+          </div>
         </div>
 
         {/* Chat pane */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col h-[70vh]">
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col min-h-[500px] max-h-[calc(100vh-200px)]">
+          {/* Chat Header */}
+          {currentConversation && (
+            <ChatHeader 
+              role={user?.role === 'seller' ? 'buyer' : 'seller'}
+              conversationId={conversationId as string} 
+              participantIds={currentConversation.participantIds} 
+            />
+          )}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
             {hasPrev && (
-              <div ref={topRef} className="text-center">
+              <div ref={topRef} className="text-center py-2">
                 <button onClick={loadOlder} className="text-blue-600 text-sm hover:underline">Load earlier messages</button>
               </div>
             )}
             {loading ? (
-              <div className="text-center text-gray-500">Loading...</div>
+              <div className="text-center text-gray-500 py-8">Loading...</div>
             ) : (
               messages.map((m) => {
                 const isMine = m.senderId === user?._id;
@@ -163,7 +178,7 @@ export default function SellerChat() {
             )}
             <div ref={bottomRef} />
           </div>
-          <div className="border-t border-gray-200 p-3 flex items-center gap-2">
+          <div className="border-t border-gray-200 p-3 flex items-center gap-2 flex-shrink-0">
             <input
               value={text}
               onChange={(e) => setText(e.target.value)}
