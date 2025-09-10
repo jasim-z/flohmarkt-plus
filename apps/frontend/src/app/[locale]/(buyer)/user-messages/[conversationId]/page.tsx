@@ -155,10 +155,7 @@ export default function BuyerChat() {
         <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col min-h-[500px] max-h-[calc(100vh-200px)]">
           {/* Chat Header */}
           {currentConversation && (
-            <ChatHeader 
-              conversationId={conversationId as string} 
-              participantIds={currentConversation.participantIds} 
-            />
+            <ChatHeader participantIds={currentConversation.participantIds} />
           )}
           <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
             {hasPrev && (

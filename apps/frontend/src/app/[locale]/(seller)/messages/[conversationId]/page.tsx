@@ -150,6 +150,7 @@ export default function SellerChat() {
           {/* Chat Header */}
           {currentConversation && (
             <ChatHeader 
+              role={user?.role === 'seller' ? 'buyer' : 'seller'}
               conversationId={conversationId as string} 
               participantIds={currentConversation.participantIds} 
             />

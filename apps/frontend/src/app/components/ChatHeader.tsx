@@ -5,11 +5,10 @@ import { getUserById, User } from '@/app/api/users';
 import { useUser } from '@/contexts/UserContext';
 
 interface ChatHeaderProps {
-  conversationId: string;
   participantIds: string[];
 }
 
-export function ChatHeader({ conversationId, participantIds }: ChatHeaderProps) {
+export function ChatHeader({ participantIds }: ChatHeaderProps) {
   const { user } = useUser();
   const [counterpart, setCounterpart] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -89,7 +88,9 @@ export function ChatHeader({ conversationId, participantIds }: ChatHeaderProps) 
   };
 
   return (
-    <div className="px-4 py-3 border-b border-gray-200 bg-white flex items-center gap-3">
+    <div 
+      className="px-4 py-3 border-b border-gray-200 bg-white flex items-center gap-3 cursor-pointer hover:bg-gray-50 transition-colors"
+    >
       <div className="relative">
         {counterpart.avatar ? (
           <img
