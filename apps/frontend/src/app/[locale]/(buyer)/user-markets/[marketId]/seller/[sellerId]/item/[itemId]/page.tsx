@@ -25,7 +25,7 @@ import {
   FaCheckCircle,
   FaTimes
 } from 'react-icons/fa';
-import { getOrCreateConversation } from '@/app/api/messages';
+import { getOrCreateConversation, listMessages, sendMessage } from '@/app/api/messages';
 import { getListingsBySellerAndMarket, GetListingsParams } from '@/app/api/listings';
 import { getMarketDetails } from '@/app/api/markets';
 import { Listing } from '@/app/api/listings';
@@ -168,6 +168,22 @@ export default function ItemDetail() {
   const handleMessageSeller = async () => {
     try {
       const convo = await getOrCreateConversation({ sellerId: sellerId as string, listingId: itemId as string });
+
+      // If this is a fresh conversation, send a default contextual first message
+      try {
+        const res = await listMessages(convo._id, 1, 1);
+        const total = res?.pagination?.total ?? (Array.isArray(res?.data) ? res.data.length : 0);
+        if (total === 0) {
+          const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+          const productUrl = `${baseUrl}/${locale}/user-markets/${marketId}/seller/${sellerId}/item/${itemId}`;
+          const title = listing?.title || 'your item';
+          const defaultText = `Hi, I am interested in "${title}". Link: ${productUrl}`;
+          await sendMessage(convo._id, defaultText);
+        }
+      } catch (err) {
+        // Non-blocking: proceed to conversation even if pre-message fails
+      }
+
       router.push(`/${locale}/user-messages?conversationId=${convo._id}`);
     } catch (e) {
       console.error('failed to start conversation', e);
