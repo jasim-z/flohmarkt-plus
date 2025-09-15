@@ -1,22 +1,20 @@
 "use client";
 
-import { getCurrentUser, loginUser } from "@/app/api/auth";
+import { getCurrentUser } from "@/app/api/auth";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import LanguageSwitcher from "../../../components/LanguageSwitcher";
 import FleaMarketIllustration from "../../../components/FleaMarketIllustration";
+import { LoginForm } from "../../../components/forms/LoginForm";
+import Link from "next/link";
 
 export default function Login() {
   const t = useTranslations();
   const router = useRouter();
   const params = useParams();
   const { setUserData } = useUser();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
 
   useEffect(() => {
     async function checkUser() {
@@ -28,38 +26,24 @@ export default function Login() {
       } else if (user && user.role === "admin") {
         router.replace(`/${params.locale}/dashboard`);
       }
-      // Optionally handle other roles here
     }
     checkUser();
   }, [router, params.locale]);
 
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    if (loading) return;
-    setMessage("");
-    setLoading(true);
-    try {
-      await loginUser(email, password);
-      const user = await getCurrentUser();
-      if (user) {
-        // Immediately set user data in context to prevent unauthorized redirect
-        setUserData(user);
-        
-        // Now redirect based on role
-        if (user.role === "buyer") {
-          router.replace(`/${params.locale}/user-markets`);
-        } else if (user.role === "seller") {
-          router.replace(`/${params.locale}/overview`);
-        } else if (user.role === "admin") {
-          router.replace(`/${params.locale}/dashboard`);
-        }
+  const handleLoginSuccess = async () => {
+    const user = await getCurrentUser();
+    if (user) {
+      setUserData(user);
+      
+      if (user.role === "buyer") {
+        router.replace(`/${params.locale}/user-markets`);
+      } else if (user.role === "seller") {
+        router.replace(`/${params.locale}/overview`);
+      } else if (user.role === "admin") {
+        router.replace(`/${params.locale}/dashboard`);
       }
-      // Optionally redirect or fetch user data here
-    } catch (err: unknown) {
-      setMessage((err instanceof Error ? err.message : String(err)) || t("login.error"));
     }
-    setLoading(false);
-  }
+  };
 
   return (
     <>
@@ -87,37 +71,9 @@ export default function Login() {
         <div className="w-full max-w-sm md:max-w-md p-6 md:p-8 rounded-2xl shadow-lg border border-gray-200 bg-white">
           <LanguageSwitcher />
           <h1 className="text-3xl font-bold text-center text-gray-900 mb-6">{t("login.title")}</h1>
-          <form onSubmit={handleLogin} className="space-y-5">
-            <input
-              className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-              type="email"
-              placeholder={t("login.email")}
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-            />
-            <input
-              className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-              type="password"
-              placeholder={t("login.password")}
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              required
-            />
-            <button
-              className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white p-3 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-200 flex items-center justify-center disabled:opacity-60"
-              type="submit"
-              disabled={loading}
-            >
-              {loading ? (
-                <span className="loader border-2 border-white border-t-transparent rounded-full w-5 h-5 inline-block align-middle mr-2 animate-spin"></span>
-              ) : null}
-              {t("login.button")}
-            </button>
-          </form>
-          {message && <p className="mt-4 text-center text-red-500">{message}</p>}
+          <LoginForm onSuccess={handleLoginSuccess} />
           <p className="mt-6 text-center text-gray-500">
-            {t("login.noAccount")} <a href={`/${typeof window !== 'undefined' && window.location.pathname.split('/')[1] || 'en'}/signup`} className="text-blue-600 hover:underline">{t("login.signupLink")}</a>
+            {t("login.noAccount")} <Link href={`/${params.locale}/signup`} className="text-blue-600 hover:underline">{t("login.signupLink")}</Link>
           </p>
         </div>
       </div>
