@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
 import Loading from '@/app/components/loading';
+import { PageErrorBoundary } from '@/app/components/ErrorBoundary';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { role, isLoaded, isLoading } = useUser();
@@ -31,7 +32,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
-      <main className="flex-1 bg-gray-50">{children}</main>
+      <main className="flex-1 bg-gray-50">
+        <PageErrorBoundary>
+          {children}
+        </PageErrorBoundary>
+      </main>
       <Footer />
     </div>
   );

@@ -8,6 +8,7 @@ import { useUser } from '@/contexts/UserContext';
 import HeaderLanguageSwitcher from './HeaderLanguageSwitcher';
 import { getUnreadTotal } from '@/app/api/messages';
 import { useSocket } from '@/app/hooks/useSocket';
+import { ComponentErrorBoundary } from './ErrorBoundary';
 
 interface User {
   displayName?: string;
@@ -72,7 +73,8 @@ export default function Header() {
   }
 
   return (
-    <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-30">
+    <ComponentErrorBoundary>
+      <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-30">
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Logo and App Name */}
@@ -316,5 +318,6 @@ export default function Header() {
         </div>
       </div>
     </header>
+    </ComponentErrorBoundary>
   );
 } 
