@@ -1,3 +1,6 @@
+import { listingsApiClient } from '@/app/lib/apiClient';
+import { apiErrorHandler } from '@/app/lib/apiErrorHandler';
+
 export interface Listing {
   _id: string;
   title: string;
@@ -36,16 +39,11 @@ export interface Listing {
 
 export async function getListings() {
   try {
-    const res = await fetch("http://localhost:3952/listings", {
-      method: "GET",
-      credentials: "include",
-    });
-    if (!res.ok) {
-      throw new Error('Failed to fetch listings');
-    }
-    return await res.json();
+    const response = await listingsApiClient.get('/listings');
+    return response.data;
   } catch (error) {
-    console.error('Error fetching listings:', error);
+    const apiError = apiErrorHandler.handleError(error);
+    console.error('Error fetching listings:', apiError);
     return [];
   }
 }
@@ -69,8 +67,6 @@ export interface GetListingsParams {
 
 export async function getListingsByMarket(marketId: string, params: GetListingsParams = {}): Promise<{ data: Listing[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
   try {
-    const token = localStorage.getItem('auth_token');
-    
     // Build query parameters
     const queryParams = new URLSearchParams();
     if (params.page) queryParams.append('page', params.page.toString());
@@ -88,31 +84,18 @@ export async function getListingsByMarket(marketId: string, params: GetListingsP
     if (params.isNegotiable !== undefined) queryParams.append('isNegotiable', params.isNegotiable.toString());
     if (params.deliveryOption) queryParams.append('deliveryOption', params.deliveryOption);
     
-    const url = `http://localhost:3952/listings/market/${marketId}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-    
-    const res = await fetch(url, {
-      method: "GET",
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    if (!res.ok) {
-      throw new Error('Failed to fetch listings');
-    }
-    
-    const data = await res.json();
-    return data;
+    const url = `/listings/market/${marketId}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await listingsApiClient.get(url);
+    return response.data;
   } catch (error) {
-    console.error('Error fetching listings by market:', error);
+    const apiError = apiErrorHandler.handleError(error);
+    console.error('Error fetching listings by market:', apiError);
     return { data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } };
   }
 }
 
 export async function getAllListings(params: GetListingsParams = {}): Promise<{ data: Listing[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
   try {
-    const token = localStorage.getItem('auth_token');
-    
     // Build query parameters
     const queryParams = new URLSearchParams();
     if (params.page) queryParams.append('page', params.page.toString());
@@ -130,22 +113,12 @@ export async function getAllListings(params: GetListingsParams = {}): Promise<{ 
     if (params.isNegotiable !== undefined) queryParams.append('isNegotiable', params.isNegotiable.toString());
     if (params.deliveryOption) queryParams.append('deliveryOption', params.deliveryOption);
     
-    const url = `http://localhost:3952/listings?${queryParams.toString()}`;
-    
-    const res = await fetch(url, {
-      method: "GET",
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    if (!res.ok) {
-      throw new Error('Failed to fetch listings');
-    }
-    return await res.json();
+    const url = `/listings?${queryParams.toString()}`;
+    const response = await listingsApiClient.get(url);
+    return response.data;
   } catch (error) {
-    console.error('Error fetching listings:', error);
-    throw error;
+    const apiError = apiErrorHandler.handleError(error);
+    throw apiError;
   }
 }
 
@@ -155,8 +128,6 @@ export async function getListingsBySellerAndMarket(
   params: GetListingsParams = {}
 ): Promise<{ data: Listing[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
   try {
-    const token = localStorage.getItem('auth_token');
-    
     // Build query parameters
     const queryParams = new URLSearchParams();
     if (params.page) queryParams.append('page', params.page.toString());
@@ -165,22 +136,12 @@ export async function getListingsBySellerAndMarket(
     if (params.sortBy) queryParams.append('sortBy', params.sortBy);
     if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
     
-    const url = `http://localhost:3952/listings/seller/${sellerId}/market/${marketId}?${queryParams.toString()}`;
-    
-    const res = await fetch(url, {
-      method: "GET",
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    if (!res.ok) {
-      throw new Error('Failed to fetch listings');
-    }
-    return await res.json();
+    const url = `/listings/seller/${sellerId}/market/${marketId}?${queryParams.toString()}`;
+    const response = await listingsApiClient.get(url);
+    return response.data;
   } catch (error) {
-    console.error('Error fetching listings:', error);
-    throw error;
+    const apiError = apiErrorHandler.handleError(error);
+    throw apiError;
   }
 }
 
@@ -211,83 +172,41 @@ export interface CreateListingRequest {
 
 export async function createListingForMarket(marketId: string, listingData: CreateListingRequest): Promise<Listing> {
   try {
-    const token = localStorage.getItem('auth_token');
-    const res = await fetch(`http://localhost:3952/listings/market/${marketId}`, {
-      method: "POST",
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(listingData),
-    });
-    if (!res.ok) {
-      throw new Error('Failed to create listing');
-    }
-    return await res.json();
+    const response = await listingsApiClient.post(`/listings/market/${marketId}`, listingData);
+    return response.data;
   } catch (error) {
-    console.error('Error creating listing:', error);
-    throw error;
+    const apiError = apiErrorHandler.handleError(error);
+    throw apiError;
   }
 }
 
 export async function updateListing(listingId: string, listingData: Partial<CreateListingRequest>): Promise<Listing> {
   try {
-    const token = localStorage.getItem('auth_token');
-    const res = await fetch(`http://localhost:3952/listings/${listingId}`, {
-      method: "PATCH",
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(listingData),
-    });
-    if (!res.ok) {
-      throw new Error('Failed to update listing');
-    }
-    return await res.json();
+    const response = await listingsApiClient.patch(`/listings/${listingId}`, listingData);
+    return response.data;
   } catch (error) {
-    console.error('Error updating listing:', error);
-    throw error;
+    const apiError = apiErrorHandler.handleError(error);
+    throw apiError;
   }
 }
 
 // Debug function to check all listings
 export async function debugAllListings(): Promise<any[]> {
   try {
-    const token = localStorage.getItem('auth_token');
-    const res = await fetch('http://localhost:3952/listings/debug/all', {
-      method: "GET",
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    if (!res.ok) {
-      throw new Error('Failed to fetch debug listings');
-    }
-    return await res.json();
+    const response = await listingsApiClient.get('/listings/debug/all');
+    return response.data;
   } catch (error) {
-    console.error('Error fetching debug listings:', error);
-    throw error;
+    const apiError = apiErrorHandler.handleError(error);
+    throw apiError;
   }
 }
 
 export async function deleteListing(listingId: string): Promise<void> {
   try {
-    const token = localStorage.getItem('auth_token');
-    const res = await fetch(`http://localhost:3952/listings/${listingId}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    if (!res.ok) {
-      throw new Error('Failed to delete listing');
-    }
+    await listingsApiClient.delete(`/listings/${listingId}`);
   } catch (error) {
-    console.error('Error deleting listing:', error);
-    throw error;
+    const apiError = apiErrorHandler.handleError(error);
+    throw apiError;
   }
 }
 
@@ -298,39 +217,19 @@ export async function checkMigrationStatus(): Promise<{
   listingsWithoutField: number;
 }> {
   try {
-    const token = localStorage.getItem('auth_token');
-    const res = await fetch('http://localhost:3952/listings/migrate/status', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    if (!res.ok) {
-      throw new Error('Failed to check migration status');
-    }
-    return await res.json();
+    const response = await listingsApiClient.get('/listings/migrate/status');
+    return response.data;
   } catch (error) {
-    console.error('Error checking migration status:', error);
-    throw error;
+    const apiError = apiErrorHandler.handleError(error);
+    throw apiError;
   }
 }
 
 export async function runIsDeletedMigration(): Promise<void> {
   try {
-    const token = localStorage.getItem('auth_token');
-    const res = await fetch('http://localhost:3952/listings/migrate/add-is-deleted-field', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    if (!res.ok) {
-      throw new Error('Failed to run isDeleted migration');
-    }
+    await listingsApiClient.post('/listings/migrate/add-is-deleted-field');
   } catch (error) {
-    console.error('Error running isDeleted migration:', error);
-    throw error;
+    const apiError = apiErrorHandler.handleError(error);
+    throw apiError;
   }
 }

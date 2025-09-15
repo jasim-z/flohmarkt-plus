@@ -32,6 +32,9 @@ export interface PaginationMeta {
   hasPrev: boolean;
 }
 
+import { usersApiClient } from '@/app/lib/apiClient';
+import { apiErrorHandler } from '@/app/lib/apiErrorHandler';
+
 export interface PaginatedUsersResponse {
   data: User[];
   pagination: PaginationMeta;
@@ -59,51 +62,21 @@ export async function getUsers(params: GetUsersParams = {}): Promise<PaginatedUs
     if (params.role) searchParams.append('role', params.role);
     if (params.isActive !== undefined) searchParams.append('isActive', params.isActive.toString());
 
-    const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3950'}/users?${searchParams.toString()}`;
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch users');
-    }
-
-    const data = await response.json();
-    return data;
+    const url = `/users?${searchParams.toString()}`;
+    const response = await usersApiClient.get(url);
+    return response.data;
   } catch (error) {
-    console.error('Error fetching users:', error);
-    throw error;
+    const apiError = apiErrorHandler.handleError(error);
+    throw apiError;
   }
 }
 
 export async function getUserById(userId: string): Promise<User> {
   try {
-    const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3950'}/users/${userId}/public`;
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-      },
-    });
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error('User not found');
-      }
-      throw new Error('Failed to fetch user');
-    }
-
-    const data = await response.json();
-    return data;
+    const response = await usersApiClient.get(`/users/${userId}/public`);
+    return response.data;
   } catch (error) {
-    console.error('Error fetching user:', error);
-    throw error;
+    const apiError = apiErrorHandler.handleError(error);
+    throw apiError;
   }
 } 

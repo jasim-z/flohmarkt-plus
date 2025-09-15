@@ -1,22 +1,20 @@
+import { authApiClient, ApiError } from '@/app/lib/apiClient';
+import { apiErrorHandler } from '@/app/lib/apiErrorHandler';
+
 export async function loginUser(email: string, password: string) {
-  const res = await fetch("http://localhost:3950/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ email, password }),
-  });
-  if (!res.ok) {
-    const data = await res.json();
-    throw new Error(data.message || "Login fehlgeschlagen");
+  try {
+    const response = await authApiClient.post('/auth/login', { email, password });
+    
+    // Store the token in localStorage for cross-origin requests
+    if (response.data.access_token) {
+      localStorage.setItem('auth_token', response.data.access_token);
+    }
+    
+    return response;
+  } catch (error) {
+    const apiError = apiErrorHandler.handleError(error);
+    throw apiError;
   }
-  
-  // Store the token in localStorage for cross-origin requests
-  const responseData = await res.json();
-  if (responseData.access_token) {
-    localStorage.setItem('auth_token', responseData.access_token);
-  }
-  
-  return res;
 }
 
 export async function signupUser({
@@ -28,17 +26,13 @@ export async function signupUser({
   password: string;
   displayName: string;
 }) {
-  const res = await fetch("http://localhost:3950/auth/users", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ email, password, displayName }),
-  });
-  if (!res.ok) {
-    const data = await res.json();
-    throw new Error(data.message || "Registrierung fehlgeschlagen");
+  try {
+    const response = await authApiClient.post('/auth/users', { email, password, displayName });
+    return response;
+  } catch (error) {
+    const apiError = apiErrorHandler.handleError(error);
+    throw apiError;
   }
-  return res;
 }
 
 export async function getCurrentUser() {
@@ -50,32 +44,40 @@ export async function getCurrentUser() {
       return null;
     }
     
-    const res = await fetch("http://localhost:3950/auth/me", {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${token}`
-      },
+    // Add timeout and retry options for getCurrentUser
+    const response = await authApiClient.get('/auth/me', { 
+      timeout: 5000, // 5 second timeout
+      retries: 0 // No retries for getCurrentUser to avoid infinite loading
     });
-    if (res.ok) {
-      return await res.json();
-    } else if (res.status === 401) {
-      // Token expired or invalid, remove it
+    return response.data;
+  } catch (error) {
+    const apiError = apiErrorHandler.handleError(error);
+    
+    // Handle 401 errors by clearing token
+    if (apiError.type === 'auth') {
       localStorage.removeItem('auth_token');
-      return null;
     }
-    return null;
-  } catch {
+    
+    // For network errors, don't clear token - service might be down temporarily
+    if (apiError.type === 'network') {
+      console.warn('Auth service unavailable, using cached user data if available');
+    }
+    
+    // Don't throw errors for getCurrentUser, just return null
     return null;
   }
 } 
 
 export async function logoutUser() {
-  // Remove token from localStorage
-  localStorage.removeItem('auth_token');
-  
-  const res = await fetch("http://localhost:3950/auth/logout", {
-    method: "POST",
-    credentials: "include",
-  });
-  return res;
+  try {
+    // Remove token from localStorage
+    localStorage.removeItem('auth_token');
+    
+    const response = await authApiClient.post('/auth/logout');
+    return response;
+  } catch (error) {
+    // Don't throw errors for logout, just clear local storage
+    localStorage.removeItem('auth_token');
+    return { data: null, status: 200, statusText: 'OK' };
+  }
 }

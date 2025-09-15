@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { getCurrentUser } from '@/app/api/auth';
+import { logServiceStatus } from '@/app/lib/devFallback';
 
 interface User {
   _id: string;
@@ -36,6 +38,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       
+      // Log service status in development
+      await logServiceStatus();
+      
       // Get the auth token
       const token = localStorage.getItem('auth_token') || 
                     localStorage.getItem('token') || 
@@ -48,21 +53,18 @@ export function UserProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Call the auth/me endpoint to get user info
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3950'}/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch user info');
+      // Use the new API client with error handling
+      const userData = await getCurrentUser();
+      
+      if (userData) {
+        setUser(userData);
+        setRole(userData.role || '');
+      } else {
+        // No user data returned, clear everything
+        setRole('');
+        setUser(null);
       }
-
-      const userData = await response.json();
-      setUser(userData);
-      setRole(userData.role || '');
+      
       setIsLoaded(true);
       
     } catch (error) {
