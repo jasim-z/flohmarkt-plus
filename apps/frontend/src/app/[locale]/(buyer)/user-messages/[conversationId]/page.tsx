@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useUser } from '@/contexts/UserContext';
 import { listConversations, listMessages, sendMessage, markRead } from '@/app/api/messages';
 import { useSocket } from '@/app/hooks/useSocket';
@@ -20,13 +20,25 @@ export default function BuyerChat() {
   const { conversationId, locale } = useParams();
   const router = useRouter();
   const [messages, setMessages] = useState<Msg[]>([]);
-  const [conversations, setConversations] = useState<any[]>([]);
+  const [conversations, setConversations] = useState<Array<{
+    _id: string;
+    participantIds: string[];
+    lastMessage?: string;
+    lastMessageAt?: string;
+    unreadCount?: number;
+  }>>([]);
   const [loadingConvos, setLoadingConvos] = useState(true);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
   const [page, setPage] = useState(1);
   const [hasPrev, setHasPrev] = useState(false);
-  const [currentConversation, setCurrentConversation] = useState<any>(null);
+  const [currentConversation, setCurrentConversation] = useState<{
+    _id: string;
+    participantIds: string[];
+    lastMessage?: string;
+    lastMessageAt?: string;
+    unreadCount?: number;
+  } | null>(null);
   const topRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const scrollToBottom = () => {
@@ -38,7 +50,13 @@ export default function BuyerChat() {
         socket.emit('conversation:join', { conversationId });
       }
     });
-    socket.on('message:new', (msg: any) => {
+    socket.on('message:new', (msg: {
+      _id: string;
+      senderId: string;
+      conversationId: string;
+      text: string;
+      createdAt: string;
+    }) => {
       // Avoid double-adding for the sender: REST response will replace optimistic item
       if (user?._id && String(msg.senderId) === String(user._id)) return;
       const isSameConversation = String(msg.conversationId) === String(conversationId);
@@ -58,19 +76,23 @@ export default function BuyerChat() {
       // Update conversation list badges
       listConversations(1, 30).then((res) => setConversations(res.data || [])).catch(() => {});
     });
-    socket.on('message:read', ({ conversationId: cid, userId }: any) => {
+    socket.on('message:read', ({ conversationId: cid, userId }: { conversationId: string; userId: string }) => {
       // could update per-message read indicators later
+      console.log('Message read:', cid, userId);
     });
   });
 
   // Join conversation room for realtime updates
   useEffect(() => {
     if (!conversationId) return;
-    socketRef.current?.emit('conversation:join', { conversationId });
-    return () => {
-      socketRef.current?.emit('conversation:leave', { conversationId });
-    };
-  }, [conversationId]);
+    const socket = socketRef.current;
+    if (socket) {
+      socket.emit('conversation:join', { conversationId });
+      return () => {
+        socket.emit('conversation:leave', { conversationId });
+      };
+    }
+  }, [conversationId, socketRef]);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -85,8 +107,8 @@ export default function BuyerChat() {
         const res = await listConversations(1, 30);
         setConversations(res.data || []);
         // Find current conversation
-        const current = res.data?.find(c => c._id === conversationId);
-        setCurrentConversation(current);
+        const current = res.data?.find((c: { _id: string }) => c._id === conversationId);
+        setCurrentConversation(current || null);
       } finally {
         setLoadingConvos(false);
       }
@@ -106,7 +128,7 @@ export default function BuyerChat() {
         setLoading(false);
       }
     })();
-  }, [isLoaded, user?._id, conversationId, router, locale]);
+  }, [isLoaded, user, conversationId, router, locale]);
 
   const loadOlder = async () => {
     const nextPage = page + 1;
@@ -142,8 +164,18 @@ export default function BuyerChat() {
 
   return (
     <div className="bg-gray-50 min-h-full">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Placeholder left pane for future conversations list */}
+      <div className="max-w-6xl mx-auto px-2 sm:px-4 lg:px-8 py-3 sm:py-6 grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6">
+        {/* Mobile Conversations List - Show on small screens when no conversation selected */}
+        {!conversationId && (
+          <div className="lg:hidden bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col min-h-[400px] max-h-[calc(100vh-150px)]">
+            <div className="px-4 py-3 border-b border-gray-200 font-semibold flex-shrink-0">Conversations</div>
+            <div className="flex-1 overflow-y-auto">
+              <ConversationsList conversations={conversations} loading={loadingConvos} onSelect={(id) => router.replace(`/${locale}/user-messages/${id}`)} activeId={conversationId} />
+            </div>
+          </div>
+        )}
+
+        {/* Desktop Conversations List */}
         <div className="hidden lg:flex bg-white rounded-xl shadow-sm border border-gray-200 flex-col min-h-[500px] max-h-[calc(100vh-200px)]">
           <div className="px-4 py-3 border-b border-gray-200 font-semibold flex-shrink-0">Conversations</div>
           <div className="flex-1 overflow-y-auto">
@@ -152,7 +184,7 @@ export default function BuyerChat() {
         </div>
 
         {/* Chat pane */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col min-h-[500px] max-h-[calc(100vh-200px)]">
+        <div className={`${conversationId ? 'lg:col-span-2' : 'lg:col-span-3'} bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col min-h-[400px] sm:min-h-[500px] max-h-[calc(100vh-150px)] sm:max-h-[calc(100vh-200px)]`}>
           {/* Chat Header */}
           {currentConversation && (
             <ChatHeader participantIds={currentConversation.participantIds} />
@@ -180,15 +212,20 @@ export default function BuyerChat() {
             )}
             <div ref={bottomRef} />
           </div>
-          <div className="border-t border-gray-200 p-3 flex items-center gap-2 flex-shrink-0">
+          <div className="border-t border-gray-200 p-3 sm:p-4 flex items-center gap-2 sm:gap-3 flex-shrink-0">
             <input
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }}
               placeholder="Type a message..."
-              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 border border-gray-300 rounded-lg px-3 py-3 sm:py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px]"
             />
-            <button onClick={handleSend} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Send</button>
+            <button 
+              onClick={handleSend} 
+              className="px-4 py-3 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 min-h-[44px] min-w-[60px] font-medium"
+            >
+              Send
+            </button>
           </div>
         </div>
       </div>
