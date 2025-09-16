@@ -41,6 +41,9 @@ export function LoginForm({ onSuccess, className = '' }: LoginFormProps) {
   const email = watchField('email');
   const password = watchField('password');
 
+  // Enable submit as soon as current values are valid (no need to blur)
+  const canSubmit = loginSchema.safeParse({ email, password }).success && !isLoading;
+
   const onSubmit = async (data: LoginFormData) => {
     if (isLoading) return;
     
@@ -94,20 +97,11 @@ export function LoginForm({ onSuccess, className = '' }: LoginFormProps) {
         size="lg"
         fullWidth
         loading={isLoading}
-        disabled={!isValid || isLoading}
+        disabled={!canSubmit}
         className="mt-6"
       >
         {isLoading ? t('login.button') : t('login.button')}
       </FormButton>
-
-      {/* Debug info - remove in production */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mt-4 p-3 bg-gray-100 rounded-lg text-xs">
-          <div>Valid: {isValid ? 'Yes' : 'No'}</div>
-          <div>Errors: {validationState.errorCount}</div>
-          <div>Dirty: {validationState.isDirty ? 'Yes' : 'No'}</div>
-        </div>
-      )}
     </form>
   );
 }

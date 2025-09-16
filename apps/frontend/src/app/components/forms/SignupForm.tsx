@@ -45,6 +45,9 @@ export function SignupForm({ onSuccess, className = '' }: SignupFormProps) {
   const confirmPassword = watchField('confirmPassword');
   const displayName = watchField('displayName');
 
+  // Enable submit immediately when values are valid per schema
+  const canSubmit = signupSchema.safeParse({ email, password, confirmPassword, displayName }).success && !isLoading;
+
   const onSubmit = async (data: SignupFormData) => {
     if (isLoading) return;
     
@@ -126,21 +129,11 @@ export function SignupForm({ onSuccess, className = '' }: SignupFormProps) {
         size="lg"
         fullWidth
         loading={isLoading}
-        disabled={!isValid || isLoading}
+        disabled={!canSubmit}
         className="mt-6"
       >
         {isLoading ? t('signup.button') : t('signup.button')}
       </FormButton>
-
-      {/* Debug info - remove in production */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mt-4 p-3 bg-gray-100 rounded-lg text-xs">
-          <div>Valid: {isValid ? 'Yes' : 'No'}</div>
-          <div>Errors: {validationState.errorCount}</div>
-          <div>Dirty: {validationState.isDirty ? 'Yes' : 'No'}</div>
-          <div>Password Match: {password === confirmPassword ? 'Yes' : 'No'}</div>
-        </div>
-      )}
     </form>
   );
 }
