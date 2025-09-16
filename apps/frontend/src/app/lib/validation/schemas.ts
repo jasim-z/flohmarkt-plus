@@ -1,22 +1,39 @@
 import { z } from 'zod';
+import { CHARACTER_LIMITS } from '@/app/lib/security/inputSanitizer';
+
+// Custom validators for security
+const sanitizeString = (str: string) => str.replace(/<[^>]*>/g, '').trim();
+const validateNoHtml = (str: string) => !/<[^>]*>/.test(str);
+
+// Phone number validation
+const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+const validatePhoneNumber = (phone: string) => {
+  const digitsOnly = phone.replace(/\D/g, '');
+  return phoneRegex.test(digitsOnly) && digitsOnly.length >= 7 && digitsOnly.length <= 15;
+};
 
 // Auth Schemas
 export const loginSchema = z.object({
   email: z
     .string()
     .min(1, 'Email is required')
-    .email('Please enter a valid email address'),
+    .email('Please enter a valid email address')
+    .transform(sanitizeString)
+    .refine(validateNoHtml, 'HTML tags are not allowed'),
   password: z
     .string()
     .min(1, 'Password is required')
-    .min(6, 'Password must be at least 6 characters'),
+    .min(6, 'Password must be at least 6 characters')
+    .max(100, 'Password must be less than 100 characters'),
 });
 
 export const signupSchema = z.object({
   email: z
     .string()
     .min(1, 'Email is required')
-    .email('Please enter a valid email address'),
+    .email('Please enter a valid email address')
+    .transform(sanitizeString)
+    .refine(validateNoHtml, 'HTML tags are not allowed'),
   password: z
     .string()
     .min(1, 'Password is required')
@@ -29,11 +46,30 @@ export const signupSchema = z.object({
     .string()
     .min(1, 'Display name is required')
     .min(2, 'Display name must be at least 2 characters')
-    .max(50, 'Display name must be less than 50 characters'),
+    .max(50, 'Display name must be less than 50 characters')
+    .transform(sanitizeString)
+    .refine(validateNoHtml, 'HTML tags are not allowed'),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
 });
+
+// Phone number schema
+export const phoneNumberSchema = z
+  .string()
+  .min(1, 'Phone number is required')
+  .refine(validatePhoneNumber, 'Please enter a valid phone number')
+  .transform((phone) => {
+    // Format phone number
+    const digitsOnly = phone.replace(/\D/g, '');
+    if (digitsOnly.length === 10) {
+      return `(${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3, 6)}-${digitsOnly.slice(6)}`;
+    } else if (digitsOnly.length === 11 && digitsOnly.startsWith('1')) {
+      const withoutCountryCode = digitsOnly.slice(1);
+      return `+1 (${withoutCountryCode.slice(0, 3)}) ${withoutCountryCode.slice(3, 6)}-${withoutCountryCode.slice(6)}`;
+    }
+    return phone;
+  });
 
 // Listing Schemas
 export const createListingSchema = z.object({
@@ -41,12 +77,16 @@ export const createListingSchema = z.object({
     .string()
     .min(1, 'Title is required')
     .min(3, 'Title must be at least 3 characters')
-    .max(100, 'Title must be less than 100 characters'),
+    .max(CHARACTER_LIMITS.TITLE, `Title must be less than ${CHARACTER_LIMITS.TITLE} characters`)
+    .transform(sanitizeString)
+    .refine(validateNoHtml, 'HTML tags are not allowed'),
   description: z
     .string()
     .min(1, 'Description is required')
     .min(10, 'Description must be at least 10 characters')
-    .max(1000, 'Description must be less than 1000 characters'),
+    .max(CHARACTER_LIMITS.DESCRIPTION, `Description must be less than ${CHARACTER_LIMITS.DESCRIPTION} characters`)
+    .transform(sanitizeString)
+    .refine(validateNoHtml, 'HTML tags are not allowed'),
   price: z
     .number()
     .min(0, 'Price cannot be negative')
@@ -62,12 +102,16 @@ export const createListingSchema = z.object({
     .string()
     .min(1, 'City is required')
     .min(2, 'City must be at least 2 characters')
-    .max(50, 'City must be less than 50 characters'),
+    .max(CHARACTER_LIMITS.SHORT_TEXT, `City must be less than ${CHARACTER_LIMITS.SHORT_TEXT} characters`)
+    .transform(sanitizeString)
+    .refine(validateNoHtml, 'HTML tags are not allowed'),
   neighborhood: z
     .string()
     .min(1, 'Neighborhood is required')
     .min(2, 'Neighborhood must be at least 2 characters')
-    .max(50, 'Neighborhood must be less than 50 characters'),
+    .max(CHARACTER_LIMITS.SHORT_TEXT, `Neighborhood must be less than ${CHARACTER_LIMITS.SHORT_TEXT} characters`)
+    .transform(sanitizeString)
+    .refine(validateNoHtml, 'HTML tags are not allowed'),
   latitude: z
     .number()
     .min(-90, 'Invalid latitude')
@@ -139,17 +183,23 @@ export const createMarketSchema = z.object({
     .string()
     .min(1, 'Market name is required')
     .min(3, 'Market name must be at least 3 characters')
-    .max(100, 'Market name must be less than 100 characters'),
+    .max(CHARACTER_LIMITS.TITLE, `Market name must be less than ${CHARACTER_LIMITS.TITLE} characters`)
+    .transform(sanitizeString)
+    .refine(validateNoHtml, 'HTML tags are not allowed'),
   description: z
     .string()
     .min(1, 'Description is required')
     .min(10, 'Description must be at least 10 characters')
-    .max(1000, 'Description must be less than 1000 characters'),
+    .max(CHARACTER_LIMITS.DESCRIPTION, `Description must be less than ${CHARACTER_LIMITS.DESCRIPTION} characters`)
+    .transform(sanitizeString)
+    .refine(validateNoHtml, 'HTML tags are not allowed'),
   location: z
     .string()
     .min(1, 'Location is required')
     .min(5, 'Location must be at least 5 characters')
-    .max(200, 'Location must be less than 200 characters'),
+    .max(CHARACTER_LIMITS.MEDIUM_TEXT, `Location must be less than ${CHARACTER_LIMITS.MEDIUM_TEXT} characters`)
+    .transform(sanitizeString)
+    .refine(validateNoHtml, 'HTML tags are not allowed'),
   date: z
     .string()
     .min(1, 'Date is required')
