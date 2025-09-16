@@ -5,6 +5,7 @@ import { Toaster } from "react-hot-toast";
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { UserProvider } from "@/contexts/UserContext";
+import { LoadingProvider } from "@/app/contexts/LoadingContext";
 import { GlobalErrorBoundary } from "@/app/components/ErrorBoundary";
 
 const nunito = Nunito({ subsets: ['latin'], weight: ['400', '700'] })
@@ -27,8 +28,10 @@ export default async function RootLayout({
         <GlobalErrorBoundary>
           <NextIntlClientProvider locale={locale} messages={messages}>
             <UserProvider>
-              <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
-              {children}
+              <LoadingProvider>
+                <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
+                {children}
+              </LoadingProvider>
             </UserProvider>
           </NextIntlClientProvider>
         </GlobalErrorBoundary>
