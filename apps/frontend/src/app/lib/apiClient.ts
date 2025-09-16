@@ -262,10 +262,10 @@ export class ApiClient {
 
 // Create default API client instances for different services
 export const authApiClient = new ApiClient(process.env.NEXT_PUBLIC_AUTH_API_URL || 'http://localhost:3950');
-export const marketsApiClient = new ApiClient(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3953');
 export const messagesApiClient = new ApiClient(process.env.NEXT_PUBLIC_MESSAGES_API_URL || 'http://localhost:3954');
-export const listingsApiClient = new ApiClient(process.env.NEXT_PUBLIC_LISTINGS_API_URL || 'http://localhost:3951');
-export const ordersApiClient = new ApiClient(process.env.NEXT_PUBLIC_ORDERS_API_URL || 'http://localhost:3955');
+export const marketsApiClient = new ApiClient(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3953');
+export const listingsApiClient = new ApiClient(process.env.NEXT_PUBLIC_LISTINGS_API_URL || 'http://localhost:3952');
+export const ordersApiClient = new ApiClient(process.env.NEXT_PUBLIC_ORDERS_API_URL || 'http://localhost:3949');
 export const usersApiClient = new ApiClient(process.env.NEXT_PUBLIC_USERS_API_URL || 'http://localhost:3950');
 
 // Export default client
