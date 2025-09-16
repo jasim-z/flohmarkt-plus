@@ -40,9 +40,9 @@ const CONDITIONS = [
 ];
 
 const DELIVERY_OPTIONS = [
-  { value: 'pickup', label: 'Pickup Only' },
+  { value: 'pickup_only', label: 'Pickup Only' },
+  { value: 'local_delivery', label: 'Local Delivery' },
   { value: 'shipping', label: 'Shipping Available' },
-  { value: 'both', label: 'Both Pickup & Shipping' },
 ];
 
 export function AddListingForm({
@@ -76,17 +76,18 @@ export function AddListingForm({
       neighborhood: '',
       latitude: 0,
       longitude: 0,
-      deliveryOption: 'pickup',
+      deliveryOption: 'pickup_only',
       shippingCost: 0,
-      brand: '',
-      model: '',
-      originalPrice: 0,
-      dimensions: '',
-      weight: '',
+      // Don't set default values for optional fields
+      brand: undefined,
+      model: undefined,
+      originalPrice: undefined,
+      dimensions: undefined,
+      weight: undefined,
       tags: [],
       isNegotiable: false,
-      pickupAddress: '',
-      pickupInstructions: '',
+      pickupAddress: undefined,
+      pickupInstructions: undefined,
     },
     mode: 'onBlur',
     reValidateMode: 'onChange',
@@ -131,11 +132,33 @@ export function AddListingForm({
     
     setIsSubmitting(true);
     try {
+      // Clean up the data before sending
+      const cleanData = { ...data };
+      
+      // Remove empty strings, undefined, and null values for optional fields
+      const optionalStringFields = ['brand', 'model', 'dimensions', 'weight', 'pickupAddress', 'pickupInstructions'];
+      optionalStringFields.forEach(field => {
+        const value = cleanData[field as keyof typeof cleanData];
+        if (value === '' || value === undefined || value === null) {
+          delete cleanData[field as keyof typeof cleanData];
+        }
+      });
+      
+      // Remove zero, undefined, and null values for optional numeric fields
+      if (cleanData.originalPrice === 0 || cleanData.originalPrice === undefined || cleanData.originalPrice === null) {
+        delete cleanData.originalPrice;
+      }
+      
+      // Only include shippingCost if delivery option requires it and it's greater than 0
+      if (cleanData.deliveryOption !== 'shipping' && (cleanData.shippingCost === 0 || cleanData.shippingCost === undefined || cleanData.shippingCost === null)) {
+        delete cleanData.shippingCost;
+      }
+
       const listingData = {
-        ...data,
+        ...cleanData,
         marketId,
-        // Convert price to string for API
-        price: data.isFree ? '0' : data.price.toString(),
+        // Ensure price is a number
+        price: cleanData.isFree ? 0 : Number(cleanData.price),
       };
 
       const result = await createListingForMarket(listingData);
@@ -289,7 +312,7 @@ export function AddListingForm({
           options={DELIVERY_OPTIONS}
         />
 
-        {deliveryOption === 'shipping' && (
+        {(deliveryOption === 'shipping' || deliveryOption === 'local_delivery') && (
           <FormField
             label="Shipping Cost"
             name="shippingCost"

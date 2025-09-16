@@ -38,15 +38,16 @@ export default function AddListingModal({
     longitude: 0,
     deliveryOption: 'pickup_only',
     shippingCost: 0,
-    brand: '',
-    model: '',
-    originalPrice: 0,
-    dimensions: '',
-    weight: '',
+    // Don't set default values for optional fields
+    brand: undefined,
+    model: undefined,
+    originalPrice: undefined,
+    dimensions: undefined,
+    weight: undefined,
     tags: [],
     isNegotiable: false,
-    pickupAddress: '',
-    pickupInstructions: '',
+    pickupAddress: undefined,
+    pickupInstructions: undefined,
   });
 
   const [errors, setErrors] = useState<Partial<CreateListingRequest>>({});
@@ -116,10 +117,31 @@ export default function AddListingModal({
     try {
       setIsSubmitting(true);
       
-      // Ensure images is always an array, even if empty
+      // Clean up the data before sending
+      const cleanData = { ...formData };
+      
+      // Remove empty strings, undefined, and null values for optional fields
+      const optionalStringFields = ['brand', 'model', 'dimensions', 'weight', 'pickupAddress', 'pickupInstructions'];
+      optionalStringFields.forEach(field => {
+        const value = cleanData[field as keyof typeof cleanData];
+        if (value === '' || value === undefined || value === null) {
+          delete cleanData[field as keyof typeof cleanData];
+        }
+      });
+      
+      // Remove zero, undefined, and null values for optional numeric fields
+      if (cleanData.originalPrice === 0 || cleanData.originalPrice === undefined || cleanData.originalPrice === null) {
+        delete cleanData.originalPrice;
+      }
+      
+      // Only include shippingCost if delivery option requires it and it's greater than 0
+      if (cleanData.deliveryOption !== 'shipping' && (cleanData.shippingCost === 0 || cleanData.shippingCost === undefined || cleanData.shippingCost === null)) {
+        delete cleanData.shippingCost;
+      }
+
       const listingData = {
-        ...formData,
-        images: formData.images || []
+        ...cleanData,
+        images: cleanData.images || [],
       };
       
       await createListingForMarket(marketId, listingData);
@@ -143,15 +165,16 @@ export default function AddListingModal({
         longitude: 0,
         deliveryOption: 'pickup_only',
         shippingCost: 0,
-        brand: '',
-        model: '',
-        originalPrice: 0,
-        dimensions: '',
-        weight: '',
+        // Don't set default values for optional fields
+        brand: undefined,
+        model: undefined,
+        originalPrice: undefined,
+        dimensions: undefined,
+        weight: undefined,
         tags: [],
         isNegotiable: false,
-        pickupAddress: '',
-        pickupInstructions: '',
+        pickupAddress: undefined,
+        pickupInstructions: undefined,
       });
       
     } catch (error) {

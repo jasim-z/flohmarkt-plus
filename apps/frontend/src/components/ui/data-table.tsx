@@ -70,6 +70,10 @@ export function DataTable<T extends Record<string, unknown>>({
   emptyStateMessage,
   emptyStateDescription,
 }: DataTableProps<T>) {
+  
+  // Debug logging
+  console.log('DataTable received data:', data);
+  console.log('DataTable received columns:', columns);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState<{

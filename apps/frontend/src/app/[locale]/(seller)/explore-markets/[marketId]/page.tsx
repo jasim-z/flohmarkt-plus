@@ -93,6 +93,8 @@ export default function MarketDetail() {
     try {
       setListingsLoading(true);
       const response = await getListingsBySellerAndMarket(user._id, market._id, params);
+      console.log('Fetched listings response:', response);
+      console.log('Listings data:', response.data);
       setListings(response.data);
       setTotalPages(response.pagination.totalPages);
       setTotalItems(response.pagination.total);
