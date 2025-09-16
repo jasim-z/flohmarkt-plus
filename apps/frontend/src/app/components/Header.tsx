@@ -1,11 +1,11 @@
 'use client';
-import { FaShoppingCart, FaHeart, FaUserCircle, FaBell, FaCog, FaChevronDown } from 'react-icons/fa';
+import { FaShoppingCart, FaHeart, FaUserCircle, FaChevronDown } from 'react-icons/fa';
 import { useRouter, usePathname, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
 import { logoutUser } from '../api/auth';
 import { useUser } from '@/contexts/UserContext';
-import HeaderLanguageSwitcher from './HeaderLanguageSwitcher';
+// Header language switcher hidden per requirements
 import { getUnreadTotal } from '@/app/api/messages';
 import { useSocket } from '@/app/hooks/useSocket';
 import { ComponentErrorBoundary } from './ErrorBoundary';
@@ -261,13 +261,7 @@ export default function Header() {
               </svg>
             </button>
 
-            <HeaderLanguageSwitcher />
-            
-            {/* Notification Bell */}
-            <button className="relative p-2 text-gray-600 hover:text-blue-600 transition-colors duration-200 rounded-lg hover:bg-gray-100">
-              <FaBell size={18} className="sm:w-5 sm:h-5" />
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
-            </button>
+            {/* Language switcher and notifications removed */}
             
             {/* Account Dropdown */}
             <div className="relative" ref={accountRef}>
@@ -317,11 +311,7 @@ export default function Header() {
                     <span>My Profile</span>
                   </button>
                   
-                  {/* Settings */}
-                  <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200 flex items-center space-x-2">
-                    <FaCog size={14} />
-                    <span>Settings</span>
-                  </button>
+                  {/* Settings removed */}
                   
                   {/* Logout */}
                   <button
