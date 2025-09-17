@@ -4,6 +4,7 @@ import { Connection, Model, Types } from 'mongoose';
 import { MarketsRepository } from './markets.repository';
 import { CreateMarketDto, UpdateMarketDto, UsersServiceClient, GetUsersByIdsRequest } from '@app/common';
 import { MarketDocument } from './schemas/market.schema';
+import { SanitizationUtils } from './middleware/sanitization.middleware';
 
 @Injectable()
 export class MarketsService {
@@ -19,24 +20,27 @@ export class MarketsService {
       throw new ForbiddenException('Only admins can create markets');
     }
 
+    // Sanitize input data
+    const sanitizedData = SanitizationUtils.sanitizeMarketData(createMarketDto);
+
     // Enforce 1:1 relationship between vendor limit and booths available
-    if (createMarketDto.vendorLimit && createMarketDto.boothsAvailable) {
-      if (createMarketDto.vendorLimit !== createMarketDto.boothsAvailable) {
+    if (sanitizedData.vendorLimit && sanitizedData.boothsAvailable) {
+      if (sanitizedData.vendorLimit !== sanitizedData.boothsAvailable) {
         throw new ForbiddenException('Vendor limit and booths available must be equal for 1:1 allocation');
       }
-    } else if (createMarketDto.vendorLimit) {
+    } else if (sanitizedData.vendorLimit) {
       // Auto-set booths available to match vendor limit
-      createMarketDto.boothsAvailable = createMarketDto.vendorLimit;
-    } else if (createMarketDto.boothsAvailable) {
+      sanitizedData.boothsAvailable = sanitizedData.vendorLimit;
+    } else if (sanitizedData.boothsAvailable) {
       // Auto-set vendor limit to match booths available
-      createMarketDto.vendorLimit = createMarketDto.boothsAvailable;
+      sanitizedData.vendorLimit = sanitizedData.boothsAvailable;
     }
 
     // Calculate market status based on date and time
-    const marketDate = new Date(createMarketDto.date);
+    const marketDate = new Date(sanitizedData.date);
     const now = new Date();
-    const marketStartTime = new Date(createMarketDto.date + 'T' + createMarketDto.startTime);
-    const marketEndTime = new Date(createMarketDto.date + 'T' + createMarketDto.endTime);
+    const marketStartTime = new Date(sanitizedData.date + 'T' + sanitizedData.startTime);
+    const marketEndTime = new Date(sanitizedData.date + 'T' + sanitizedData.endTime);
     
     let status: string;
     if (marketDate < now && now < marketEndTime) {
@@ -48,12 +52,13 @@ export class MarketsService {
     }
 
     return this.marketsRepository.create({
-      ...createMarketDto,
+      ...sanitizedData,
+      categories: Array.isArray(sanitizedData.categories) ? sanitizedData.categories : [],
       status,
       createdBy: new Types.ObjectId(user.userId),
-      registeredVendors: (createMarketDto.registeredVendors || []).map(id => new Types.ObjectId(id)),
+      registeredVendors: (sanitizedData.registeredVendors || []).map(id => new Types.ObjectId(id)),
       isDeleted: false, // Ensure new markets are not deleted
-      isActive: createMarketDto.isActive !== undefined ? createMarketDto.isActive : true, // Handle legacy data
+      isActive: sanitizedData.isActive !== undefined ? sanitizedData.isActive : true, // Handle legacy data
     });
   }
 
@@ -77,28 +82,31 @@ export class MarketsService {
       try {
         const marketData = marketsData[i];
         
+        // Sanitize input data
+        const sanitizedData = SanitizationUtils.sanitizeMarketData(marketData);
+        
         // Validate required fields
-        if (!marketData.name || !marketData.description || !marketData.location || !marketData.date) {
+        if (!sanitizedData.name || !sanitizedData.description || !sanitizedData.location || !sanitizedData.date) {
           errors.push(`Market ${i + 1}: Missing required fields (name, description, location, or date)`);
           continue;
         }
 
         // Enforce 1:1 relationship between vendor limit and booths available
-        if (marketData.vendorLimit && marketData.boothsAvailable) {
-          if (marketData.vendorLimit !== marketData.boothsAvailable) {
-            marketData.boothsAvailable = marketData.vendorLimit;
+        if (sanitizedData.vendorLimit && sanitizedData.boothsAvailable) {
+          if (sanitizedData.vendorLimit !== sanitizedData.boothsAvailable) {
+            sanitizedData.boothsAvailable = sanitizedData.vendorLimit;
           }
-        } else if (marketData.vendorLimit) {
-          marketData.boothsAvailable = marketData.vendorLimit;
-        } else if (marketData.boothsAvailable) {
-          marketData.vendorLimit = marketData.boothsAvailable;
+        } else if (sanitizedData.vendorLimit) {
+          sanitizedData.boothsAvailable = sanitizedData.vendorLimit;
+        } else if (sanitizedData.boothsAvailable) {
+          sanitizedData.vendorLimit = sanitizedData.boothsAvailable;
         }
 
         // Calculate market status based on date and time
-        const marketDate = new Date(marketData.date);
+        const marketDate = new Date(sanitizedData.date);
         const now = new Date();
-        const marketStartTime = new Date(marketData.date + 'T' + marketData.startTime);
-        const marketEndTime = new Date(marketData.date + 'T' + marketData.endTime);
+        const marketStartTime = new Date(sanitizedData.date + 'T' + sanitizedData.startTime);
+        const marketEndTime = new Date(sanitizedData.date + 'T' + sanitizedData.endTime);
         
         let status: string;
         if (marketDate < now && now < marketEndTime) {
@@ -110,12 +118,13 @@ export class MarketsService {
         }
 
         const market = await this.marketsRepository.create({
-          ...marketData,
+          ...sanitizedData,
+          categories: Array.isArray(sanitizedData.categories) ? sanitizedData.categories : [],
           status,
           createdBy: new Types.ObjectId(user.userId),
-          registeredVendors: (marketData.registeredVendors || []).map(id => new Types.ObjectId(id)),
+          registeredVendors: (sanitizedData.registeredVendors || []).map(id => new Types.ObjectId(id)),
           isDeleted: false,
-          isActive: marketData.isActive !== undefined ? marketData.isActive : true,
+          isActive: sanitizedData.isActive !== undefined ? sanitizedData.isActive : true,
         });
 
         createdMarkets.push(market);
@@ -301,10 +310,25 @@ export class MarketsService {
       .lean()
       .exec();
 
-    console.log(`Found ${markets.length} markets out of ${total} total`);
+    const normalized = markets.map((m: any) => {
+      const idStr = m._id?.toString?.() || m._id;
+      const priceNum = m.price && typeof m.price === 'object' && m.price.toString
+        ? Number(m.price.toString())
+        : m.price;
+      return {
+        ...m,
+        _id: idStr,
+        id: idStr,
+        price: typeof priceNum === 'number' && !Number.isNaN(priceNum) ? priceNum : m.price,
+        categories: Array.isArray(m.categories) ? m.categories : [],
+        registeredVendors: Array.isArray(m.registeredVendors) ? m.registeredVendors : [],
+      };
+    });
+
+    console.log(`Found ${normalized.length} markets out of ${total} total`);
 
     return {
-      data: markets,
+      data: normalized,
       pagination: {
         page: Number(page),
         limit: Number(limit),
@@ -546,6 +570,23 @@ export class MarketsService {
     
     if (!market) throw new NotFoundException('Market not found');
 
+    // Normalize market shape for frontend compatibility
+    const marketNormalized: any = (() => {
+      const m: any = (market as any).toObject ? (market as any).toObject() : market;
+      const idStr = m._id?.toString?.() || m._id;
+      const priceNum = m.price && typeof m.price === 'object' && m.price.toString
+        ? Number(m.price.toString())
+        : m.price;
+      return {
+        ...m,
+        _id: idStr,
+        id: idStr,
+        price: typeof priceNum === 'number' && !Number.isNaN(priceNum) ? priceNum : m.price,
+        categories: Array.isArray(m.categories) ? m.categories : [],
+        registeredVendors: Array.isArray(m.registeredVendors) ? m.registeredVendors : [],
+      };
+    })();
+
     // Get vendor data if market has vendors
     let vendors = { 
       data: [], 
@@ -606,7 +647,7 @@ export class MarketsService {
     };
 
     return {
-      market,
+      market: marketNormalized,
       vendors: vendors.data,
       pagination: vendors.pagination,
       statistics: marketStats,
@@ -618,26 +659,29 @@ export class MarketsService {
       throw new ForbiddenException('Only admins can update markets');
     }
     
+    // Sanitize input data
+    const sanitizedData = SanitizationUtils.sanitizeMarketData(updateMarketDto);
+    
     // Enforce 1:1 relationship between vendor limit and booths available
-    if (updateMarketDto.vendorLimit && updateMarketDto.boothsAvailable) {
-      if (updateMarketDto.vendorLimit !== updateMarketDto.boothsAvailable) {
+    if (sanitizedData.vendorLimit && sanitizedData.boothsAvailable) {
+      if (sanitizedData.vendorLimit !== sanitizedData.boothsAvailable) {
         throw new ForbiddenException('Vendor limit and booths available must be equal for 1:1 allocation');
       }
-    } else if (updateMarketDto.vendorLimit) {
+    } else if (sanitizedData.vendorLimit) {
       // Auto-set booths available to match vendor limit
-      updateMarketDto.boothsAvailable = updateMarketDto.vendorLimit;
-    } else if (updateMarketDto.boothsAvailable) {
+      sanitizedData.boothsAvailable = sanitizedData.vendorLimit;
+    } else if (sanitizedData.boothsAvailable) {
       // Auto-set vendor limit to match booths available
-      updateMarketDto.vendorLimit = updateMarketDto.boothsAvailable;
+      sanitizedData.vendorLimit = sanitizedData.boothsAvailable;
     }
 
     // Ensure isDeleted field exists for legacy data
-    if (updateMarketDto.isDeleted === undefined) {
-      updateMarketDto.isDeleted = false;
+    if (sanitizedData.isDeleted === undefined) {
+      sanitizedData.isDeleted = false;
     }
     
     // Convert registeredVendors to ObjectIds if they exist
-    const updateData = { ...updateMarketDto };
+    const updateData = { ...sanitizedData };
     if (updateData.registeredVendors && Array.isArray(updateData.registeredVendors)) {
       // The DTO expects string[], but we need to convert to ObjectId[] for MongoDB
       // We'll handle this by creating a new object with the converted values

@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { useState, useCallback, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaImage, FaUsers, FaTags, FaArrowLeft, FaSave, FaTimes } from "react-icons/fa";
-import { getMarkets, updateMarket, Market, CreateMarketRequest } from "../../../../../api/markets";
+import { getMarketDetails, updateMarket, Market, CreateMarketRequest } from "../../../../../api/markets";
 
 interface EditMarketForm {
   name: string;
@@ -58,10 +58,10 @@ export default function EditMarket() {
     const fetchMarket = async () => {
       try {
         setFetching(true);
-        const response = await getMarkets({ page: 1, limit: 1000 });
-        const foundMarket = response.data.find(m => m._id === marketId);
-        
-        if (!foundMarket) {
+        const details = await getMarketDetails(marketId);
+        const foundMarket = details.market as unknown as Market;
+
+        if (!foundMarket || (!foundMarket._id && !(foundMarket as any).id)) {
           setError('Market not found');
           return;
         }
@@ -83,7 +83,7 @@ export default function EditMarket() {
           bannerImage: foundMarket.bannerImage,
           vendorLimit: foundMarket.vendorLimit,
           boothsAvailable: foundMarket.boothsAvailable,
-          categories: foundMarket.categories,
+          categories: Array.isArray(foundMarket.categories) ? foundMarket.categories : [],
         });
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch market');

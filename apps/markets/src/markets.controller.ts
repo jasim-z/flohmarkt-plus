@@ -10,13 +10,38 @@ import {
   UseGuards,
   Request,
   Put,
+  UsePipes,
+  ValidationPipe,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { MarketsService } from './markets.service';
 import { MarketPriceMigrationService } from './migration/add-price-field';
 import { JwtAuthGuard, RolesGuard, Roles } from '@app/common';
-import { CreateMarketDto, UpdateMarketDto } from '@app/common';
+import { 
+  CreateMarketDto, 
+  UpdateMarketDto,
+  QueryMarketDto,
+  JoinMarketDto,
+  BulkCreateMarketDto,
+  UpdateRegisteredVendorsDto,
+  UploadImageDto,
+  FileUploadValidation,
+} from '@app/common';
+import { RateLimitMiddleware, RATE_LIMITS } from './middleware/rate-limit.middleware';
+import { SanitizationMiddleware } from './middleware/sanitization.middleware';
 
 @Controller('markets')
+@UsePipes(new ValidationPipe({ 
+  transform: true, 
+  whitelist: true, 
+  forbidNonWhitelisted: true,
+  transformOptions: {
+    enableImplicitConversion: true,
+  },
+}))
 export class MarketsController {
   constructor(
     private readonly marketsService: MarketsService,
@@ -33,7 +58,7 @@ export class MarketsController {
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'seller', 'buyer')
-  findAll(@Query() query: any, @Request() req) {
+  findAll(@Query() query: QueryMarketDto, @Request() req) {
     // Add user role to query for proper filtering
     query.userRole = req.user.role;
     return this.marketsService.findAll(query);
@@ -50,6 +75,10 @@ export class MarketsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'seller', 'buyer')
   findByUser(@Param('userId') userId: string) {
+    // Validate ObjectId format
+    if (!/^[0-9a-fA-F]{24}$/.test(userId)) {
+      throw new BadRequestException('Invalid user ID format');
+    }
     return this.marketsService.findByUser(userId);
   }
 
@@ -63,7 +92,7 @@ export class MarketsController {
   @Post('bulk')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  createBulk(@Body() body: { markets: any[] }, @Request() req) {
+  createBulk(@Body() body: BulkCreateMarketDto, @Request() req) {
     return this.marketsService.createBulk(body.markets, req.user);
   }
 
@@ -81,6 +110,13 @@ export class MarketsController {
     @Param('marketId') marketId: string,
     @Param('userId') userId: string
   ) {
+    // Validate ObjectId formats
+    if (!/^[0-9a-fA-F]{24}$/.test(marketId)) {
+      throw new BadRequestException('Invalid market ID format');
+    }
+    if (!/^[0-9a-fA-F]{24}$/.test(userId)) {
+      throw new BadRequestException('Invalid user ID format');
+    }
     return this.marketsService.addUserToMarket(marketId, userId);
   }
 
@@ -90,8 +126,12 @@ export class MarketsController {
   async joinMarket(
     @Param('marketId') marketId: string,
     @Request() req: any,
-    @Body() body: { paymentMethod: string; cardDetails: any }
+    @Body() body: JoinMarketDto
   ) {
+    // Validate ObjectId format
+    if (!/^[0-9a-fA-F]{24}$/.test(marketId)) {
+      throw new BadRequestException('Invalid market ID format');
+    }
     return this.marketsService.joinMarket(marketId, req.user.userId, body);
   }
 
@@ -100,8 +140,12 @@ export class MarketsController {
   @Roles('admin')
   updateRegisteredVendors(
     @Param('marketId') marketId: string,
-    @Body() body: { userIds: string[] }
+    @Body() body: UpdateRegisteredVendorsDto
   ) {
+    // Validate ObjectId format
+    if (!/^[0-9a-fA-F]{24}$/.test(marketId)) {
+      throw new BadRequestException('Invalid market ID format');
+    }
     return this.marketsService.updateRegisteredVendors(marketId, body.userIds);
   }
 
@@ -109,20 +153,32 @@ export class MarketsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'seller', 'buyer')
   findOne(@Param('id') id: string) {
+    // Validate ObjectId format
+    if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+      throw new BadRequestException('Invalid market ID format');
+    }
     return this.marketsService.findOne(id);
   }
 
   @Get(':id/vendors')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'seller', 'buyer')
-  getVendorsByMarket(@Param('id') id: string, @Query() query: any) {
+  getVendorsByMarket(@Param('id') id: string, @Query() query: QueryMarketDto) {
+    // Validate ObjectId format
+    if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+      throw new BadRequestException('Invalid market ID format');
+    }
     return this.marketsService.getVendorsByMarket(id, query);
   }
 
   @Get(':id/details')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'seller', 'buyer')
-  getMarketDetails(@Param('id') id: string, @Query() query: any) {
+  getMarketDetails(@Param('id') id: string, @Query() query: QueryMarketDto) {
+    // Validate ObjectId format
+    if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+      throw new BadRequestException('Invalid market ID format');
+    }
     return this.marketsService.getMarketDetails(id, query);
   }
 
@@ -134,6 +190,10 @@ export class MarketsController {
     @Body() updateMarketDto: UpdateMarketDto,
     @Request() req,
   ) {
+    // Validate ObjectId format
+    if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+      throw new BadRequestException('Invalid market ID format');
+    }
     return this.marketsService.update(id, updateMarketDto, req.user);
   }
 
@@ -141,6 +201,10 @@ export class MarketsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   remove(@Param('id') id: string, @Request() req) {
+    // Validate ObjectId format
+    if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+      throw new BadRequestException('Invalid market ID format');
+    }
     return this.marketsService.remove(id, req.user);
   }
 
@@ -148,6 +212,10 @@ export class MarketsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   toggleActive(@Param('id') id: string, @Request() req) {
+    // Validate ObjectId format
+    if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+      throw new BadRequestException('Invalid market ID format');
+    }
     return this.marketsService.toggleActive(id, req.user);
   }
 
@@ -181,5 +249,39 @@ export class MarketsController {
   @Roles('admin')
   async updatePriceFieldToDecimal128() {
     return this.marketPriceMigrationService.updatePriceFieldToDecimal128();
+  }
+
+  @Post('upload-image')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadImage(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() uploadData: UploadImageDto
+  ) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    // Validate file type and size
+    const errorMessage = FileUploadValidation.getErrorMessage(file.mimetype, file.size);
+    if (errorMessage) {
+      throw new BadRequestException(errorMessage);
+    }
+
+    // In a real implementation, you would upload to a cloud storage service
+    // For now, we'll return a mock response
+    return {
+      success: true,
+      message: 'Image uploaded successfully',
+      file: {
+        originalName: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size,
+        name: uploadData.name || file.originalname,
+        category: uploadData.category || 'market',
+        url: `https://example.com/uploads/${file.filename}` // Mock URL
+      }
+    };
   }
 } 

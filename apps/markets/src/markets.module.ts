@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { HttpModule } from '@nestjs/axios';
@@ -9,6 +9,8 @@ import { MarketsRepository } from './markets.repository';
 import { MarketPriceMigrationService } from './migration/add-price-field';
 import { DatabaseModule, JwtStrategy, RolesGuard, HttpUsersServiceClient } from '@app/common';
 import { PassportModule } from '@nestjs/passport';
+import { RateLimitMiddleware, RATE_LIMITS } from './middleware/rate-limit.middleware';
+import { SanitizationMiddleware } from './middleware/sanitization.middleware';
 import * as Joi from 'joi';
 
 @Module({
@@ -41,4 +43,32 @@ import * as Joi from 'joi';
   ],
   exports: [MarketsService],
 })
-export class MarketsModule {} 
+export class MarketsModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    // Apply sanitization middleware to all routes
+    consumer
+      .apply(SanitizationMiddleware)
+      .forRoutes('*');
+
+    // Apply rate limiting to specific routes
+    consumer
+      .apply(RateLimitMiddleware.create(RATE_LIMITS.CREATE))
+      .forRoutes('POST /markets');
+
+    consumer
+      .apply(RateLimitMiddleware.create(RATE_LIMITS.BULK))
+      .forRoutes('POST /markets/bulk');
+
+    consumer
+      .apply(RateLimitMiddleware.create(RATE_LIMITS.JOIN))
+      .forRoutes('POST /markets/*/join');
+
+    consumer
+      .apply(RateLimitMiddleware.create(RATE_LIMITS.SEARCH))
+      .forRoutes('GET /markets');
+
+    consumer
+      .apply(RateLimitMiddleware.create(RATE_LIMITS.GENERAL))
+      .forRoutes('*');
+  }
+} 
