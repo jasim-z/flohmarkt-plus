@@ -28,3 +28,12 @@ export const ConversationSchema = SchemaFactory.createForClass(Conversation);
 ConversationSchema.index({ participantIds: 1 });
 ConversationSchema.index({ participantIds: 1, listingId: 1 }, { unique: false });
 
+ConversationSchema.set('toJSON', {
+  virtuals: true,
+  versionKey: false,
+  transform: (_doc, ret) => {
+    if (ret._id) { ret.id = ret._id.toString(); delete ret._id; }
+    return ret;
+  },
+});
+

@@ -1,15 +1,17 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards, UsePipes, ValidationPipe, BadRequestException } from '@nestjs/common';
 import { JwtAuthGuard, RolesGuard, Roles, CurrentUser } from '@app/common';
 import { MessagesService } from './messages.service';
+import { CreateConversationDto } from '@app/common/dto/messages/create-conversation.dto';
 
 @Controller('conversations')
 @UseGuards(JwtAuthGuard, RolesGuard)
+@UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true, transformOptions: { enableImplicitConversion: true } }))
 export class ConversationsController {
   constructor(private readonly messagesService: MessagesService) {}
 
   @Post()
   @Roles('buyer', 'seller', 'admin')
-  async getOrCreate(@Body() body: { buyerId?: string; sellerId?: string; listingId?: string }, @CurrentUser() user: any) {
+  async getOrCreate(@Body() body: CreateConversationDto, @CurrentUser() user: any) {
     return this.messagesService.getOrCreateConversation(user._id.toString(), body);
   }
 
