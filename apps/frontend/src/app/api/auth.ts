@@ -27,7 +27,7 @@ export async function signupUser({
   displayName: string;
 }) {
   try {
-    const response = await authApiClient.post('/auth/users', { email, password, displayName });
+    const response = await authApiClient.post('/users', { email, password, displayName });
     return response;
   } catch (error) {
     const apiError = apiErrorHandler.handleError(error);

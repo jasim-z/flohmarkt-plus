@@ -11,7 +11,12 @@ async function bootstrap() {
   app.use(cookieParser());
   const rmqService = app.get<RmqService>(RmqService);
   app.connectMicroservice<RmqOptions>(rmqService.getOptions('AUTH', true));
-  app.useGlobalPipes(new ValidationPipe());
+  app.useGlobalPipes(new ValidationPipe({
+    transform: true,
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transformOptions: { enableImplicitConversion: true },
+  }));
   const configService = app.get(ConfigService);
   await app.startAllMicroservices();
   app.enableCors({
