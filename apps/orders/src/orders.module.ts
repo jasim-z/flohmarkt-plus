@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
 import * as Joi from 'joi';
@@ -9,6 +9,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { Order, OrderSchema } from './schemas/order.schemas';
 import { OrdersRepository } from './orders.repository';
 import { BILLING_SERVICE } from './constants/services';
+import { SanitizationMiddleware } from './middleware/sanitization.middleware';
+import { RateLimitMiddleware, RATE_LIMITS } from './middleware/rate-limit.middleware';
 
 @Module({
   imports: [
@@ -30,4 +32,10 @@ import { BILLING_SERVICE } from './constants/services';
   controllers: [OrdersController],
   providers: [OrdersService, OrdersRepository, JwtStrategy, RolesGuard],
 })
-export class OrdersModule {}
+export class OrdersModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(SanitizationMiddleware).forRoutes('*');
+    consumer.apply(RateLimitMiddleware.create(RATE_LIMITS.GENERAL)).forRoutes('*');
+    consumer.apply(RateLimitMiddleware.create(RATE_LIMITS.CREATE)).forRoutes('POST /orders');
+  }
+}

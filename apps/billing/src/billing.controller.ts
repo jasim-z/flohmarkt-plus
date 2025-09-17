@@ -1,9 +1,10 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, UsePipes, ValidationPipe } from '@nestjs/common';
 import { BillingService } from './billing.service';
 import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
 import { RmqService } from '@app/common';
 
 @Controller()
+@UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
 export class BillingController {
   constructor(
     private readonly billingService: BillingService,

@@ -5,7 +5,12 @@ import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(OrdersModule);
-  app.useGlobalPipes(new ValidationPipe());
+  app.useGlobalPipes(new ValidationPipe({
+    transform: true,
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transformOptions: { enableImplicitConversion: true },
+  }));
   const configService = app.get(ConfigService);
   app.enableCors({
     origin: 'http://localhost:3000',
