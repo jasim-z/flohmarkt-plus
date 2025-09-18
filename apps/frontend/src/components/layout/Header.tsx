@@ -7,7 +7,7 @@ import { logoutUser } from '@/app/api/auth';
 import { useUser } from '@/contexts/UserContext';
 // Header language switcher hidden per requirements
 import { getUnreadTotal } from '@/app/api/messages';
-import { useSocket } from '@/app/hooks/useSocket';
+import { useSocket } from '@/hooks/useSocket';
 import { ErrorBoundary as ComponentErrorBoundary } from '../ErrorBoundary';
 
 interface User {

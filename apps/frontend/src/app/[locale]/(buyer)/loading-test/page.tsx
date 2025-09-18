@@ -19,7 +19,7 @@ import {
   InlineLoading, 
   ButtonLoading 
 } from '@/components/loading/LoadingOverlay';
-import { useLoading, useApiLoading, useUploadLoading } from '@/app/hooks/useLoading';
+import { useLoading, useApiLoading, useUploadLoading } from '@/hooks/useLoading';
 import { useGlobalLoading } from '@/app/contexts/LoadingContext';
 
 export default function LoadingTestPage() {

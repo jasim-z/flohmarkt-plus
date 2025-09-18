@@ -128,7 +128,7 @@ import {
 Local loading state management with delay and timeout options.
 
 ```tsx
-import { useLoading } from '@/app/hooks/useLoading';
+import { useLoading } from '@/hooks/useLoading';
 
 const {
   isLoading,
@@ -159,7 +159,7 @@ stopLoading();
 Automatic loading management for API calls.
 
 ```tsx
-import { useApiLoading } from '@/app/hooks/useLoading';
+import { useApiLoading } from '@/hooks/useLoading';
 
 const { isLoading, executeWithLoading } = useApiLoading({
   delay: 500,
@@ -182,7 +182,7 @@ const handleApiCall = async () => {
 Loading management for file uploads with progress tracking.
 
 ```tsx
-import { useUploadLoading } from '@/app/hooks/useLoading';
+import { useUploadLoading } from '@/hooks/useLoading';
 
 const { isLoading, progress, uploadWithProgress } = useUploadLoading();
 

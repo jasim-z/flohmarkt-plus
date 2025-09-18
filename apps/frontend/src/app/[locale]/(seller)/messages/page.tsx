@@ -7,7 +7,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { listConversations } from '@/app/api/messages';
 import { ConversationsList } from '@/components/business';
-import { useSocket } from '@/app/hooks/useSocket';
+import { useSocket } from '@/hooks/useSocket';
 
 export default function SellerMessages() {
   const t = useTranslations();

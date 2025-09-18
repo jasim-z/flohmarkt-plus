@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { signupUser } from '@/app/api/auth';
-import { useFormValidation } from '@/app/hooks/useFormValidation';
+import { useFormValidation } from '@/hooks/useFormValidation';
 import { signupSchema, SignupFormData } from '@/app/lib/validation/schemas';
 import { FormField } from './FormField';
 import { FormButton } from './FormButton';

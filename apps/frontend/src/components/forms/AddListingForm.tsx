@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useFormValidation } from '@/app/hooks/useFormValidation';
+import React, { useState } from 'react';
+import { useFormValidation } from '@/hooks/useFormValidation';
 import { createListingSchema, CreateListingFormData } from '@/app/lib/validation/schemas';
 import { FormField } from './FormField';
 import { FormButton } from './FormButton';
@@ -47,7 +47,6 @@ const DELIVERY_OPTIONS = [
 
 export function AddListingForm({
   marketId,
-  marketName,
   marketLocation,
   onSuccess,
   onCancel,
@@ -94,16 +93,8 @@ export function AddListingForm({
   });
 
   // Watch fields for real-time validation
-  const title = watchField('title');
-  const description = watchField('description');
   const price = watchField('price');
   const isFree = watchField('isFree');
-  const category = watchField('category');
-  const condition = watchField('condition');
-  const city = watchField('city');
-  const neighborhood = watchField('neighborhood');
-  const deliveryOption = watchField('deliveryOption');
-  const shippingCost = watchField('shippingCost');
 
   // Handle tags input
   const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
