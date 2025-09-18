@@ -2,10 +2,11 @@ import { NextConfig } from 'next';
 import createNextIntlPlugin from 'next-intl/plugin';
 
 const nextConfig: NextConfig = {
-  // Keep experimental minimal to avoid unstable behavior
+  // Performance optimizations
   experimental: {
-    // Disable features that might cause restart loops
-    webpackBuildWorker: false,
+    workerThreads: false,
+    cpus: 1,
+    optimizePackageImports: ['react-icons', '@radix-ui/react-icons'],
   },
   
   // Image configuration
@@ -24,56 +25,72 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
+    domains: [
+      'localhost',
+      '127.0.0.1',
+      'example.com',
+      'images.unsplash.com',
+      'picsum.photos',
+      'via.placeholder.com',
+      'placehold.co',
+      'imgur.com',
+      'i.imgur.com',
+      'cloudinary.com',
+      'res.cloudinary.com',
+      'amazonaws.com',
+      's3.amazonaws.com',
+    ],
     dangerouslyAllowSVG: true,
     contentDispositionType: 'attachment',
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
   
-  // Development sensible defaults; let Next manage HMR/refresh
+  // Development optimizations
   ...(process.env.NODE_ENV === 'development' && {
     compiler: {
       removeConsole: false,
     },
-    productionBrowserSourceMaps: false,
-    // Disable hot reloading in Docker to prevent restarts
-    onDemandEntries: {
-      maxInactiveAge: 25 * 1000,
-      pagesBufferLength: 2,
-    },
-    // Disable Fast Refresh to prevent restarts
-    reactStrictMode: false,
-    // Disable experimental features that might cause restarts
-    experimental: {
-      webpackBuildWorker: false,
-    },
   }),
   
-  // Server external packages (moved outside development section)
-  serverExternalPackages: [],
-  
   // Webpack optimizations
-  webpack: (config, { dev }) => {
-    // Completely disable file watching in Docker
-    if (dev) {
+  webpack: (config, { dev, isServer }) => {
+    if (dev && !isServer) {
+      // Optimize file watching for Docker
       config.watchOptions = {
-        poll: false,
+        poll: 1000,
+        aggregateTimeout: 300,
         ignored: [
           '**/node_modules/**',
           '**/.git/**',
           '**/.next/**',
-          '**/next.config.ts',
-          '**/next.config.js',
+          '**/dist/**',
         ],
       };
+      
+      // Reduce memory usage
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            vendor: {
+              test: /[\\/]node_modules[\\/]/,
+              name: 'vendors',
+              chunks: 'all',
+            },
+          },
+        },
+      };
     }
-    // Keep fallbacks to avoid polyfills for server-only modules on client
+    
+    // General webpack optimizations
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false,
       net: false,
       tls: false,
     };
-    // Avoid disabling devtool entirely; Next manages this for Fast Refresh
+    
     return config;
   },
   

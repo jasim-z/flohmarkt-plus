@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { Response } from 'express';
 import { User } from './users/schemas/user.schema';
 
 export interface TokenPayload {
@@ -17,7 +16,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async login(user: User, response: Response) {
+  async login(user: User, response: any) {
     const tokenPayload: TokenPayload = {
       userId: user._id.toHexString(),
       role: user.role || 'buyer', // Include user role in token
@@ -53,7 +52,7 @@ export class AuthService {
     };
   }
 
-  logout(response: Response) {
+  logout(response: any) {
     response.cookie('authentication', '', {
       httpOnly: true,
       expires: new Date(),
