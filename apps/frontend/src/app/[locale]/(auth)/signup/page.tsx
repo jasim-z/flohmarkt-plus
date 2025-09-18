@@ -6,7 +6,7 @@ import { getCurrentUser } from "../../../api/auth";
 import { useTranslations } from "next-intl";
 import { useRouter, useParams } from "next/navigation";
 // Language switcher hidden on auth screens
-import { SignupForm } from "../../../components/forms/SignupForm";
+import { SignupForm } from "@/components/forms";
 import Link from "next/link";
 
 export default function SignupPage() {

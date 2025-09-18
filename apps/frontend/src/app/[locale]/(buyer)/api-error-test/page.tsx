@@ -1,6 +1,6 @@
 'use client';
 
-import ApiErrorTestComponent from '@/app/components/ApiErrorTestComponent';
+import { ApiErrorTestComponent } from '@/components';
 
 export default function ApiErrorTestPage() {
   return (

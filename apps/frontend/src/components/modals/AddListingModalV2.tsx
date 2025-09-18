@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { FaTimes } from 'react-icons/fa';
-import { AddListingForm } from './forms/AddListingForm';
+import { AddListingForm } from '../forms/AddListingForm';
 
 interface AddListingModalProps {
   isOpen: boolean;

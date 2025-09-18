@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { LoginForm } from '@/app/components/forms/LoginForm';
-import { SignupForm } from '@/app/components/forms/SignupForm';
-import { AddListingForm } from '@/app/components/forms/AddListingForm';
+import { LoginForm } from '@/components/forms/LoginForm';
+import { SignupForm } from '@/components/forms/SignupForm';
+import { AddListingForm } from '@/components/forms/AddListingForm';
 
 export default function FormValidationTest() {
   const [activeForm, setActiveForm] = useState<'login' | 'signup' | 'listing'>('login');

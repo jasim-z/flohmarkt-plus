@@ -3,13 +3,10 @@
 import { useUser } from '@/contexts/UserContext';
 import { useRouter, useParams } from 'next/navigation';
 import { useEffect } from 'react';
-import Header from '@/app/components/Header';
-import Footer from '@/app/components/Footer';
-import Loading from '@/app/components/loading';
-import { PageErrorBoundary } from '@/app/components/ErrorBoundary';
+import { Header, Footer, LoadingSpinner as Loading, ErrorBoundary as PageErrorBoundary } from '@/components';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { role, isLoaded, isLoading } = useUser();
+  const { role, isLoaded, isLoading, isLoggingOut } = useUser();
   const router = useRouter();
   const params = useParams();
 
@@ -20,7 +17,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [role, isLoaded, isLoading, router, params.locale]);
 
   // Show loading while checking authentication
-  if (isLoading || !isLoaded) {
+  if ((isLoading || !isLoaded) && !isLoggingOut) {
     return <Loading />;
   }
 

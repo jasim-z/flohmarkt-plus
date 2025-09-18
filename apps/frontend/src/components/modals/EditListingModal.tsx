@@ -1,28 +1,29 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { FaTimes, FaUpload, FaMapMarkerAlt, FaCalendar, FaDollarSign, FaBox, FaTag, FaTruck, FaInfoCircle } from 'react-icons/fa';
-import { CreateListingRequest, createListingForMarket } from '../api/listings';
+import { FaTimes, FaUpload, FaMapMarkerAlt, FaCalendar, FaClock, FaDollarSign, FaBox, FaTag, FaTruck, FaInfoCircle } from 'react-icons/fa';
+import { Listing, CreateListingRequest, updateListing } from '@/app/api/listings';
 import { formatPrice } from '@/lib/utils';
 
-
-interface AddListingModalProps {
+interface EditListingModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (message?: string) => void;
+  listing: Listing | null;
   marketId: string;
   marketName: string;
   marketLocation: string;
 }
 
-export default function AddListingModal({ 
+export default function EditListingModal({ 
   isOpen, 
   onClose, 
   onSuccess, 
+  listing, 
   marketId, 
   marketName, 
   marketLocation 
-}: AddListingModalProps) {
+}: EditListingModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<CreateListingRequest>({
     title: '',
@@ -38,24 +39,52 @@ export default function AddListingModal({
     longitude: 0,
     deliveryOption: 'pickup_only',
     shippingCost: 0,
-    // Don't set default values for optional fields
-    brand: undefined,
-    model: undefined,
-    originalPrice: undefined,
-    dimensions: undefined,
-    weight: undefined,
+    brand: '',
+    model: '',
+    originalPrice: 0,
+    dimensions: '',
+    weight: '',
     tags: [],
     isNegotiable: false,
-    pickupAddress: undefined,
-    pickupInstructions: undefined,
+    pickupAddress: '',
+    pickupInstructions: '',
   });
 
   const [errors, setErrors] = useState<Partial<CreateListingRequest>>({});
 
+  // Pre-fill form data when listing changes
+  useEffect(() => {
+    if (listing) {
+      setFormData({
+        title: listing.title || '',
+        description: listing.description || '',
+        price: listing.price || 0,
+        isFree: listing.isFree || false,
+        category: listing.category || '',
+        condition: listing.condition || '',
+        images: listing.images || [],
+        city: listing.city || '',
+        neighborhood: listing.neighborhood || '',
+        latitude: listing.latitude || 0,
+        longitude: listing.longitude || 0,
+        deliveryOption: listing.deliveryOption || 'pickup_only',
+        shippingCost: listing.shippingCost || 0,
+        brand: listing.brand || '',
+        model: listing.model || '',
+        originalPrice: listing.originalPrice || 0,
+        dimensions: listing.dimensions || '',
+        weight: listing.weight || '',
+        tags: listing.tags || [],
+        isNegotiable: listing.isNegotiable || false,
+        pickupAddress: listing.pickupAddress || '',
+        pickupInstructions: listing.pickupInstructions || '',
+      });
+    }
+  }, [listing]);
 
   // Pre-fill location data from market
   useEffect(() => {
-    if (marketLocation) {
+    if (marketLocation && !listing) {
       // Extract city and neighborhood from market location
       const locationParts = marketLocation.split(',').map(part => part.trim());
       setFormData(prev => ({
@@ -67,7 +96,7 @@ export default function AddListingModal({
         longitude: -74.0060,
       }));
     }
-  }, [marketLocation]);
+  }, [marketLocation, listing]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -101,53 +130,33 @@ export default function AddListingModal({
     if (!formData.category) newErrors.category = 'Category is required';
     if (!formData.condition) newErrors.condition = 'Condition is required';
     if (!formData.city.trim()) newErrors.city = 'City is required';
-    if (!formData.neighborhood.trim()) newErrors.neighborhood = 'Neighborhood is required';
     if (!formData.isFree && formData.price <= 0) newErrors.price = 'Price is required for non-free items';
-    // Images are now optional - removed validation
+    if (formData.deliveryOption === 'shipping' && formData.shippingCost < 0) {
+      newErrors.shippingCost = 'Shipping cost cannot be negative';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) return;
     
+    if (!listing?._id) {
+      console.error('No listing ID found for update');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
     try {
-      setIsSubmitting(true);
-      
-      // Clean up the data before sending
-      const cleanData = { ...formData };
-      
-      // Remove empty strings, undefined, and null values for optional fields
-      const optionalStringFields = ['brand', 'model', 'dimensions', 'weight', 'pickupAddress', 'pickupInstructions'];
-      optionalStringFields.forEach(field => {
-        const value = cleanData[field as keyof typeof cleanData];
-        if (value === '' || value === undefined || value === null) {
-          delete cleanData[field as keyof typeof cleanData];
-        }
-      });
-      
-      // Remove zero, undefined, and null values for optional numeric fields
-      if (cleanData.originalPrice === 0 || cleanData.originalPrice === undefined || cleanData.originalPrice === null) {
-        delete cleanData.originalPrice;
-      }
-      
-      // Only include shippingCost if delivery option requires it and it's greater than 0
-      if (cleanData.deliveryOption !== 'shipping' && (cleanData.shippingCost === 0 || cleanData.shippingCost === undefined || cleanData.shippingCost === null)) {
-        delete cleanData.shippingCost;
-      }
-
-      const listingData = {
-        ...cleanData,
-        images: cleanData.images || [],
-      };
-      
-      await createListingForMarket(marketId, listingData);
+      // Update the existing listing
+      await updateListing(listing._id, formData);
       
       // Close modal and refresh listings immediately
-      onSuccess('Listing created successfully!');
+      onSuccess('Listing updated successfully!');
       onClose();
       
       // Reset form
@@ -165,52 +174,46 @@ export default function AddListingModal({
         longitude: 0,
         deliveryOption: 'pickup_only',
         shippingCost: 0,
-        // Don't set default values for optional fields
-        brand: undefined,
-        model: undefined,
-        originalPrice: undefined,
-        dimensions: undefined,
-        weight: undefined,
+        brand: '',
+        model: '',
+        originalPrice: 0,
+        dimensions: '',
+        weight: '',
         tags: [],
         isNegotiable: false,
-        pickupAddress: undefined,
-        pickupInstructions: undefined,
+        pickupAddress: '',
+        pickupInstructions: '',
       });
       
     } catch (error) {
-      console.error('Failed to create listing:', error);
+      console.error('Failed to update listing:', error);
       // For now, just log the error since we don't have toast in this component
-      console.error('Failed to create listing:', error);
+      console.error('Failed to update listing:', error);
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [formData, listing?._id, onSuccess, onClose]);
 
   if (!isOpen) return null;
 
   return (
-    <div 
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-      onClick={isSubmitting ? undefined : onClose}
-    >
-      <div 
-        className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto relative"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto relative">
         {/* Loading Overlay */}
         {isSubmitting && (
           <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10 rounded-xl">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600 font-medium">Creating listing...</p>
+              <p className="text-gray-600 font-medium">Updating listing...</p>
             </div>
           </div>
         )}
+
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Add New Listing</h2>
-            <p className="text-gray-600">Create a new listing for {marketName}</p>
+            <h2 className="text-2xl font-bold text-gray-900">Edit Listing</h2>
+            <p className="text-gray-600">Update your listing for {marketName}</p>
           </div>
           <button
             onClick={onClose}
@@ -326,21 +329,8 @@ export default function AddListingModal({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Price
               </label>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="number"
-                  name="price"
-                  value={formData.price}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="0.01"
-                  disabled={formData.isFree}
-                  className={`flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.price ? 'border-red-500' : 'border-gray-300'
-                  } ${formData.isFree ? 'bg-gray-100' : ''}`}
-                  placeholder="0.00"
-                />
-                <label className="flex items-center space-x-2">
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
                   <input
                     type="checkbox"
                     name="isFree"
@@ -348,8 +338,22 @@ export default function AddListingModal({
                     onChange={handleInputChange}
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
-                  <span className="text-sm text-gray-600">Free</span>
-                </label>
+                  <span className="text-sm text-gray-700">This item is free</span>
+                </div>
+                {!formData.isFree && (
+                  <input
+                    type="number"
+                    name="price"
+                    value={formData.price}
+                    onChange={handleInputChange}
+                    step="0.01"
+                    min="0"
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      errors.price ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="0.00"
+                  />
+                )}
               </div>
               {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price}</p>}
             </div>
@@ -363,8 +367,8 @@ export default function AddListingModal({
                 name="originalPrice"
                 value={formData.originalPrice}
                 onChange={handleInputChange}
-                min="0"
                 step="0.01"
+                min="0"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="0.00"
               />
@@ -392,19 +396,16 @@ export default function AddListingModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Neighborhood *
+                Neighborhood
               </label>
               <input
                 type="text"
                 name="neighborhood"
                 value={formData.neighborhood}
                 onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.neighborhood ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter neighborhood"
               />
-              {errors.neighborhood && <p className="text-red-500 text-sm mt-1">{errors.neighborhood}</p>}
             </div>
           </div>
 
@@ -412,7 +413,7 @@ export default function AddListingModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Delivery Option *
+                Delivery Option
               </label>
               <select
                 name="deliveryOption"
@@ -421,8 +422,8 @@ export default function AddListingModal({
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="pickup_only">Pickup Only</option>
-                <option value="local_delivery">Local Delivery</option>
-                <option value="shipping">Shipping</option>
+                <option value="shipping">Shipping Available</option>
+                <option value="both">Both Options</option>
               </select>
             </div>
 
@@ -435,11 +436,14 @@ export default function AddListingModal({
                 name="shippingCost"
                 value={formData.shippingCost}
                 onChange={handleInputChange}
-                min="0"
                 step="0.01"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                min="0"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  errors.shippingCost ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="0.00"
               />
+              {errors.shippingCost && <p className="text-red-500 text-sm mt-1">{errors.shippingCost}</p>}
             </div>
           </div>
 
@@ -474,6 +478,36 @@ export default function AddListingModal({
             </div>
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Dimensions
+              </label>
+              <input
+                type="text"
+                name="dimensions"
+                value={formData.dimensions}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g., 10x20x5 inches"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Weight
+              </label>
+              <input
+                type="text"
+                name="weight"
+                value={formData.weight}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g., 2.5 lbs"
+              />
+            </div>
+          </div>
+
           {/* Tags */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -494,10 +528,10 @@ export default function AddListingModal({
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Images
             </label>
-                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                <FaUpload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 mb-2">Upload images of your item (optional)</p>
-                <p className="text-sm text-gray-500">Drag and drop images here, or click to browse. Images help buyers see your item better.</p>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+              <FaUpload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600 mb-2">Upload images of your item (optional)</p>
+              <p className="text-sm text-gray-500">Drag and drop images here, or click to browse. Images help buyers see your item better.</p>
               <input
                 type="file"
                 multiple
@@ -566,7 +600,8 @@ export default function AddListingModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200 font-medium"
+              disabled={isSubmitting}
+              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200 font-medium disabled:opacity-60 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
@@ -578,12 +613,12 @@ export default function AddListingModal({
               {isSubmitting ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  <span>Creating...</span>
+                  <span>Updating...</span>
                 </>
               ) : (
                 <>
                   <FaBox className="h-4 w-4" />
-                  <span>Create Listing</span>
+                  <span>Update Listing</span>
                 </>
               )}
             </button>

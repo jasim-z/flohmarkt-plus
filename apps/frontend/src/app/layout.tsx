@@ -6,7 +6,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { UserProvider } from "@/contexts/UserContext";
 import { LoadingProvider } from "@/app/contexts/LoadingContext";
-import { GlobalErrorBoundary } from "@/app/components/ErrorBoundary";
+import { ErrorBoundary as GlobalErrorBoundary } from "@/components";
 
 const nunito = Nunito({ subsets: ['latin'], weight: ['400', '700'] })
 

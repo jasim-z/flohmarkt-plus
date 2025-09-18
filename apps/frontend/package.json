@@ -3,13 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -H 0.0.0.0 --turbo",
-    "dev:optimized": "NODE_OPTIONS='--max-old-space-size=2048' next dev -H 0.0.0.0 --turbo",
-    "build": "next build",
+    "dev": "NODE_OPTIONS='--max-old-space-size=1024' next dev -H 0.0.0.0",
+    "dev:turbo": "NODE_OPTIONS='--max-old-space-size=2048' next dev -H 0.0.0.0 --turbo",
+    "dev:fast": "NODE_OPTIONS='--max-old-space-size=512' next dev -H 0.0.0.0",
+    "dev:light": "NODE_OPTIONS='--max-old-space-size=512' next dev -H 0.0.0.0 --config next.config.light.ts",
+    "build": "NODE_OPTIONS='--max-old-space-size=4096' next build",
     "start": "next start",
     "lint": "next lint",
-    "clean": "rm -rf .next out",
-    "type-check": "tsc --noEmit"
+    "clean": "rm -rf .next .turbo out",
+    "type-check": "tsc --noEmit",
+    "analyze": "ANALYZE=true next build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

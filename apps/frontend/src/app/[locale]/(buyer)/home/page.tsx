@@ -4,10 +4,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useUser } from '@/contexts/UserContext';
 import { getAllListings, GetListingsParams } from '../../../api/listings';
-import BuyerSearchFilters from '@/app/components/BuyerSearchFilters';
-import BuyerListingCard from '@/app/components/BuyerListingCard';
-import { ListingSkeletonGrid } from '@/app/components/ListingSkeleton';
-import { InlineLoading } from '@/app/components/loading/LoadingOverlay';
+import { BuyerSearchFilters } from '@/components/business';
+import { BuyerListingCard } from '@/components/business';
+import { ListingSkeletonGrid } from '@/components';
+import { InlineLoading } from '@/components/loading/LoadingOverlay';
 import { FaShoppingBag, FaHeart, FaMapMarkerAlt, FaUsers, FaStore } from 'react-icons/fa';
 
 interface Listing {

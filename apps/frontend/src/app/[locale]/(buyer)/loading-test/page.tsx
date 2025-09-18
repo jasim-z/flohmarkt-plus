@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { LoadingSpinner } from '@/app/components/loading/LoadingSpinner';
-import { ProgressBar, CircularProgress } from '@/app/components/loading/ProgressBar';
+import { LoadingSpinner } from '@/components/loading/LoadingSpinner';
+import { ProgressBar, CircularProgress } from '@/components/loading/ProgressBar';
 import { 
   Skeleton, 
   TextSkeleton, 
@@ -12,13 +12,13 @@ import {
   FormSkeleton, 
   ImageSkeleton, 
   DashboardSkeleton 
-} from '@/app/components/loading/SkeletonLoader';
+} from '@/components/loading/SkeletonLoader';
 import { 
   LoadingOverlay, 
   PageLoading, 
   InlineLoading, 
   ButtonLoading 
-} from '@/app/components/loading/LoadingOverlay';
+} from '@/components/loading/LoadingOverlay';
 import { useLoading, useApiLoading, useUploadLoading } from '@/app/hooks/useLoading';
 import { useGlobalLoading } from '@/app/contexts/LoadingContext';
 

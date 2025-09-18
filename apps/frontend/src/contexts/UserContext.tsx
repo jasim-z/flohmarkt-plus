@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { getCurrentUser } from '@/app/api/auth';
 import { logServiceStatus } from '@/app/lib/devFallback';
@@ -17,6 +17,7 @@ interface UserContextType {
   role: string;
   isLoaded: boolean;
   isLoading: boolean;
+  isLoggingOut: boolean;
   user: User | null;
   checkUserRole: () => Promise<void>;
   setUserData: (userData: User) => void;
@@ -30,11 +31,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState('');
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
   const pathname = usePathname();
 
-  const checkUserRole = async () => {
+  const checkUserRole = useCallback(async () => {
     try {
       setIsLoading(true);
       
@@ -79,34 +81,39 @@ export function UserProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   // Method to set user data immediately after login (prevents unauthorized redirect)
-  const setUserData = (userData: User) => {
+  const setUserData = useCallback((userData: User) => {
     setUser(userData);
     setRole(userData.role || '');
     setIsLoaded(true);
     setIsLoading(false);
-  };
+  }, []);
 
   // Method to refresh user data
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     await checkUserRole();
-  };
+  }, [checkUserRole]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
+    setIsLoggingOut(true);
     localStorage.removeItem('auth_token');
     localStorage.removeItem('token');
     sessionStorage.removeItem('auth_token');
     setRole('');
     setUser(null);
-    setIsLoaded(false);
+    setIsLoaded(true); // Keep as loaded to prevent loading spinner
+    setIsLoading(false); // Ensure not loading
     
     // Extract locale from current pathname for proper redirect
     const pathSegments = pathname.split('/');
     const locale = pathSegments[1] || 'en';
     router.push(`/${locale}/login`);
-  };
+    
+    // Reset logout state after redirect
+    setTimeout(() => setIsLoggingOut(false), 100);
+  }, [pathname, router]);
 
   // Check user role when component mounts
   useEffect(() => {
@@ -115,58 +122,46 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   // Auto-check user role when pathname changes (for route protection)
   useEffect(() => {
-    console.log('UserContext route protection - pathname:', pathname, 'role:', role, 'isLoaded:', isLoaded, 'isLoading:', isLoading);
-    
-    if (isLoaded && pathname && !isLoading) {
-      // Extract locale from pathname
-      const pathSegments = pathname.split('/');
-      const locale = pathSegments[1]; // e.g., 'en', 'de'
-      
-      // Don't redirect if we're still loading or if user is not loaded yet
-      if (isLoading || !isLoaded) {
-        console.log('UserContext - still loading, skipping route protection');
-        return;
-      }
-      
-      // Don't redirect if we're on auth pages
-      if (pathname.includes('/login') || pathname.includes('/signup')) {
-        console.log('UserContext - on auth page, skipping route protection');
-        return;
-      }
-      
-      // Don't redirect if we're on the unauthorized page
-      if (pathname.includes('/unauthorized')) {
-        console.log('UserContext - on unauthorized page, skipping route protection');
-        return;
-      }
-      
-      // Protect admin routes
-      if (pathname.includes('/admin') && role !== 'admin') {
-        console.log('UserContext - admin route protection triggered, redirecting to unauthorized');
-        router.push(`/${locale}/unauthorized`);
-        return;
-      }
-      
-      // Protect buyer routes - but our seller items page is under /user-markets, not /buyer
-      if (pathname.includes('/buyer') && role !== 'buyer') {
-        console.log('UserContext - buyer route protection triggered, redirecting to unauthorized');
-        router.push(`/${locale}/unauthorized`);
-        return;
-      }
-      
-      // Protect seller routes - but exclude buyer pages that show seller info
-      if (pathname.includes('/seller') && !pathname.includes('/user-markets') && role !== 'seller') {
-        console.log('UserContext - seller route protection triggered, redirecting to unauthorized');
-        router.push(`/${locale}/unauthorized`);
-        return;
-      }
-      
-      console.log('UserContext - route protection passed, no redirect needed');
+    // Only run route protection if we're fully loaded and not in the middle of logout
+    if (!isLoaded || isLoading || isLoggingOut || !pathname) {
+      return;
     }
-  }, [pathname, role, isLoaded, isLoading, router]);
+
+    // Extract locale from pathname
+    const pathSegments = pathname.split('/');
+    const locale = pathSegments[1]; // e.g., 'en', 'de'
+    
+    // Don't redirect if we're on auth pages
+    if (pathname.includes('/login') || pathname.includes('/signup')) {
+      return;
+    }
+    
+    // Don't redirect if we're on the unauthorized page
+    if (pathname.includes('/unauthorized')) {
+      return;
+    }
+    
+    // Protect admin routes
+    if (pathname.includes('/admin') && role !== 'admin') {
+      router.push(`/${locale}/unauthorized`);
+      return;
+    }
+    
+    // Protect buyer routes - but our seller items page is under /user-markets, not /buyer
+    if (pathname.includes('/buyer') && role !== 'buyer') {
+      router.push(`/${locale}/unauthorized`);
+      return;
+    }
+    
+    // Protect seller routes - but exclude buyer pages that show seller info
+    if (pathname.includes('/seller') && !pathname.includes('/user-markets') && role !== 'seller') {
+      router.push(`/${locale}/unauthorized`);
+      return;
+    }
+  }, [pathname, role, isLoaded, isLoading, isLoggingOut, router]);
 
   return (
-    <UserContext.Provider value={{ role, isLoaded, isLoading, user, checkUserRole, setUserData, refreshUser, logout }}>
+    <UserContext.Provider value={{ role, isLoaded, isLoading, isLoggingOut, user, checkUserRole, setUserData, refreshUser, logout }}>
       {children}
     </UserContext.Provider>
   );

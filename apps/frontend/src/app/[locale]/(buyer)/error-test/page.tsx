@@ -1,6 +1,6 @@
 'use client';
 
-import ErrorTestComponent from '@/app/components/ErrorTestComponent';
+import { ErrorTestComponent } from '@/components';
 
 export default function ErrorTestPage() {
   return (

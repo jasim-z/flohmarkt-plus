@@ -6,16 +6,14 @@ import { useParams, useRouter } from "next/navigation";
 import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaArrowLeft, FaCheck, FaTimes, FaDollarSign, FaInfoCircle, FaBox, FaEdit, FaTrash } from "react-icons/fa";
 import { Market, getMarketDetails, joinMarket } from "../../../../api/markets";
 import { Listing, getListingsBySellerAndMarket, deleteListing, GetListingsParams } from "../../../../api/listings";
-import UnAuthourized from "@/app/components/UnAuthourized";
+import { UnAuthourized } from "@/components";
 import { useUser } from "@/contexts/UserContext";
 import { formatPrice } from "@/lib/utils";
-import PaymentModal from "@/app/components/PaymentModal";
-import Toast, { ToastType } from "@/app/components/Toast";
+import { PaymentModal } from "@/components/modals";
+import { Toast, ToastType } from "@/components";
 import { DataTable, Column } from "@/components/ui/data-table";
-import AddListingModal from "@/app/components/AddListingModal";
-import ListingDetailsModal from "@/app/components/ListingDetailsModal";
-import EditListingModal from "@/app/components/EditListingModal";
-import DeleteConfirmationModal from "@/app/components/DeleteConfirmationModal";
+import { AddListingModal } from "@/components/modals";
+import { ListingDetailsModal, EditListingModal, DeleteConfirmationModal } from "@/components/modals";
 
 // Utility function to calculate market status based on current date/time
 const calculateMarketStatus = (market: Market): 'upcoming' | 'ongoing' | 'past' => {

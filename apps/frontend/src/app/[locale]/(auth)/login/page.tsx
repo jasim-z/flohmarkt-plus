@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import Image from "next/image";
-import { LoginForm } from "../../../components/forms/LoginForm";
+import { LoginForm } from "@/components/forms";
 import Link from "next/link";
 
 export default function Login() {

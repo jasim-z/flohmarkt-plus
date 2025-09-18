@@ -3,7 +3,7 @@
 import { useUser } from '@/contexts/UserContext';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ConversationsList } from '@/app/components/ConversationsList';
+import { ConversationsList } from '@/components/business';
 import { listConversations } from '@/app/api/messages';
 import { useSocket } from '@/app/hooks/useSocket';
 

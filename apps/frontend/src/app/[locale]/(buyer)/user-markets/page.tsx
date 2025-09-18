@@ -12,7 +12,7 @@ import {
   FaStore
 } from 'react-icons/fa';
 import { getMarkets, Market } from '@/app/api/markets';
-import MarketCard from '@/components/MarketCard';
+import { MarketCard } from '@/components/business';
 
 interface FilterState {
   search: string;

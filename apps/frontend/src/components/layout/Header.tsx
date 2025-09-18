@@ -3,12 +3,12 @@ import { FaShoppingCart, FaHeart, FaUserCircle, FaChevronDown } from 'react-icon
 import { useRouter, usePathname, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
-import { logoutUser } from '../api/auth';
+import { logoutUser } from '@/app/api/auth';
 import { useUser } from '@/contexts/UserContext';
 // Header language switcher hidden per requirements
 import { getUnreadTotal } from '@/app/api/messages';
 import { useSocket } from '@/app/hooks/useSocket';
-import { ComponentErrorBoundary } from './ErrorBoundary';
+import { ErrorBoundary as ComponentErrorBoundary } from '../ErrorBoundary';
 
 interface User {
   displayName?: string;
@@ -20,7 +20,7 @@ export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams();
-  const { user, logout, isLoading } = useUser();
+  const { user, logout, isLoading, isLoggingOut } = useUser();
   const [loading, setLoading] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -67,7 +67,7 @@ export default function Header() {
     setLoading(true);
     try {
       await logoutUser();
-      logout(); // Use the context logout method
+      logout(); // Call logout which handles the redirect
     } catch (error) {
       console.error('Logout error:', error);
       // Still logout locally even if API call fails

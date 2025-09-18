@@ -272,13 +272,15 @@ services:
       context: ./apps/frontend
       target: development
       args:
-        - NODE_OPTIONS=--max-old-space-size=1024
-    command: pnpm dev
+        - NODE_OPTIONS=--max-old-space-size=2048
+    command: pnpm run dev
     environment:
       - NODE_ENV=development
-      - WATCHPACK_POLLING=true
+      - WATCHPACK_POLLING=false
       - NEXT_TELEMETRY_DISABLED=1
-      - NODE_OPTIONS=--max-old-space-size=2048
+      - NODE_OPTIONS=--max-old-space-size=1024
+      - PNPM_NETWORK_CONCURRENCY=1
+      - PNPM_CHILD_CONCURRENCY=1
     depends_on:
       - auth
       - listings
@@ -289,6 +291,7 @@ services:
       - ./apps/frontend:/app
       - /app/node_modules
       - /app/.next
+      - /app/.turbo
     ports:
       - '3000:3000'
     # Performance and stability improvements
@@ -306,7 +309,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 120s
 
 volumes:
   mongodb_master_data:

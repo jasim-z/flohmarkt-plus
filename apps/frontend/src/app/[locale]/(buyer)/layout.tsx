@@ -3,13 +3,12 @@
 import { useUser } from '@/contexts/UserContext';
 import { useRouter, useParams } from 'next/navigation';
 import { useEffect } from 'react';
-import Header from '@/app/components/Header';
-import Footer from '@/app/components/Footer';
-import Loading from '@/app/components/loading';
-import { PageErrorBoundary } from '@/app/components/ErrorBoundary';
+import { Header, Footer } from '@/components/layout';
+import { LoadingSpinner as Loading } from '@/components/loading';
+import { PageErrorBoundary } from '@/components/ErrorBoundary';
 
 export default function BuyerLayout({ children }: { children: React.ReactNode }) {
-  const { role, isLoaded, isLoading } = useUser();
+  const { role, isLoaded, isLoading, isLoggingOut } = useUser();
   const router = useRouter();
   const params = useParams();
 
@@ -25,8 +24,8 @@ export default function BuyerLayout({ children }: { children: React.ReactNode })
     }
   }, [role, isLoaded, isLoading, router, params.locale]);
 
-  // Show loading while checking authentication
-  if (isLoading || !isLoaded) {
+  // Show loading while checking authentication, but not during logout
+  if ((isLoading || !isLoaded) && !isLoggingOut) {
     return <Loading />;
   }
 
@@ -39,7 +38,8 @@ export default function BuyerLayout({ children }: { children: React.ReactNode })
 
   // If we don't have a role yet but we're loaded, show loading
   // This gives the UserContext more time to fetch the role
-  if (isLoaded && !role) {
+  // But not during logout
+  if (isLoaded && !role && !isLoggingOut) {
     console.log('BuyerLayout - loaded but no role yet, showing loading');
     return <Loading />;
   }

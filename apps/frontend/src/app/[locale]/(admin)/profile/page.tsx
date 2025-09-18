@@ -3,8 +3,8 @@
 import { useUser } from '@/contexts/UserContext';
 import { useRouter, useParams } from 'next/navigation';
 import { useEffect } from 'react';
-import { ProfileView } from '@/app/components/ProfileView';
-import Loading from '@/app/components/loading';
+import { ProfileView } from '@/components/business';
+import { LoadingSpinner as Loading } from '@/components/loading';
 
 export default function AdminProfile() {
   const { user, isLoaded, isLoading } = useUser();

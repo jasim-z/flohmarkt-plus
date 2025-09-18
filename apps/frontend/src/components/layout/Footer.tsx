@@ -1,4 +1,4 @@
-import { ComponentErrorBoundary } from './ErrorBoundary';
+import { ErrorBoundary as ComponentErrorBoundary } from '../ErrorBoundary';
 
 export default function Footer() {
   return (

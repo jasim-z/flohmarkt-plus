@@ -20,9 +20,9 @@ import {
   MAX_FILE_SIZES,
   CHARACTER_LIMITS 
 } from '@/app/lib/security/inputSanitizer';
-import { SecureFormField } from '@/app/components/forms/SecureFormField';
-import { FileUploadField } from '@/app/components/forms/FileUploadField';
-import { FormButton } from '@/app/components/forms/FormButton';
+import { SecureFormField } from '@/components/forms/SecureFormField';
+import { FileUploadField } from '@/components/forms/FileUploadField';
+import { FormButton } from '@/components/forms/FormButton';
 
 // Test form schema
 const securityTestSchema = z.object({
