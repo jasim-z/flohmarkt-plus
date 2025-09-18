@@ -77,10 +77,12 @@ export class ApiClient {
     const fullUrl = this.baseURL ? `${this.baseURL}${url}` : url;
     const requestHeaders = { ...this.defaultHeaders, ...headers };
 
-    // Add auth token if available
-    const token = localStorage.getItem('auth_token');
-    if (token && !requestHeaders.Authorization) {
-      requestHeaders.Authorization = `Bearer ${token}`;
+    // Add auth token if available (only on client side)
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('auth_token');
+      if (token && !requestHeaders.Authorization) {
+        requestHeaders.Authorization = `Bearer ${token}`;
+      }
     }
 
     const requestOptions: RequestInit = {

@@ -11,18 +11,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const params = useParams();
 
   useEffect(() => {
-    if (isLoaded && !isLoading && role !== 'admin') {
+    if (isLoaded && !isLoading && !isLoggingOut && role && role !== 'admin') {
       router.push(`/${params.locale}/unauthorized`);
     }
-  }, [role, isLoaded, isLoading, router, params.locale]);
+  }, [role, isLoaded, isLoading, isLoggingOut, router, params.locale]);
 
   // Show loading while checking authentication
   if ((isLoading || !isLoaded) && !isLoggingOut) {
     return <Loading />;
   }
 
-  // Show unauthorized if not admin
-  if (role !== 'admin') {
+  // If role not yet known but loaded (and not logging out), keep loading to avoid false unauthorized
+  if (isLoaded && !isLoggingOut && !role) {
+    return <Loading />;
+  }
+
+  // Show unauthorized only when role is known and not admin
+  if (role && role !== 'admin') {
     return null; // Will redirect to unauthorized
   }
 

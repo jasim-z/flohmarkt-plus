@@ -5,8 +5,8 @@ export async function loginUser(email: string, password: string) {
   try {
     const response = await authApiClient.post('/auth/login', { email, password });
     
-    // Store the token in localStorage for cross-origin requests
-    if (response.data.access_token) {
+    // Store the token in localStorage for cross-origin requests (only on client side)
+    if (typeof window !== 'undefined' && response.data.access_token) {
       localStorage.setItem('auth_token', response.data.access_token);
     }
     
@@ -37,7 +37,11 @@ export async function signupUser({
 
 export async function getCurrentUser() {
   try {
-    // Get token from localStorage
+    // Get token from localStorage (only on client side)
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    
     const token = localStorage.getItem('auth_token');
     
     if (!token) {
@@ -53,8 +57,8 @@ export async function getCurrentUser() {
   } catch (error) {
     const apiError = apiErrorHandler.handleError(error);
     
-    // Handle 401 errors by clearing token
-    if (apiError.type === 'auth') {
+    // Handle 401 errors by clearing token (only on client side)
+    if (apiError.type === 'auth' && typeof window !== 'undefined') {
       localStorage.removeItem('auth_token');
     }
     
@@ -70,14 +74,18 @@ export async function getCurrentUser() {
 
 export async function logoutUser() {
   try {
-    // Remove token from localStorage
-    localStorage.removeItem('auth_token');
+    // Remove token from localStorage (only on client side)
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('auth_token');
+    }
     
     const response = await authApiClient.post('/auth/logout');
     return response;
   } catch (error) {
     // Don't throw errors for logout, just clear local storage
-    localStorage.removeItem('auth_token');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('auth_token');
+    }
     return { data: null, status: 200, statusText: 'OK' };
   }
 }

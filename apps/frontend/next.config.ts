@@ -2,21 +2,10 @@ import { NextConfig } from 'next';
 import createNextIntlPlugin from 'next-intl/plugin';
 
 const nextConfig: NextConfig = {
-  // Performance optimizations
+  // Keep experimental minimal to avoid unstable behavior
   experimental: {
-    workerThreads: false,
-    cpus: 1,
-    optimizePackageImports: ['react-icons', '@radix-ui/react-icons', 'lucide-react'],
-  },
-  
-  // Turbopack configuration (moved from experimental)
-  turbopack: {
-    rules: {
-      '*.svg': {
-        loaders: ['@svgr/webpack'],
-        as: '*.js',
-      },
-    },
+    // Disable features that might cause restart loops
+    webpackBuildWorker: false,
   },
   
   // Image configuration
@@ -40,97 +29,51 @@ const nextConfig: NextConfig = {
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
   
-  // Development optimizations
+  // Development sensible defaults; let Next manage HMR/refresh
   ...(process.env.NODE_ENV === 'development' && {
     compiler: {
       removeConsole: false,
     },
-    // Disable source maps in development for better performance
     productionBrowserSourceMaps: false,
-    // Reduce bundle analyzer overhead
-    bundleAnalyzer: {
-      enabled: process.env.ANALYZE === 'true',
+    // Disable hot reloading in Docker to prevent restarts
+    onDemandEntries: {
+      maxInactiveAge: 25 * 1000,
+      pagesBufferLength: 2,
+    },
+    // Disable Fast Refresh to prevent restarts
+    reactStrictMode: false,
+    // Disable experimental features that might cause restarts
+    experimental: {
+      webpackBuildWorker: false,
     },
   }),
   
+  // Server external packages (moved outside development section)
+  serverExternalPackages: [],
+  
   // Webpack optimizations
-  webpack: (config, { dev, isServer }) => {
-    if (dev && !isServer) {
-      // Optimize file watching for Docker - disable polling to reduce CPU usage
+  webpack: (config, { dev }) => {
+    // Completely disable file watching in Docker
+    if (dev) {
       config.watchOptions = {
         poll: false,
-        aggregateTimeout: 300,
         ignored: [
           '**/node_modules/**',
           '**/.git/**',
           '**/.next/**',
-          '**/dist/**',
-          '**/coverage/**',
-          '**/.turbo/**',
+          '**/next.config.ts',
+          '**/next.config.js',
         ],
       };
-      
-      // Reduce memory usage with better chunk splitting
-      config.optimization = {
-        ...config.optimization,
-        splitChunks: {
-          chunks: 'all',
-          minSize: 20000,
-          maxSize: 244000,
-          cacheGroups: {
-            default: {
-              minChunks: 2,
-              priority: -20,
-              reuseExistingChunk: true,
-            },
-            vendor: {
-              test: /[\\/]node_modules[\\/]/,
-              name: 'vendors',
-              priority: -10,
-              chunks: 'all',
-              maxSize: 244000,
-            },
-            react: {
-              test: /[\\/]node_modules[\\/](react|react-dom)[\\/]/,
-              name: 'react',
-              priority: 20,
-              chunks: 'all',
-            },
-            icons: {
-              test: /[\\/]node_modules[\\/](react-icons|lucide-react)[\\/]/,
-              name: 'icons',
-              priority: 15,
-              chunks: 'all',
-            },
-          },
-        },
-      };
     }
-    
-    // General webpack optimizations
+    // Keep fallbacks to avoid polyfills for server-only modules on client
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false,
       net: false,
       tls: false,
     };
-    
-    // Optimize module resolution
-    config.resolve.modules = ['node_modules'];
-    config.resolve.extensions = ['.js', '.jsx', '.ts', '.tsx', '.json'];
-    
-    // Reduce memory usage
-    config.optimization = {
-      ...config.optimization,
-      usedExports: true,
-      sideEffects: false,
-    };
-    
-    // Disable source maps in development for better performance
-    if (dev) {
-      config.devtool = false;
-    }
-    
+    // Avoid disabling devtool entirely; Next manages this for Fast Refresh
     return config;
   },
   

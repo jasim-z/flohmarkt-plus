@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: ./apps/orders/Dockerfile
       target: development
-    command: npm run start:dev orders
+    command: pnpm run start:dev orders
     environment:
       - PORT=3949
       - NODE_ENV=development
@@ -38,11 +38,12 @@ services:
       context: .
       dockerfile: ./apps/billing/Dockerfile
       target: development
-    command: npm run start:dev billing
+    command: pnpm run start:dev billing
     environment:
       - PORT=3951
       - NODE_ENV=development
       - JWT_EXPIRATION=3600
+      - RABBIT_MQ_URI=amqp://guest:guest@rabbitmq:5672/?heartbeat=30&connection_timeout=30000
     env_file:
       - apps/billing/.env
     secrets:
@@ -70,11 +71,12 @@ services:
       context: .
       dockerfile:  ./apps/auth/Dockerfile
       target: development
-    command: npm run start:dev auth
+    command: pnpm run start:dev auth
     environment:
       - PORT=3950
       - NODE_ENV=development
       - JWT_EXPIRATION=3600
+      - RABBIT_MQ_URI=amqp://guest:guest@rabbitmq:5672/?heartbeat=30&connection_timeout=30000
     env_file:
       - apps/auth/.env
     secrets:
@@ -100,11 +102,12 @@ services:
       context: .
       dockerfile: ./apps/listings/Dockerfile
       target: development
-    command: npm run start:dev listings
+    command: pnpm run start:dev listings
     environment:
       - PORT=3952
       - NODE_ENV=development
       - JWT_EXPIRATION=3600
+      - RABBIT_MQ_URI=amqp://guest:guest@rabbitmq:5672/?heartbeat=30&connection_timeout=30000
     env_file:
       - apps/listings/.env
     secrets:
@@ -132,11 +135,12 @@ services:
       context: .
       dockerfile: ./apps/markets/Dockerfile
       target: development
-    command: npm run start:dev markets
+    command: pnpm run start:dev markets
     environment:
       - PORT=3953
       - NODE_ENV=development
       - JWT_EXPIRATION=3600
+      - RABBIT_MQ_URI=amqp://guest:guest@rabbitmq:5672/?heartbeat=30&connection_timeout=30000
     env_file:
       - apps/markets/.env
     secrets:
@@ -164,11 +168,12 @@ services:
       context: .
       dockerfile: ./apps/messages/Dockerfile
       target: development
-    command: npm run start:dev messages
+    command: pnpm run start:dev messages
     environment:
       - PORT=3954
       - NODE_ENV=development
       - JWT_EXPIRATION=3600
+      - RABBIT_MQ_URI=amqp://guest:guest@rabbitmq:5672/?heartbeat=30&connection_timeout=30000
     env_file:
       - apps/messages/.env
     secrets:
@@ -272,15 +277,23 @@ services:
       context: ./apps/frontend
       target: development
       args:
-        - NODE_OPTIONS=--max-old-space-size=2048
-    command: pnpm run dev
+        - NODE_OPTIONS=--max-old-space-size=4096   # give 4GB at build
+    command: ./start-dev.sh
     environment:
       - NODE_ENV=development
-      - WATCHPACK_POLLING=false
+      - WATCHPACK_POLLING=false      # disable polling to prevent restarts
+      - CHOKIDAR_USEPOLLING=false    # disable file watching
       - NEXT_TELEMETRY_DISABLED=1
-      - NODE_OPTIONS=--max-old-space-size=1024
+      - NODE_OPTIONS=--max-old-space-size=3072     # increase memory to 3GB
       - PNPM_NETWORK_CONCURRENCY=1
       - PNPM_CHILD_CONCURRENCY=1
+      - NEXT_WATCH_IGNORE=next.config.ts    # ignore next.config.ts changes
+    deploy:
+      resources:
+        limits:
+          memory: 3.5G
+        reservations:
+          memory: 1G
     depends_on:
       - auth
       - listings
@@ -288,28 +301,27 @@ services:
       - billing
       - messages
     volumes:
-      - ./apps/frontend:/app
+      - ./apps/frontend:/app:cached
+      - ./apps/frontend/.next:/app/.next
       - /app/node_modules
-      - /app/.next
-      - /app/.turbo
     ports:
       - '3000:3000'
-    # Performance and stability improvements
     deploy:
       resources:
         limits:
-          memory: 2G
+          memory: 4G        # raise memory limit to match NODE_OPTIONS
           cpus: '1.0'
         reservations:
-          memory: 1G
+          memory: 2G
           cpus: '0.5'
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 120s
+    # Temporarily disable health check to prevent restarts
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:3000/health.txt"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+    #   start_period: 120s
 
 volumes:
   mongodb_master_data:

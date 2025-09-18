@@ -20,7 +20,7 @@ import {
   ButtonLoading 
 } from '@/components/loading/LoadingOverlay';
 import { useLoading, useApiLoading, useUploadLoading } from '@/hooks/useLoading';
-import { useGlobalLoading } from '@/app/contexts/LoadingContext';
+import { useGlobalLoading } from '@/contexts/LoadingContext';
 
 export default function LoadingTestPage() {
   const [activeSection, setActiveSection] = useState<'spinners' | 'progress' | 'skeletons' | 'overlays' | 'api' | 'upload'>('spinners');

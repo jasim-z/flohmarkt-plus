@@ -5,7 +5,7 @@ import { Toaster } from "react-hot-toast";
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { UserProvider } from "@/contexts/UserContext";
-import { LoadingProvider } from "@/app/contexts/LoadingContext";
+import { LoadingProvider } from "@/contexts/LoadingContext";
 import { ErrorBoundary as GlobalErrorBoundary } from "@/components";
 
 const nunito = Nunito({ subsets: ['latin'], weight: ['400', '700'] })

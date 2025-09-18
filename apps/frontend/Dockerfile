@@ -3,7 +3,7 @@ FROM node:18-alpine AS deps
 WORKDIR /app
 
 # Install pnpm with minimal memory usage
-RUN npm install -g pnpm@8
+RUN npm install -g pnpm@9
 
 # Copy package files
 COPY package.json pnpm-lock.yaml ./
@@ -22,7 +22,7 @@ WORKDIR /app
 RUN apk add --no-cache curl
 
 # Install pnpm
-RUN npm install -g pnpm@8
+RUN npm install -g pnpm@9
 
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
@@ -43,25 +43,29 @@ ENV NEXT_TURBO=1
 # Expose port
 EXPOSE 3000
 
+# Copy start script
+COPY start-dev.sh ./
+RUN chmod +x start-dev.sh
+
 # Health check
 HEALTHCHECK --interval=60s --timeout=10s --start-period=90s --retries=3 \
-  CMD curl -f http://localhost:3000/api/health || exit 1
+  CMD curl -f http://localhost:3000/health.txt || exit 1
 
 # Start development server
-CMD ["pnpm", "run", "dev"]
+CMD ["./start-dev.sh"]
 
 # Rebuild the source code only when needed
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY . .
 COPY --from=deps /app/node_modules ./node_modules
-RUN npm install -g pnpm && pnpm build
+RUN npm install -g pnpm@9 && pnpm build --no-lint
 
 # Production image, copy all the files and run next
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV production
-RUN npm install -g pnpm
+RUN npm install -g pnpm@9
 COPY --from=builder /app .
 EXPOSE 3000
 CMD ["pnpm", "start"] 

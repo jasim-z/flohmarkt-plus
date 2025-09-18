@@ -13,18 +13,23 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
   const params = useParams();
 
   useEffect(() => {
-    if (isLoaded && !isLoading && role !== 'seller') {
+    if (isLoaded && !isLoading && !isLoggingOut && role && role !== 'seller') {
       router.push(`/${params.locale}/unauthorized`);
     }
-  }, [role, isLoaded, isLoading, router, params.locale]);
+  }, [role, isLoaded, isLoading, isLoggingOut, router, params.locale]);
 
   // Show loading while checking authentication
   if ((isLoading || !isLoaded) && !isLoggingOut) {
     return <Loading />;
   }
 
-  // Show unauthorized if not seller
-  if (role !== 'seller') {
+  // If role not yet known but loaded (and not logging out), keep loading to avoid false unauthorized
+  if (isLoaded && !isLoggingOut && !role) {
+    return <Loading />;
+  }
+
+  // Show unauthorized only when role is known and not seller
+  if (role && role !== 'seller') {
     return null; // Will redirect to unauthorized
   }
 

@@ -1,6 +1,9 @@
-node_modules
-.next
-.turbo
+# Ignore config files that cause restarts
+next.config.ts
+next.config.js
+next.config.mjs
+
+# Ignore other files that might cause issues
 .git
 .gitignore
 README.md
@@ -8,14 +11,19 @@ README.md
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Ignore build artifacts
+.next
+out
+dist
+
+# Ignore logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
-coverage
-.nyc_output
-.cache
-.parcel-cache
+pnpm-debug.log*
+
+# Ignore OS files
 .DS_Store
-*.tsbuildinfo
-next-env.d.ts
+Thumbs.db

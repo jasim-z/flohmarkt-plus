@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ApiClient } from './apiClient';
-import { useGlobalLoading } from '@/app/contexts/LoadingContext';
+import { useGlobalLoading } from '@/contexts/LoadingContext';
 
 // Enhanced API client with loading indicators
 export class LoadingApiClient extends ApiClient {
