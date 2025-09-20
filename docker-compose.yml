@@ -197,9 +197,10 @@ services:
       - '3954:3954'
 
   rabbitmq:
-    image: rabbitmq
+    image: rabbitmq:management
     ports:
-      - '5673:5672'
+      - "5673:5672"   # AMQP
+      - "15672:15672" # HTTP UI
 
   mongodb-primary:
     image: mongo:5.0
