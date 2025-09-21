@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { FaStore, FaUsers, FaCheckCircle, FaChartLine, FaCalendar } from "react-icons/fa";
 import Link from "next/link";
-import UnAuthourized from "@/app/components/UnAuthourized";
+import UnAuthourized from "@/components/UnAuthourized";
 import { useUser } from "@/contexts/UserContext";
 import { useEffect, useState } from "react";
 import { getMarkets, Market } from "@/app/api/markets";

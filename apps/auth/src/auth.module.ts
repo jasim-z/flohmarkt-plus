@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { RmqModule, DatabaseModule } from '@app/common';
@@ -11,6 +11,8 @@ import { loadConfig } from '@app/common/config/config';
 import { UsersService } from 'apps/auth/src/users/users.service';
 import { SeedService } from './seeds/seed.service';
 import { SeedController } from './seeds/seed.controller';
+import { SanitizationMiddleware } from './middleware/sanitization.middleware';
+import { RateLimitMiddleware, RATE_LIMITS } from './middleware/rate-limit.middleware';
 
 @Module({
   imports: [
@@ -50,4 +52,11 @@ import { SeedController } from './seeds/seed.controller';
     },
   ],
 })
-export class AuthModule {}
+export class AuthModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(SanitizationMiddleware).forRoutes('*');
+    consumer.apply(RateLimitMiddleware.create(RATE_LIMITS.GENERAL)).forRoutes('*');
+    consumer.apply(RateLimitMiddleware.create(RATE_LIMITS.LOGIN)).forRoutes('POST /auth/login');
+    consumer.apply(RateLimitMiddleware.create(RATE_LIMITS.USERS_CREATE)).forRoutes('POST /users');
+  }
+}

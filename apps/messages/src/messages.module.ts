@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import * as Joi from 'joi';
@@ -11,6 +11,8 @@ import { Message, MessageSchema } from './schemas/message.schema';
 import { MessagesService } from './messages.service';
 import { MessagesGateway } from './messages.gateway';
 import { JwtModule } from '@nestjs/jwt';
+import { SanitizationMiddleware } from './middleware/sanitization.middleware';
+import { RateLimitMiddleware, RATE_LIMITS } from './middleware/rate-limit.middleware';
 
 @Module({
   imports: [
@@ -31,5 +33,12 @@ import { JwtModule } from '@nestjs/jwt';
   controllers: [MessagesController, ConversationsController],
   providers: [MessagesService, JwtStrategy, RolesGuard, MessagesGateway],
 })
-export class MessagesModule {}
+export class MessagesModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(SanitizationMiddleware).forRoutes('*');
+    consumer.apply(RateLimitMiddleware.create(RATE_LIMITS.GENERAL)).forRoutes('*');
+    consumer.apply(RateLimitMiddleware.create(RATE_LIMITS.SEND)).forRoutes('POST /conversations/:conversationId/messages');
+    consumer.apply(RateLimitMiddleware.create(RATE_LIMITS.CONV_CREATE)).forRoutes('POST /conversations');
+  }
+}
 

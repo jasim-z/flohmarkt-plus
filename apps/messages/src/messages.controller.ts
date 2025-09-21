@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards, UsePipes, ValidationPipe, BadRequestException } from '@nestjs/common';
 import { JwtAuthGuard, RolesGuard, Roles, CurrentUser } from '@app/common';
 import { MessagesService } from './messages.service';
 import { MessagesGateway } from './messages.gateway';
@@ -6,6 +6,7 @@ import { Types } from 'mongoose';
 
 @Controller('conversations/:conversationId/messages')
 @UseGuards(JwtAuthGuard, RolesGuard)
+@UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true, transformOptions: { enableImplicitConversion: true } }))
 export class MessagesController {
   constructor(
     private readonly messagesService: MessagesService,
@@ -20,6 +21,7 @@ export class MessagesController {
     @Query('page') page = 1,
     @Query('limit') limit = 20,
   ) {
+    if (!/^[0-9a-fA-F]{24}$/.test(conversationId)) throw new BadRequestException('Invalid conversationId');
     return this.messagesService.listMessages(conversationId, user._id.toString(), Number(page), Number(limit));
   }
 
@@ -30,6 +32,8 @@ export class MessagesController {
     @Body() body: { text: string },
     @CurrentUser() user: any,
   ) {
+    if (!/^[0-9a-fA-F]{24}$/.test(conversationId)) throw new BadRequestException('Invalid conversationId');
+    if (!body?.text || typeof body.text !== 'string') throw new BadRequestException('text is required');
     const saved = await this.messagesService.sendMessage(conversationId, user._id.toString(), body.text);
     // Broadcast via websocket
     const convRoom = `conv:${conversationId}`;

@@ -1,13 +1,13 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import UnAuthourized from "@/app/components/UnAuthourized";
+import UnAuthourized from "@/components/UnAuthourized";
 import { useUser } from "@/contexts/UserContext";
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { listConversations } from '@/app/api/messages';
-import { ConversationsList } from '@/app/components/ConversationsList';
-import { useSocket } from '@/app/hooks/useSocket';
+import { ConversationsList } from '@/components/business';
+import { useSocket } from '@/hooks/useSocket';
 
 export default function SellerMessages() {
   const t = useTranslations();

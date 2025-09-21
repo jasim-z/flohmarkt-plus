@@ -22,6 +22,11 @@ export * from './dto/user/get-users.dto';
 export * from './dto/user/paginated-users.response';
 export * from './dto/market/create-market.dto';
 export * from './dto/market/update-market.dto';
+export * from './dto/market/query-market.dto';
+export * from './dto/market/join-market.dto';
+export * from './dto/market/bulk-create-market.dto';
+export * from './dto/market/update-vendors.dto';
+export * from './dto/market/upload-image.dto';
 export * from './dto/listing/create-listing.dto';
 
 // Service Clients

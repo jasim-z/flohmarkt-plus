@@ -8,7 +8,7 @@ import { Loading } from "@/components/ui/loading";
 import { getUsers, User, GetUsersParams } from "../../../api/users";
 import { FaUser, FaEnvelope, FaCalendar, FaUserShield, FaCheckCircle, FaTimesCircle, FaSearch } from "react-icons/fa";
 import { useUser } from "@/contexts/UserContext";
-import UnAuthourized from "@/app/components/UnAuthourized";
+import UnAuthourized from "@/components/UnAuthourized";
 
 export default function Users() {
   const t = useTranslations();

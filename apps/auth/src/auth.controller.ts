@@ -7,7 +7,6 @@ import {
   Get,
 } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { LocalAuthGuard, JwtAuthGuard } from '@app/common';
 import { UsersService } from './users/users.service';
@@ -22,12 +21,12 @@ export class AuthController {
 
   @UseGuards(LocalAuthGuard)
   @Post('login')
-  async login(@Request() req, @Res({ passthrough: true }) response: Response) {
+  async login(@Request() req, @Res({ passthrough: true }) response: any) {
     return this.authService.login(req.user, response);
   }
 
   @Post('logout')
-  logout(@Res({ passthrough: true }) response: Response) {
+  logout(@Res({ passthrough: true }) response: any) {
     this.authService.logout(response);
     return { message: 'Logged out successfully' };
   }

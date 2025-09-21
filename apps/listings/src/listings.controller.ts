@@ -9,14 +9,29 @@ import {
   Query,
   UseGuards,
   Request,
+  UseInterceptors,
+  ValidationPipe,
+  UsePipes,
 } from '@nestjs/common';
 import { ListingsService } from './listings.service';
 import { ListingMarketIdMigrationService } from './migration/add-market-id-field';
 import { ListingIsDeletedMigrationService } from './migration/add-is-deleted-field';
 import { JwtAuthGuard, RolesGuard, Roles } from '@app/common';
 import { CreateListingDto } from '@app/common/dto/listing/create-listing.dto';
+import { UpdateListingDto } from '@app/common/dto/listing/update-listing.dto';
+import { QueryListingDto, NearbyListingDto, SearchListingDto } from '@app/common/dto/listing/query-listing.dto';
+import { RateLimitMiddleware, RATE_LIMITS } from './middleware/rate-limit.middleware';
+import { SanitizationMiddleware } from './middleware/sanitization.middleware';
 
 @Controller('listings')
+@UsePipes(new ValidationPipe({ 
+  transform: true, 
+  whitelist: true, 
+  forbidNonWhitelisted: true,
+  transformOptions: {
+    enableImplicitConversion: true,
+  },
+}))
 export class ListingsController {
   constructor(
     private readonly listingsService: ListingsService,
@@ -50,27 +65,27 @@ export class ListingsController {
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('seller', 'buyer', 'admin')
-  findAll(@Query() query: any) {
+  findAll(@Query() query: QueryListingDto) {
     return this.listingsService.findAll(query);
   }
 
   @Get('nearby')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('seller', 'buyer', 'admin')
-  findNearby(
-    @Query('latitude') latitude: number,
-    @Query('longitude') longitude: number,
-    @Query('radius') radius = 10,
-    @Query() query: any,
-  ) {
-    return this.listingsService.findNearby(latitude, longitude, radius, query);
+  findNearby(@Query() query: NearbyListingDto) {
+    return this.listingsService.findNearby(
+      query.latitude, 
+      query.longitude, 
+      query.radius || 10, 
+      query
+    );
   }
 
   @Get('search')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('seller', 'buyer', 'admin')
-  search(@Query('q') searchTerm: string, @Query() query: any) {
-    return this.listingsService.search(searchTerm, query);
+  search(@Query() query: SearchListingDto) {
+    return this.listingsService.search(query.q, query);
   }
 
   @Get('categories')
@@ -188,7 +203,7 @@ export class ListingsController {
   @Roles('seller')
   update(
     @Param('id') id: string,
-    @Body() updateListingDto: any,
+    @Body() updateListingDto: UpdateListingDto,
     @Request() req,
   ) {
     return this.listingsService.update(id, updateListingDto, req.user.userId);

@@ -2,9 +2,9 @@ FROM node:alpine As development
 
 WORKDIR /usr/src/app
 
-COPY package.json ./
-
-RUN npm install
+COPY package.json pnpm-lock.yaml ./
+RUN corepack enable && corepack prepare pnpm@9 --activate
+RUN pnpm install --frozen-lockfile
 
 COPY . .
 
@@ -17,9 +17,9 @@ ENV NODE_ENV=${NODE_ENV}
 
 WORKDIR /usr/src/app
 
-COPY package*.json ./
-
-RUN npm install --only=production
+COPY package.json pnpm-lock.yaml ./
+RUN corepack enable && corepack prepare pnpm@9 --activate
+RUN pnpm install --prod --frozen-lockfile
 
 COPY . .
 COPY --from=development /usr/src/app/dist ./dist

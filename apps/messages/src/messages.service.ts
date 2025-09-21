@@ -22,16 +22,19 @@ export class MessagesService {
     if (participants.length < 2) throw new ForbiddenException('buyerId and sellerId required');
     const participantIds = participants.map(id => new Types.ObjectId(id));
 
-    const query: any = { participantIds: { $all: participantIds } };
-    if (listingId) query.listingId = new Types.ObjectId(listingId);
+    // Uniqueness by participants only, regardless of listing/product
+    const query: any = { participantIds: { $all: participantIds, $size: 2 } };
 
     const existing = await this.conversationModel.findOne(query).lean();
     if (existing) {
       this.ensureParticipant(existing as any, requesterId);
+      // Optionally update lastMessageAt to bump conversation when starting from a new listing
+      await this.conversationModel.updateOne({ _id: (existing as any)._id }, { $set: { lastMessageAt: new Date() } }).catch(() => undefined);
       return existing;
     }
     const toCreate: Partial<Conversation> = {
       participantIds: participantIds as any,
+      // listingId is intentionally not part of uniqueness; store latest context if provided
       listingId: listingId ? new Types.ObjectId(listingId) as any : undefined,
       lastMessageAt: new Date(),
       unreadCounts: { buyer: 0, seller: 0 },

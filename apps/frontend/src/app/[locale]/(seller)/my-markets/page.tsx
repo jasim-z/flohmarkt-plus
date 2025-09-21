@@ -4,8 +4,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { DataTable, Column } from '@/components/ui/data-table';
 import { Market, getMarkets, PaginatedMarketsResponse } from '@/app/api/markets';
-import UnAuthourized from '@/app/components/UnAuthourized';
-import { Badge } from '@/app/components/ui/badge';
+import UnAuthourized from '@/components/UnAuthourized';
+import { Badge } from '@/components/ui/badge';
 import { FaStore, FaCalendar, FaClock, FaExternalLinkAlt } from 'react-icons/fa';
 import { useParams, useRouter } from 'next/navigation';
 

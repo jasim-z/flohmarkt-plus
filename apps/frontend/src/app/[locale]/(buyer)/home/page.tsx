@@ -4,9 +4,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useUser } from '@/contexts/UserContext';
 import { getAllListings, GetListingsParams } from '../../../api/listings';
-import BuyerSearchFilters from '@/app/components/BuyerSearchFilters';
-import BuyerListingCard from '@/app/components/BuyerListingCard';
-import ListingSkeletonGrid from '@/app/components/ListingSkeleton';
+import { BuyerSearchFilters } from '@/components/business';
+import { BuyerListingCard } from '@/components/business';
+import { ListingSkeletonGrid } from '@/components';
+import { InlineLoading } from '@/components/loading/LoadingOverlay';
 import { FaShoppingBag, FaHeart, FaMapMarkerAlt, FaUsers, FaStore } from 'react-icons/fa';
 
 interface Listing {
@@ -235,11 +236,8 @@ export default function BuyerHome() {
   // Loading state
   if (authLoading || !isLoaded) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
+      <div className="min-h-screen bg-gray-50">
+        <InlineLoading text="Loading marketplace..." />
       </div>
     );
   }
@@ -383,10 +381,7 @@ export default function BuyerHome() {
 
         {/* Load More Indicator */}
         {loadingMore && (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-            <p className="text-gray-600">Loading more items...</p>
-          </div>
+          <InlineLoading text="Loading more items..." />
         )}
 
         {/* End of Results */}

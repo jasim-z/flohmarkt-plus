@@ -4,9 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useUser } from '@/contexts/UserContext';
 import { listConversations, listMessages, sendMessage, markRead } from '@/app/api/messages';
-import { useSocket } from '@/app/hooks/useSocket';
-import { ConversationsList } from '@/app/components/ConversationsList';
-import { ChatHeader } from '@/app/components/ChatHeader';
+import { useSocket } from '@/hooks/useSocket';
+import { ConversationsList, ChatHeader } from '@/components/business';
 
 interface Msg {
   _id: string;

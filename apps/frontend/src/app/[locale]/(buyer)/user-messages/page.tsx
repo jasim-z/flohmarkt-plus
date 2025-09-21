@@ -3,9 +3,9 @@
 import { useUser } from '@/contexts/UserContext';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ConversationsList } from '@/app/components/ConversationsList';
+import { ConversationsList } from '@/components/business';
 import { listConversations } from '@/app/api/messages';
-import { useSocket } from '@/app/hooks/useSocket';
+import { useSocket } from '@/hooks/useSocket';
 
 export default function BuyerMessages() {
   const { user, isLoaded, isLoading: authLoading } = useUser();

@@ -64,3 +64,24 @@ MarketSchema.index({ status: 1 });
 MarketSchema.index({ createdBy: 1 });
 MarketSchema.index({ name: 'text', description: 'text', categories: 'text' });
 MarketSchema.index({ isDeleted: 1 }); 
+
+// Ensure consistent JSON shape across responses
+MarketSchema.set('toJSON', {
+  virtuals: true,
+  versionKey: false,
+  transform: (_doc, ret) => {
+    if (ret._id) {
+      ret.id = ret._id.toString();
+      delete ret._id;
+    }
+    // Normalize Decimal128 price to number if present
+    if (ret.price && typeof ret.price === 'object' && ret.price.toString) {
+      const priceNum = Number(ret.price.toString());
+      ret.price = Number.isNaN(priceNum) ? ret.price : priceNum;
+    }
+    // Ensure arrays default
+    if (!Array.isArray(ret.categories)) ret.categories = [];
+    if (!Array.isArray(ret.registeredVendors)) ret.registeredVendors = [];
+    return ret;
+  },
+});

@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { FaUsers, FaStore, FaUserShield, FaPlus, FaChevronUp, FaChevronDown, FaCalendar, FaArrowRight } from "react-icons/fa";
 import Link from "next/link";
-import UnAuthourized from "@/app/components/UnAuthourized";
+import UnAuthourized from "@/components/UnAuthourized";
 import { useUser } from "@/contexts/UserContext";
 
 export default function Dashboard() {

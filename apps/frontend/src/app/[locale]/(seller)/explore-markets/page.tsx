@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaSearch, FaCheck, FaDollarSign, FaSync } from "react-icons/fa";
 import { getMarkets, Market } from "@/app/api/markets";
-import UnAuthourized from "@/app/components/UnAuthourized";
+import UnAuthourized from "@/components/UnAuthourized";
 import { useUser } from "@/contexts/UserContext";
 import { formatPrice } from "@/lib/utils";
 

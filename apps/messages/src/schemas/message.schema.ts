@@ -24,3 +24,12 @@ export class Message {
 export const MessageSchema = SchemaFactory.createForClass(Message);
 MessageSchema.index({ conversationId: 1, createdAt: -1 });
 
+MessageSchema.set('toJSON', {
+  virtuals: true,
+  versionKey: false,
+  transform: (_doc, ret) => {
+    if (ret._id) { ret.id = ret._id.toString(); delete ret._id; }
+    return ret;
+  },
+});
+

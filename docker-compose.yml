@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: ./apps/orders/Dockerfile
       target: development
-    command: npm run start:dev orders
+    command: pnpm run start:dev orders
     environment:
       - PORT=3949
       - NODE_ENV=development
@@ -38,11 +38,12 @@ services:
       context: .
       dockerfile: ./apps/billing/Dockerfile
       target: development
-    command: npm run start:dev billing
+    command: pnpm run start:dev billing
     environment:
       - PORT=3951
       - NODE_ENV=development
       - JWT_EXPIRATION=3600
+      - RABBIT_MQ_URI=amqp://guest:guest@rabbitmq:5672/?heartbeat=30&connection_timeout=30000
     env_file:
       - apps/billing/.env
     secrets:
@@ -70,11 +71,12 @@ services:
       context: .
       dockerfile:  ./apps/auth/Dockerfile
       target: development
-    command: npm run start:dev auth
+    command: pnpm run start:dev auth
     environment:
       - PORT=3950
       - NODE_ENV=development
       - JWT_EXPIRATION=3600
+      - RABBIT_MQ_URI=amqp://guest:guest@rabbitmq:5672/?heartbeat=30&connection_timeout=30000
     env_file:
       - apps/auth/.env
     secrets:
@@ -100,11 +102,12 @@ services:
       context: .
       dockerfile: ./apps/listings/Dockerfile
       target: development
-    command: npm run start:dev listings
+    command: pnpm run start:dev listings
     environment:
       - PORT=3952
       - NODE_ENV=development
       - JWT_EXPIRATION=3600
+      - RABBIT_MQ_URI=amqp://guest:guest@rabbitmq:5672/?heartbeat=30&connection_timeout=30000
     env_file:
       - apps/listings/.env
     secrets:
@@ -132,11 +135,12 @@ services:
       context: .
       dockerfile: ./apps/markets/Dockerfile
       target: development
-    command: npm run start:dev markets
+    command: pnpm run start:dev markets
     environment:
       - PORT=3953
       - NODE_ENV=development
       - JWT_EXPIRATION=3600
+      - RABBIT_MQ_URI=amqp://guest:guest@rabbitmq:5672/?heartbeat=30&connection_timeout=30000
     env_file:
       - apps/markets/.env
     secrets:
@@ -164,11 +168,12 @@ services:
       context: .
       dockerfile: ./apps/messages/Dockerfile
       target: development
-    command: npm run start:dev messages
+    command: pnpm run start:dev messages
     environment:
       - PORT=3954
       - NODE_ENV=development
       - JWT_EXPIRATION=3600
+      - RABBIT_MQ_URI=amqp://guest:guest@rabbitmq:5672/?heartbeat=30&connection_timeout=30000
     env_file:
       - apps/messages/.env
     secrets:
@@ -192,9 +197,10 @@ services:
       - '3954:3954'
 
   rabbitmq:
-    image: rabbitmq
+    image: rabbitmq:management
     ports:
-      - '5673:5672'
+      - "5673:5672"   # AMQP
+      - "15672:15672" # HTTP UI
 
   mongodb-primary:
     image: mongo:5.0

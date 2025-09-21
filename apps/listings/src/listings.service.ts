@@ -3,6 +3,9 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Listing, ListingDocument, ListingStatus } from './schemas/listing.schema';
 import { CreateListingDto } from '@app/common';
+import { UpdateListingDto } from '@app/common/dto/listing/update-listing.dto';
+import { QueryListingDto } from '@app/common/dto/listing/query-listing.dto';
+import { SanitizationUtils } from './middleware/sanitization.middleware';
 
 @Injectable()
 export class ListingsService {
@@ -70,17 +73,20 @@ export class ListingsService {
     console.log('Creating listing with data:', createListingDto);
     console.log('Seller ID:', sellerId);
     
+    // Sanitize input data before storing
+    const sanitizedData = this.sanitizeListingData(createListingDto);
+    
     const listingData: any = {
-      ...createListingDto,
+      ...sanitizedData,
       sellerId: new Types.ObjectId(sellerId),
       status: ListingStatus.ACTIVE,
       lastUpdated: new Date(),
     };
 
     // Convert marketId to ObjectId if provided
-    if (createListingDto.marketId) {
-      console.log('Converting marketId to ObjectId:', createListingDto.marketId);
-      listingData.marketId = new Types.ObjectId(createListingDto.marketId);
+    if (sanitizedData.marketId) {
+      console.log('Converting marketId to ObjectId:', sanitizedData.marketId);
+      listingData.marketId = new Types.ObjectId(sanitizedData.marketId);
       console.log('Converted marketId:', listingData.marketId);
     }
 
@@ -91,7 +97,7 @@ export class ListingsService {
     return savedListing;
   }
 
-  async findAll(query: any = {}): Promise<{ data: Listing[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
+  async findAll(query: QueryListingDto = {}): Promise<{ data: Listing[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
     const {
       category,
       condition,
@@ -440,17 +446,20 @@ export class ListingsService {
     };
   }
 
-  async update(id: string, updateListingDto: any, sellerId: string): Promise<Listing> {
+  async update(id: string, updateListingDto: UpdateListingDto, sellerId: string): Promise<Listing> {
     // Verify the listing belongs to the seller
     const listing = await this.listingModel.findById(id);
     if (!listing || listing.sellerId.toString() !== sellerId) {
       throw new Error('Unauthorized: You can only update your own listings');
     }
 
+    // Sanitize input data before updating
+    const sanitizedData = this.sanitizeListingData(updateListingDto);
+
     return this.listingModel
       .findByIdAndUpdate(
         id,
-        { ...updateListingDto, lastUpdated: new Date() },
+        { ...sanitizedData, lastUpdated: new Date() },
         { new: true },
       )
       .exec();
@@ -588,5 +597,60 @@ export class ListingsService {
   // Debug method to check all listings
   async debugAllListings(): Promise<any[]> {
     return this.listingModel.find({}).lean().exec();
+  }
+
+  /**
+   * Sanitize listing data before storing in database
+   */
+  private sanitizeListingData(data: CreateListingDto | UpdateListingDto): any {
+    const sanitized: any = { ...data };
+
+    // Sanitize string fields
+    if (sanitized.title) {
+      sanitized.title = SanitizationUtils.sanitizeText(sanitized.title);
+    }
+    if (sanitized.description) {
+      sanitized.description = SanitizationUtils.sanitizeText(sanitized.description);
+    }
+    if (sanitized.city) {
+      sanitized.city = SanitizationUtils.sanitizeText(sanitized.city);
+    }
+    if (sanitized.neighborhood) {
+      sanitized.neighborhood = SanitizationUtils.sanitizeText(sanitized.neighborhood);
+    }
+    if (sanitized.brand) {
+      sanitized.brand = SanitizationUtils.sanitizeText(sanitized.brand);
+    }
+    if (sanitized.model) {
+      sanitized.model = SanitizationUtils.sanitizeText(sanitized.model);
+    }
+    if (sanitized.dimensions) {
+      sanitized.dimensions = SanitizationUtils.sanitizeText(sanitized.dimensions);
+    }
+    if (sanitized.weight) {
+      sanitized.weight = SanitizationUtils.sanitizeText(sanitized.weight);
+    }
+    if (sanitized.pickupAddress) {
+      sanitized.pickupAddress = SanitizationUtils.sanitizeText(sanitized.pickupAddress);
+    }
+    if (sanitized.pickupInstructions) {
+      sanitized.pickupInstructions = SanitizationUtils.sanitizeText(sanitized.pickupInstructions);
+    }
+
+    // Sanitize image URLs
+    if (sanitized.images && Array.isArray(sanitized.images)) {
+      sanitized.images = sanitized.images
+        .map(url => SanitizationUtils.sanitizeUrl(url))
+        .filter(url => url.length > 0);
+    }
+
+    // Sanitize tags
+    if (sanitized.tags && Array.isArray(sanitized.tags)) {
+      sanitized.tags = sanitized.tags
+        .map(tag => SanitizationUtils.sanitizeText(tag))
+        .filter(tag => tag.length > 0);
+    }
+
+    return sanitized;
   }
 }

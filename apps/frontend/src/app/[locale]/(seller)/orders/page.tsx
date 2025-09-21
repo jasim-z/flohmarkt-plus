@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { FaShoppingCart } from "react-icons/fa";
-import UnAuthourized from "@/app/components/UnAuthourized";
+import UnAuthourized from "@/components/UnAuthourized";
 import { useUser } from "@/contexts/UserContext";
 
 export default function SellerOrders() {
