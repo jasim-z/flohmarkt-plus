@@ -28,6 +28,7 @@ MessageSchema.set('toJSON', {
   virtuals: true,
   versionKey: false,
   transform: (_doc, ret) => {
+    // @ts-ignore allow dynamic id assignment on plain object
     if (ret._id) { ret.id = ret._id.toString(); delete ret._id; }
     return ret;
   },
