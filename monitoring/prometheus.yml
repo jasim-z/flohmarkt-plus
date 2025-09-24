@@ -1,0 +1,45 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Your Markets Service (where metrics are exposed)
+  - job_name: 'markets-service'
+    static_configs:
+      - targets: ['markets:3953']
+    metrics_path: '/metrics'
+    scrape_interval: 10s  # Reduced from 5s to 10s to reduce monitoring overhead
+
+  # Frontend Health Check (Next.js app)
+  - job_name: 'frontend-health'
+    static_configs:
+      - targets: ['frontend:3000']
+    metrics_path: '/api/health'
+    scrape_interval: 30s
+
+  # Note: Only markets service currently has metrics endpoint
+  # Other services (auth, listings, orders, billing, messages) don't expose /metrics yet
+
+  # System metrics (if using node-exporter)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # MongoDB (if you add MongoDB exporter)
+  # - job_name: 'mongodb'
+  #   static_configs:
+  #     - targets: ['mongodb-exporter:9216']
+
+  # RabbitMQ (if you add RabbitMQ exporter)
+  # - job_name: 'rabbitmq'
+  #   static_configs:
+  #     - targets: ['rabbitmq:15692']
