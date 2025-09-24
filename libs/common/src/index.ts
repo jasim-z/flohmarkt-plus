@@ -31,3 +31,10 @@ export * from './dto/listing/create-listing.dto';
 
 // Service Clients
 export * from './clients/users-service.client';
+
+// Observability
+export * from './middleware/correlation.middleware';
+export * from './interceptors/logging.interceptor';
+export * from './metrics/metrics.service';
+export * from './metrics/metrics.middleware';
+export * from './health/health.controller';
