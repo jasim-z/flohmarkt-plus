@@ -12,22 +12,50 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
-  # Your Markets Service (where metrics are exposed)
+  # All Microservices with Full Observability
+  - job_name: 'auth-service'
+    static_configs:
+      - targets: ['auth:3950']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  # Note: billing-service is a microservice (RabbitMQ), not HTTP service
+  # - job_name: 'billing-service'
+  #   static_configs:
+  #     - targets: ['billing:3951']
+  #   metrics_path: '/metrics'
+  #   scrape_interval: 15s
+
+  - job_name: 'listings-service'
+    static_configs:
+      - targets: ['listings:3952']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
   - job_name: 'markets-service'
     static_configs:
       - targets: ['markets:3953']
     metrics_path: '/metrics'
-    scrape_interval: 10s  # Reduced from 5s to 10s to reduce monitoring overhead
+    scrape_interval: 15s
 
-  # Frontend Health Check (Next.js app)
-  - job_name: 'frontend-health'
+  - job_name: 'messages-service'
+    static_configs:
+      - targets: ['messages:3954']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  - job_name: 'orders-service'
+    static_configs:
+      - targets: ['orders:3949']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  # Frontend Metrics (Next.js app)
+  - job_name: 'frontend-service'
     static_configs:
       - targets: ['frontend:3000']
-    metrics_path: '/api/health'
+    metrics_path: '/api/metrics'
     scrape_interval: 30s
-
-  # Note: Only markets service currently has metrics endpoint
-  # Other services (auth, listings, orders, billing, messages) don't expose /metrics yet
 
   # System metrics (if using node-exporter)
   - job_name: 'node-exporter'

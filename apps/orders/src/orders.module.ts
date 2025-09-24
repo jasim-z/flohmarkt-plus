@@ -2,7 +2,7 @@ import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
 import * as Joi from 'joi';
-import { DatabaseModule, RmqModule, JwtStrategy, RolesGuard } from '@app/common';
+import { DatabaseModule, RmqModule, JwtStrategy, RolesGuard, HealthController, MetricsService, MetricsMiddleware, CorrelationMiddleware } from '@app/common';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -29,11 +29,16 @@ import { RateLimitMiddleware, RATE_LIMITS } from './middleware/rate-limit.middle
       name: BILLING_SERVICE,
     }),
   ],
-  controllers: [OrdersController],
-  providers: [OrdersService, OrdersRepository, JwtStrategy, RolesGuard],
+  controllers: [OrdersController, HealthController],
+  providers: [OrdersService, OrdersRepository, JwtStrategy, RolesGuard, MetricsService],
 })
 export class OrdersModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
+    // Correlation and metrics on all routes
+    consumer
+      .apply(CorrelationMiddleware, MetricsMiddleware)
+      .forRoutes('*');
+
     consumer.apply(SanitizationMiddleware).forRoutes('*');
     consumer.apply(RateLimitMiddleware.create(RATE_LIMITS.GENERAL)).forRoutes('*');
     consumer.apply(RateLimitMiddleware.create(RATE_LIMITS.CREATE)).forRoutes('POST /orders');

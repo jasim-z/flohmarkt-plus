@@ -17,17 +17,22 @@ open http://localhost:9090  # Prometheus
 
 ### 1. **Main Dashboard** (Auto-loaded)
 - **File**: `grafana/provisioning/dashboards/flohmarkt-dashboard.json`
-- **Shows**: All HTTP requests including monitoring traffic
-- **Use Case**: Complete system overview
+- **Shows**: Markets service metrics
+- **Use Case**: Single service overview
 
-### 2. **User Traffic Dashboard** (Manual import)
+### 2. **All Services Dashboard** (Manual import)
+- **File**: `all-services-dashboard.json`
+- **Shows**: All 6 microservices (auth, billing, listings, markets, messages, orders)
+- **Use Case**: Complete system overview across all services
+
+### 3. **User Traffic Dashboard** (Manual import)
 - **File**: `user-traffic-dashboard.json`
 - **Shows**: Only user traffic (excludes `/metrics` and `/health`)
 - **Use Case**: Focus on actual app usage
 
-**To import User Traffic Dashboard:**
+**To import additional dashboards:**
 1. Go to Grafana → **"+"** → **"Import"**
-2. Upload `user-traffic-dashboard.json`
+2. Upload the desired JSON file
 3. Select **"Prometheus"** as data source
 
 ## 📊 What You Get
@@ -46,9 +51,18 @@ open http://localhost:9090  # Prometheus
 
 ## 🔍 Understanding Your Data
 
+### **Services Being Monitored**
+- **Auth Service** (port 3950): User authentication and management
+- **Billing Service** (port 3951): Payment processing
+- **Listings Service** (port 3952): Product listings management
+- **Markets Service** (port 3953): Market management
+- **Messages Service** (port 3954): User messaging system
+- **Orders Service** (port 3949): Order processing
+- **Frontend** (port 3000): Next.js application
+
 ### **Monitoring vs User Traffic**
-- **Monitoring Traffic**: ~0.2 req/s (Prometheus scraping every 5 seconds)
-- **User Traffic**: ~0.05 req/s (actual app usage)
+- **Monitoring Traffic**: ~1.2 req/s (Prometheus scraping 6 services every 10 seconds)
+- **User Traffic**: Variable based on actual app usage
 - **Health Checks**: Periodic `/health` endpoint calls
 
 ### **Key Metrics Explained**

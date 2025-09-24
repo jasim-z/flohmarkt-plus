@@ -1,7 +1,7 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-import { RmqModule, DatabaseModule } from '@app/common';
+import { RmqModule, DatabaseModule, HealthController, MetricsService, MetricsMiddleware, CorrelationMiddleware } from '@app/common';
 import * as Joi from 'joi';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -40,12 +40,13 @@ import { RateLimitMiddleware, RATE_LIMITS } from './middleware/rate-limit.middle
       inject: [ConfigService],
     }),
   ],
-  controllers: [AuthController, SeedController],
+  controllers: [AuthController, SeedController, HealthController],
   providers: [
     AuthService,
     LocalStrategy,
     JwtStrategy,
     SeedService,
+    MetricsService,
     {
       provide: 'IUserService',
       useExisting: UsersService,
@@ -54,6 +55,11 @@ import { RateLimitMiddleware, RATE_LIMITS } from './middleware/rate-limit.middle
 })
 export class AuthModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
+    // Correlation and metrics on all routes
+    consumer
+      .apply(CorrelationMiddleware, MetricsMiddleware)
+      .forRoutes('*');
+
     consumer.apply(SanitizationMiddleware).forRoutes('*');
     consumer.apply(RateLimitMiddleware.create(RATE_LIMITS.GENERAL)).forRoutes('*');
     consumer.apply(RateLimitMiddleware.create(RATE_LIMITS.LOGIN)).forRoutes('POST /auth/login');

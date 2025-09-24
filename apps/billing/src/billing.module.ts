@@ -1,7 +1,7 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { BillingController } from './billing.controller';
 import { BillingService } from './billing.service';
-import { RmqModule } from '@app/common';
+import { RmqModule, HealthController, MetricsService, MetricsMiddleware, CorrelationMiddleware } from '@app/common';
 import { ConfigModule } from '@nestjs/config';
 import * as Joi from 'joi';
 import { SanitizationMiddleware } from './middleware/sanitization.middleware';
@@ -16,11 +16,16 @@ import { RateLimitMiddleware, RATE_LIMITS } from './middleware/rate-limit.middle
     })
   }),
   RmqModule],
-  controllers: [BillingController],
-  providers: [BillingService],
+  controllers: [BillingController, HealthController],
+  providers: [BillingService, MetricsService],
 })
 export class BillingModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
+    // Correlation and metrics on all routes
+    consumer
+      .apply(CorrelationMiddleware, MetricsMiddleware)
+      .forRoutes('*');
+
     consumer.apply(SanitizationMiddleware).forRoutes('*');
     consumer.apply(RateLimitMiddleware.create(RATE_LIMITS.GENERAL)).forRoutes('*');
   }
