@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom'
+// (MSW integration polyfills removed for MVP scope)
 
 // Mock Next.js router
 jest.mock('next/navigation', () => ({
