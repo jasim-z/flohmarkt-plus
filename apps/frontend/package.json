@@ -16,7 +16,7 @@
     "test:unit": "jest --testPathPatterns=__tests__",
     "test:integration": "jest --testPathPatterns=tests/integration",
     "test:e2e": "playwright test",
-    "test:e2e:smoke": "playwright test -g 'Navigation & Locale|Error UI'",
+    "test:e2e:smoke": "playwright test -g 'Error UI'",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:all": "pnpm test && pnpm test:e2e"

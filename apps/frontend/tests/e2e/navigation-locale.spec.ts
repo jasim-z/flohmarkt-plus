@@ -4,7 +4,6 @@ import { test, expect } from '@playwright/test'
 // Assumes webServer is started by Playwright config
 
 test.describe('Navigation & Locale', () => {
-  test.fixme(true, 'Locale redirect behavior depends on client guard and backend; marking fixme for MVP smoke');
   test('401 redirects preserve locale to /{locale}/login', async ({ page }) => {
     const locale = 'en'
 
