@@ -70,14 +70,18 @@ MarketSchema.set('toJSON', {
   virtuals: true,
   versionKey: false,
   transform: (_doc, ret) => {
+    // @ts-ignore assign dynamic id for client consumption
     if (ret._id) {
+      // @ts-ignore
       ret.id = ret._id.toString();
       delete ret._id;
     }
-    // Normalize Decimal128 price to number if present
+    // Normalize Decimal128 price to number if present, but do not change type definition here
     if (ret.price && typeof ret.price === 'object' && ret.price.toString) {
       const priceNum = Number(ret.price.toString());
-      ret.price = Number.isNaN(priceNum) ? ret.price : priceNum;
+      // expose a numeric copy for clients while keeping original field if needed
+      // @ts-ignore
+      ret.priceNumber = Number.isNaN(priceNum) ? undefined : priceNum;
     }
     // Ensure arrays default
     if (!Array.isArray(ret.categories)) ret.categories = [];

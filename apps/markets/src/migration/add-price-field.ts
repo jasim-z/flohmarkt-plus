@@ -63,7 +63,7 @@ export class MarketPriceMigrationService {
           // Convert to Decimal128
           await this.marketModel.updateOne(
             { _id: market._id },
-            { $set: { price: Types.Decimal128.fromString(market.price.toString()) } }
+            { $set: { price: Types.Decimal128.fromString(String(market.price)) } }
           );
           updatedCount++;
         }

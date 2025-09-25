@@ -14,6 +14,18 @@ export default function PublicProfile() {
 
   const userId = params.userId as string;
 
+  // Early client-side guard to avoid flicker: if no token, redirect immediately
+  useEffect(() => {
+    try {
+      const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('auth_token');
+      if (!hasToken) {
+        router.replace(`/${params.locale}/login`);
+      }
+    } catch {}
+    // run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (isLoaded && user && userId) {
       setIsOwnProfile(user._id === userId);

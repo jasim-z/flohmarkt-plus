@@ -16,6 +16,7 @@ import {
   UploadedFile,
   BadRequestException,
 } from '@nestjs/common';
+import type { Express } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MarketsService } from './markets.service';
 import { MarketPriceMigrationService } from './migration/add-price-field';

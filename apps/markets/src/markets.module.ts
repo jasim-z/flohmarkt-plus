@@ -7,7 +7,7 @@ import { MarketsController } from './markets.controller';
 import { Market, MarketSchema } from './schemas/market.schema';
 import { MarketsRepository } from './markets.repository';
 import { MarketPriceMigrationService } from './migration/add-price-field';
-import { DatabaseModule, JwtStrategy, RolesGuard, HttpUsersServiceClient } from '@app/common';
+import { DatabaseModule, JwtStrategy, RolesGuard, HttpUsersServiceClient, CorrelationMiddleware, MetricsService, MetricsMiddleware, HealthController } from '@app/common';
 import { PassportModule } from '@nestjs/passport';
 import { RateLimitMiddleware, RATE_LIMITS } from './middleware/rate-limit.middleware';
 import { SanitizationMiddleware } from './middleware/sanitization.middleware';
@@ -28,7 +28,7 @@ import * as Joi from 'joi';
     HttpModule,
     MongooseModule.forFeature([{ name: Market.name, schema: MarketSchema }]),
   ],
-  controllers: [MarketsController],
+  controllers: [MarketsController, HealthController],
   providers: [
     MarketsService, 
     MarketsRepository, 
@@ -36,6 +36,7 @@ import * as Joi from 'joi';
     RolesGuard,
     HttpUsersServiceClient,
     MarketPriceMigrationService,
+    MetricsService,
     {
       provide: 'USERS_SERVICE_CLIENT',
       useClass: HttpUsersServiceClient,
@@ -45,6 +46,11 @@ import * as Joi from 'joi';
 })
 export class MarketsModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
+    // Correlation and metrics on all routes
+    consumer
+      .apply(CorrelationMiddleware, MetricsMiddleware)
+      .forRoutes('*');
+
     // Apply sanitization middleware to all routes
     consumer
       .apply(SanitizationMiddleware)

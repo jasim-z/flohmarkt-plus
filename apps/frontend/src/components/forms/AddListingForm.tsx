@@ -71,7 +71,7 @@ export function AddListingForm({
       isFree: false,
       category: '',
       condition: '',
-      city: marketLocation.split(',')[0] || '',
+      city: (marketLocation ?? '').split(',')[0] || '',
       neighborhood: '',
       latitude: 0,
       longitude: 0,
@@ -95,6 +95,7 @@ export function AddListingForm({
   // Watch fields for real-time validation
   const price = watchField('price');
   const isFree = watchField('isFree');
+  const deliveryOption = watchField('deliveryOption');
 
   // Handle tags input
   const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {

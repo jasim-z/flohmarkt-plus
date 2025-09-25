@@ -2,7 +2,7 @@ import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import * as Joi from 'joi';
-import { DatabaseModule, JwtStrategy, RolesGuard } from '@app/common';
+import { DatabaseModule, JwtStrategy, RolesGuard, HealthController, MetricsService, MetricsMiddleware, CorrelationMiddleware } from '@app/common';
 import { loadConfig } from '@app/common/config/config';
 import { MessagesController } from './messages.controller';
 import { ConversationsController } from './conversations.controller';
@@ -30,11 +30,16 @@ import { RateLimitMiddleware, RATE_LIMITS } from './middleware/rate-limit.middle
       { name: Message.name, schema: MessageSchema },
     ]),
   ],
-  controllers: [MessagesController, ConversationsController],
-  providers: [MessagesService, JwtStrategy, RolesGuard, MessagesGateway],
+  controllers: [MessagesController, ConversationsController, HealthController],
+  providers: [MessagesService, JwtStrategy, RolesGuard, MessagesGateway, MetricsService],
 })
 export class MessagesModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
+    // Correlation and metrics on all routes
+    consumer
+      .apply(CorrelationMiddleware, MetricsMiddleware)
+      .forRoutes('*');
+
     consumer.apply(SanitizationMiddleware).forRoutes('*');
     consumer.apply(RateLimitMiddleware.create(RATE_LIMITS.GENERAL)).forRoutes('*');
     consumer.apply(RateLimitMiddleware.create(RATE_LIMITS.SEND)).forRoutes('POST /conversations/:conversationId/messages');

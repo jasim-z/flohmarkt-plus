@@ -32,6 +32,7 @@ ConversationSchema.set('toJSON', {
   virtuals: true,
   versionKey: false,
   transform: (_doc, ret) => {
+    // @ts-ignore - ret is plain object in runtime, allow dynamic properties
     if (ret._id) { ret.id = ret._id.toString(); delete ret._id; }
     return ret;
   },

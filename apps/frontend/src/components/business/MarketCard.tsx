@@ -54,6 +54,9 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, variant = 'compact', on
     return (
       <div 
         onClick={onClick}
+        role="button"
+        tabIndex={0}
+        data-testid="market-card"
         className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all duration-300 cursor-pointer market-card"
       >
         {/* Banner Image */}
@@ -66,12 +69,12 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, variant = 'compact', on
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <FaStore className="w-12 h-12 text-primary-400" />
+              <FaStore data-testid="market-icon" className="w-12 h-12 text-primary-400" />
             </div>
           )}
           
           {/* Status Badge */}
-          <div className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-medium ${status.color} status-badge`}>
+          <div data-testid="market-status" className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-medium ${status.color} status-badge`}>
             <StatusIcon className="inline w-3 h-3 mr-1" />
             {status.status}
           </div>
@@ -108,6 +111,9 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, variant = 'compact', on
   return (
     <div 
       onClick={onClick}
+      role="button"
+      tabIndex={0}
+      data-testid="market-card"
       className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow duration-300 cursor-pointer market-card"
     >
       {/* Banner Image */}
@@ -120,12 +126,12 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, variant = 'compact', on
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <FaStore className="w-12 h-12 text-gray-400" />
+            <FaStore data-testid="market-icon" className="w-12 h-12 text-gray-400" />
           </div>
         )}
         
         {/* Status Badge */}
-        <div className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-medium ${status.color} status-badge`}>
+        <div data-testid="market-status" className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-medium ${status.color} status-badge`}>
           <StatusIcon className="inline w-3 h-3 mr-1" />
           {status.status}
         </div>

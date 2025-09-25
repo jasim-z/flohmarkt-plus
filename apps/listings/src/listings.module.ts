@@ -8,7 +8,7 @@ import { SeedController } from './seeds/seed.controller';
 import { Listing, ListingSchema } from './schemas/listing.schema';
 import { ListingMarketIdMigrationService } from './migration/add-market-id-field';
 import { ListingIsDeletedMigrationService } from './migration/add-is-deleted-field';
-import { DatabaseModule, JwtStrategy, RolesGuard } from '@app/common';
+import { DatabaseModule, JwtStrategy, RolesGuard, HealthController, MetricsService, MetricsMiddleware, CorrelationMiddleware } from '@app/common';
 import { PassportModule } from '@nestjs/passport';
 import { RateLimitMiddleware, RATE_LIMITS } from './middleware/rate-limit.middleware';
 import { SanitizationMiddleware } from './middleware/sanitization.middleware';
@@ -28,12 +28,17 @@ import * as Joi from 'joi';
     PassportModule,
     MongooseModule.forFeature([{ name: Listing.name, schema: ListingSchema }]),
   ],
-  controllers: [ListingsController, SeedController],
-  providers: [ListingsService, SeedService, JwtStrategy, RolesGuard, ListingMarketIdMigrationService, ListingIsDeletedMigrationService, SanitizationMiddleware],
+  controllers: [ListingsController, SeedController, HealthController],
+  providers: [ListingsService, SeedService, JwtStrategy, RolesGuard, ListingMarketIdMigrationService, ListingIsDeletedMigrationService, SanitizationMiddleware, MetricsService],
   exports: [ListingsService],
 })
 export class ListingsModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
+    // Correlation and metrics on all routes
+    consumer
+      .apply(CorrelationMiddleware, MetricsMiddleware)
+      .forRoutes('*');
+
     // Apply sanitization middleware to all routes
     consumer
       .apply(SanitizationMiddleware)
