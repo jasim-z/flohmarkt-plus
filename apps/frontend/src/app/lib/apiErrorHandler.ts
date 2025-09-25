@@ -184,10 +184,15 @@ export class ApiErrorHandler {
   handleAuthError(): void {
     // Clear auth token
     localStorage.removeItem('auth_token');
-    
-    // Redirect to login
+
     if (typeof window !== 'undefined') {
-      window.location.href = '/login';
+      // Derive current locale from the URL prefix or fallback to 'en'
+      // Matches '/en/...' and captures 'en'
+      const match = window.location.pathname.match(/^\/([a-zA-Z-]{2,5})(?:\/|$)/);
+      const locale = match?.[1] || 'en';
+
+      // Redirect to locale-scoped login to avoid interpreting 'login' as a locale
+      window.location.href = `/${locale}/login`;
     }
   }
 

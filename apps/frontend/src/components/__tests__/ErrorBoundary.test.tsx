@@ -51,7 +51,7 @@ describe('ErrorBoundary', () => {
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
   })
 
-  it('can retry after an error', () => {
+  it('can retry after an error', async () => {
     const { rerender } = render(
       <ErrorBoundary>
         <ThrowError shouldThrow={true} />
@@ -60,7 +60,11 @@ describe('ErrorBoundary', () => {
 
     expect(screen.getByText(/something went wrong/i)).toBeInTheDocument()
 
-    // Retry by re-rendering without error
+    // Click Try Again to reset
+    const tryAgain = screen.getByRole('button', { name: /try again/i })
+    tryAgain.click()
+
+    // Retry by re-rendering without error (simulates a successful rerender)
     rerender(
       <ErrorBoundary>
         <ThrowError shouldThrow={false} />
