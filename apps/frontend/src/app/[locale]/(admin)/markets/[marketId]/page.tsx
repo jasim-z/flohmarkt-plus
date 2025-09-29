@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaArrowLeft, FaCheckCircle, FaTimesCircle, FaExclamationTriangle, FaUserShield, FaStar, FaSearch, FaSort, FaSortUp, FaSortDown } from "react-icons/fa";
+import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaArrowLeft, FaCheckCircle, FaTimesCircle, FaExclamationTriangle, FaUserShield, FaStar, FaSearch, FaSort, FaSortUp, FaSortDown, FaImage, FaTimes } from "react-icons/fa";
 import { Market, getMarketDetails, Vendor, GetVendorsParams, toggleMarketActive } from "../../../../api/markets";
 
 // Utility function to calculate market status based on current date/time
@@ -133,6 +133,9 @@ export default function MarketDetail() {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [statusUpdateTrigger, setStatusUpdateTrigger] = useState(0);
   const [toggleLoading, setToggleLoading] = useState(false);
+  
+  // Additional images modal state
+  const [showAdditionalImagesModal, setShowAdditionalImagesModal] = useState(false);
 
   // Debounce search term for performance
   useEffect(() => {
@@ -376,9 +379,30 @@ export default function MarketDetail() {
         {/* Market Profile Header */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8">
           <div className="flex flex-col sm:flex-row items-start space-y-4 sm:space-y-0 sm:space-x-6">
-            {/* Market Icon */}
-            <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-green-500 to-teal-600 rounded-xl flex items-center justify-center flex-shrink-0">
-              <FaStore className="h-8 w-8 sm:h-12 sm:w-12 text-white" />
+            {/* Market Banner Image or Icon */}
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
+              {market.bannerImage ? (
+                <img
+                  src={market.bannerImage}
+                  alt={`${market.name} banner`}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Fallback to default icon if image fails to load
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const fallback = target.nextElementSibling as HTMLElement;
+                    if (fallback) fallback.style.display = 'flex';
+                  }}
+                />
+              ) : null}
+              
+              {/* Fallback Icon */}
+              <div 
+                className={`w-full h-full bg-gradient-to-br from-green-500 to-teal-600 rounded-xl flex items-center justify-center ${market.bannerImage ? 'hidden' : 'flex'}`}
+                style={{ display: market.bannerImage ? 'none' : 'flex' }}
+              >
+                <FaStore className="h-8 w-8 sm:h-12 sm:w-12 text-white" />
+              </div>
             </div>
             
             {/* Market Info */}
@@ -442,6 +466,21 @@ export default function MarketDetail() {
               </div>
             </div>
           </div>
+          
+          {/* Additional Images Button */}
+          {market.additionalImages && market.additionalImages.length > 0 && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <button
+                onClick={() => setShowAdditionalImagesModal(true)}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors duration-200"
+              >
+                <FaImage className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  View Additional Images ({market.additionalImages.length})
+                </span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Market Status Control */}
@@ -746,6 +785,62 @@ export default function MarketDetail() {
           )}
         </div>
       </div>
+
+      {/* Additional Images Modal */}
+      {showAdditionalImagesModal && market.additionalImages && market.additionalImages.length > 0 && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {market.name} - Additional Images
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {market.additionalImages.length} additional images for this market
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAdditionalImagesModal(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+              >
+                <FaTimes className="h-5 w-5" />
+              </button>
+            </div>
+            
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {market.additionalImages.map((image, index) => (
+                  <div key={index} className="relative">
+                    <img
+                      src={image}
+                      alt={`Additional image ${index + 1}`}
+                      className="w-full h-48 object-cover rounded-lg border border-gray-200"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/placeholder-image.png';
+                      }}
+                    />
+                    <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                      {index + 1}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Modal Footer */}
+            <div className="flex justify-end p-6 border-t border-gray-200">
+              <button
+                onClick={() => setShowAdditionalImagesModal(false)}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors duration-200"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

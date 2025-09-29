@@ -71,6 +71,7 @@ export default function Markets() {
   const [editingMarket, setEditingMarket] = useState<Market | null>(null);
   const [deletingMarket, setDeletingMarket] = useState<Market | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  
 
   const fetchMarkets = useCallback(async (params: GetMarketsParams = {}) => {
     try {
@@ -172,6 +173,7 @@ export default function Markets() {
     setShowDeleteModal(true);
   }, []);
 
+
   const confirmDeleteMarket = useCallback(async () => {
     if (!deletingMarket) return;
     
@@ -259,19 +261,46 @@ export default function Markets() {
       key: 'name',
       label: 'Market Name',
       sortable: true,
-      render: (value: unknown, row: Record<string, unknown>) => (
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-teal-600 rounded-lg flex items-center justify-center">
-            <FaStore className="h-5 w-5 text-white" />
+      render: (value: unknown, row: Record<string, unknown>) => {
+        const bannerImage = String(row.bannerImage || '');
+        
+        return (
+          <div className="flex items-center space-x-3">
+            {/* Show banner image if exists, otherwise show default icon */}
+            {bannerImage ? (
+              <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-200">
+                <img
+                  src={bannerImage}
+                  alt="Market Banner"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Fallback to default icon if image fails to load
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    target.parentElement!.innerHTML = `
+                      <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-teal-600 rounded-lg flex items-center justify-center">
+                        <svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
+                        </svg>
+                      </div>
+                    `;
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-teal-600 rounded-lg flex items-center justify-center">
+                <FaStore className="h-5 w-5 text-white" />
+              </div>
+            )}
+            <div className="flex flex-col">
+              <span className="text-sm font-medium text-gray-900">
+                {String(value || '')}
+              </span>
+              <span className="text-xs text-gray-500">{String(row.description || '')}</span>
+            </div>
           </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-medium text-gray-900">
-              {String(value || '')}
-            </span>
-            <span className="text-xs text-gray-500">{String(row.description || '')}</span>
-          </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       key: 'location',
@@ -526,6 +555,7 @@ export default function Markets() {
           </div>
         </div>
       )}
+
     </div>
   );
 }
