@@ -18,6 +18,25 @@ import {
 } from '@nestjs/common';
 import type { Express } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
+
+// Extend Express namespace to include Multer
+declare global {
+  namespace Express {
+    namespace Multer {
+      interface File {
+        fieldname: string;
+        originalname: string;
+        encoding: string;
+        mimetype: string;
+        size: number;
+        destination: string;
+        filename: string;
+        path: string;
+        buffer: Buffer;
+      }
+    }
+  }
+}
 import { MarketsService } from './markets.service';
 import { MarketPriceMigrationService } from './migration/add-price-field';
 import { JwtAuthGuard, RolesGuard, Roles } from '@app/common';
@@ -30,6 +49,8 @@ import {
   UpdateRegisteredVendorsDto,
   UploadImageDto,
   FileUploadValidation,
+  PresignUploadDto,
+  S3ClientService,
 } from '@app/common';
 import { RateLimitMiddleware, RATE_LIMITS } from './middleware/rate-limit.middleware';
 import { SanitizationMiddleware } from './middleware/sanitization.middleware';
@@ -47,6 +68,7 @@ export class MarketsController {
   constructor(
     private readonly marketsService: MarketsService,
     private readonly marketPriceMigrationService: MarketPriceMigrationService,
+    private readonly s3ClientService: S3ClientService,
   ) {}
 
   @Post()
@@ -252,6 +274,56 @@ export class MarketsController {
     return this.marketPriceMigrationService.updatePriceFieldToDecimal128();
   }
 
+  @Post('presign-upload')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  async presignUpload(
+    @Body() presignData: PresignUploadDto,
+    @Request() req
+  ) {
+    const { fileName, contentType, uploadType, marketId } = presignData;
+    const userId = req.user.userId;
+
+    console.log('Presign upload request:', { fileName, contentType, uploadType, marketId, userId });
+
+    // Validate file type and size
+    const errorMessage = FileUploadValidation.getErrorMessage(contentType, 0);
+    if (errorMessage) {
+      throw new BadRequestException(errorMessage);
+    }
+
+    // Generate unique key based on upload type
+    let key: string;
+    let usedMarketId: string;
+    
+    if (uploadType === 'market_banner') {
+      // For banner uploads, we might not have marketId yet (during creation)
+      usedMarketId = marketId || `temp_${userId}_${Date.now()}`;
+      key = this.s3ClientService.generateMarketImageKey(usedMarketId, userId, fileName, 'banner');
+    } else if (uploadType === 'market_additional') {
+      // For additional images, use marketId if provided, otherwise use temporary ID
+      usedMarketId = marketId || `temp_${userId}_${Date.now()}`;
+      key = this.s3ClientService.generateMarketImageKey(usedMarketId, userId, fileName, 'additional');
+    } else {
+      throw new BadRequestException(`Invalid upload type: ${uploadType}. Must be 'market_banner' or 'market_additional'.`);
+    }
+
+    // Generate presigned URL
+    const presignedUrl = await this.s3ClientService.getPresignedUploadUrl(key, contentType);
+    
+    // Get public URL for the uploaded file
+    const publicUrl = this.s3ClientService.getPublicUrl(key);
+
+    return {
+      success: true,
+      presignedUrl,
+      key,
+      publicUrl,
+      marketId: usedMarketId, // The market ID that was used (temporary or real)
+      expiresIn: 3600, // 1 hour
+    };
+  }
+
   @Post('upload-image')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
@@ -285,4 +357,5 @@ export class MarketsController {
       }
     };
   }
+
 } 

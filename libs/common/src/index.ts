@@ -27,10 +27,12 @@ export * from './dto/market/join-market.dto';
 export * from './dto/market/bulk-create-market.dto';
 export * from './dto/market/update-vendors.dto';
 export * from './dto/market/upload-image.dto';
+export * from './dto/market/presign-upload.dto';
 export * from './dto/listing/create-listing.dto';
 
 // Service Clients
 export * from './clients/users-service.client';
+export * from './clients/s3.client';
 
 // Observability
 export * from './middleware/correlation.middleware';

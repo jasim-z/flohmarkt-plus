@@ -61,8 +61,29 @@ export class UpdateMarketDto {
 
   @IsString()
   @IsOptional()
-  @IsUrl({}, { message: 'Banner image must be a valid URL' })
+  @IsUrl({ 
+    protocols: ['http', 'https'],
+    require_protocol: true,
+    allow_underscores: true,
+    allow_trailing_dot: false,
+    allow_protocol_relative_urls: false,
+    host_whitelist: ['localhost', '127.0.0.1', 'minio']
+  }, { message: 'Banner image must be a valid URL' })
   bannerImage?: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  @ArrayMaxSize(3, { message: 'Maximum 3 additional images allowed' })
+  @IsUrl({ 
+    protocols: ['http', 'https'],
+    require_protocol: true,
+    allow_underscores: true,
+    allow_trailing_dot: false,
+    allow_protocol_relative_urls: false,
+    host_whitelist: ['localhost', '127.0.0.1', 'minio']
+  }, { each: true, message: 'Each additional image must be a valid URL' })
+  additionalImages?: string[];
 
   @IsNumber()
   @Min(1, { message: 'Vendor limit must be at least 1' })

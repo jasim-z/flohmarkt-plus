@@ -34,6 +34,9 @@ export class Market extends AbstractDocument {
   @Prop({ required: true })
   bannerImage: string;
 
+  @Prop({ type: [String], default: [] })
+  additionalImages: string[];
+
   @Prop({ type: Number })
   vendorLimit?: number;
 

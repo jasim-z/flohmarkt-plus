@@ -18,6 +18,7 @@ export interface Market {
   isFeatured?: boolean;
   createdBy: string;
   bannerImage: string;
+  additionalImages?: string[];
   vendorLimit?: number;
   boothsAvailable?: number;
   price: string | MongoDecimal128; // Decimal128 from MongoDB, can be string or object
@@ -50,6 +51,7 @@ export interface CreateMarketRequest {
   endTime: string;
   isActive: boolean;
   bannerImage: string;
+  additionalImages?: string[];
   vendorLimit?: number;
   boothsAvailable?: number;
   price: number; // Will be converted to Decimal128 in the backend
@@ -254,6 +256,31 @@ export async function getMarketDetails(marketId: string, params: GetVendorsParam
     
     const url = `/markets/${marketId}/details?${searchParams.toString()}`;
     const response = await marketsApiClient.get(url);
+    return response.data;
+  } catch (error) {
+    const apiError = apiErrorHandler.handleError(error);
+    throw apiError;
+  }
+}
+
+export interface PresignUploadRequest {
+  fileName: string;
+  contentType: string;
+  uploadType: 'market_banner' | 'market_additional';
+  marketId?: string;
+}
+
+export interface PresignUploadResponse {
+  success: boolean;
+  presignedUrl: string;
+  key: string;
+  publicUrl: string;
+  expiresIn: number;
+}
+
+export async function presignUpload(request: PresignUploadRequest): Promise<PresignUploadResponse> {
+  try {
+    const response = await marketsApiClient.post('/markets/presign-upload', request);
     return response.data;
   } catch (error) {
     const apiError = apiErrorHandler.handleError(error);
