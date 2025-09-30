@@ -57,7 +57,7 @@ export default function BuyerChat() {
       createdAt: string;
     }) => {
       // Avoid double-adding for the sender: REST response will replace optimistic item
-      if (user?._id && String(msg.senderId) === String(user._id)) return;
+      if (user?.id && String(msg.senderId) === String(user.id)) return;
       const isSameConversation = String(msg.conversationId) === String(conversationId);
       if (isSameConversation) {
         setMessages((prev) => {
@@ -142,7 +142,7 @@ export default function BuyerChat() {
     if (!text.trim()) return;
     const optimistic: Msg = {
       _id: `tmp-${Date.now()}`,
-      senderId: user!._id,
+      senderId: user!.id,
       text,
       createdAt: new Date().toISOString(),
     };
@@ -198,7 +198,7 @@ export default function BuyerChat() {
               <div className="text-center text-gray-500 py-8">Loading...</div>
             ) : (
               messages.map((m) => {
-                const isMine = m.senderId === user?._id;
+                const isMine = m.senderId === user?.id;
                 return (
                   <div key={m._id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[75%] px-3 py-2 rounded-lg text-sm ${isMine ? 'bg-blue-600 text-white rounded-br-none' : 'bg-gray-100 text-gray-800 rounded-bl-none'}`}>

@@ -67,7 +67,7 @@ export default function BuyerMessages() {
         setLoadingConvos(false);
       }
     })();
-  }, [user?._id, isLoaded]);
+  }, [user?.id, isLoaded]);
 
   return (
     <div className="bg-gray-50 min-h-full">
