@@ -37,6 +37,7 @@ export class S3ClientService {
 
     // Always use the external endpoint for presigned URLs if available
     const externalEndpoint = process.env.S3_EXTERNAL_ENDPOINT;
+    
     if (externalEndpoint) {
       const externalS3Client = new S3Client({
         region: process.env.AWS_REGION || 'us-east-1',
@@ -122,6 +123,14 @@ export class S3ClientService {
     const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
     
     return `users/${userId}/avatar_${timestamp}_${sanitizedFileName}`;
+  }
+
+  generateListingImageKey(userId: string, fileName: string): string {
+    const timestamp = Date.now();
+    const extension = fileName.split('.').pop();
+    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+    
+    return `listings/${userId}/image_${timestamp}_${sanitizedFileName}`;
   }
 }
 

@@ -20,6 +20,7 @@ import { JwtAuthGuard, RolesGuard, Roles } from '@app/common';
 import { CreateListingDto } from '@app/common/dto/listing/create-listing.dto';
 import { UpdateListingDto } from '@app/common/dto/listing/update-listing.dto';
 import { QueryListingDto, NearbyListingDto, SearchListingDto } from '@app/common/dto/listing/query-listing.dto';
+import { PresignListingUploadDto, S3ClientService } from '@app/common';
 import { RateLimitMiddleware, RATE_LIMITS } from './middleware/rate-limit.middleware';
 import { SanitizationMiddleware } from './middleware/sanitization.middleware';
 
@@ -37,6 +38,7 @@ export class ListingsController {
     private readonly listingsService: ListingsService,
     private readonly listingMarketIdMigrationService: ListingMarketIdMigrationService,
     private readonly listingIsDeletedMigrationService: ListingIsDeletedMigrationService,
+    private readonly s3ClientService: S3ClientService,
   ) {}
 
   @Post()
@@ -60,6 +62,31 @@ export class ListingsController {
       marketId: marketId
     };
     return this.listingsService.create(listingData, req.user.userId);
+  }
+
+  @Post('presign-upload')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('seller')
+  async presignUpload(@Body() presignUploadDto: PresignListingUploadDto, @Request() req) {
+    const { fileName, contentType } = presignUploadDto;
+    const userId = req.user.userId;
+    
+    // Generate a unique key for the listing image
+    const key = this.s3ClientService.generateListingImageKey(userId, fileName);
+    
+    // Get presigned URL for upload
+    const presignedUrl = await this.s3ClientService.getPresignedUploadUrl(key, contentType);
+    
+    // Get public URL for the uploaded file
+    const publicUrl = this.s3ClientService.getPublicUrl(key);
+    
+    return {
+      success: true,
+      presignedUrl,
+      publicUrl,
+      key,
+      expiresIn: 3600, // 1 hour
+    };
   }
 
   @Get()

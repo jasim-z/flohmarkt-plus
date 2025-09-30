@@ -156,6 +156,13 @@ export default function BuyerListingCard({ listing, onFavorite, onView }: BuyerL
             )}
           </div>
         )}
+
+        {/* Multiple Images Indicator */}
+        {listing.images && listing.images.length > 1 && (
+          <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded-full text-xs font-medium">
+            {listing.images.length}
+          </div>
+        )}
         
         {/* Price Badge */}
         <div className="absolute top-3 left-3">

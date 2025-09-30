@@ -29,6 +29,7 @@ export * from './dto/market/bulk-create-market.dto';
 export * from './dto/market/update-vendors.dto';
 export * from './dto/market/upload-image.dto';
 export * from './dto/market/presign-upload.dto';
+export * from './dto/listing/presign-upload.dto';
 export * from './dto/listing/create-listing.dto';
 
 // Service Clients

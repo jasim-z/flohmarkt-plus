@@ -8,7 +8,7 @@ import { SeedController } from './seeds/seed.controller';
 import { Listing, ListingSchema } from './schemas/listing.schema';
 import { ListingMarketIdMigrationService } from './migration/add-market-id-field';
 import { ListingIsDeletedMigrationService } from './migration/add-is-deleted-field';
-import { DatabaseModule, JwtStrategy, RolesGuard, HealthController, MetricsService, MetricsMiddleware, CorrelationMiddleware } from '@app/common';
+import { DatabaseModule, JwtStrategy, RolesGuard, HealthController, MetricsService, MetricsMiddleware, CorrelationMiddleware, S3ClientService } from '@app/common';
 import { PassportModule } from '@nestjs/passport';
 import { RateLimitMiddleware, RATE_LIMITS } from './middleware/rate-limit.middleware';
 import { SanitizationMiddleware } from './middleware/sanitization.middleware';
@@ -21,6 +21,14 @@ import * as Joi from 'joi';
       validationSchema: Joi.object({
         MONGODB_URI: Joi.string().required(),
         PORT: Joi.number().required(),
+        // S3 Configuration
+        S3_ENDPOINT: Joi.string().optional(),
+        S3_EXTERNAL_ENDPOINT: Joi.string().optional(),
+        S3_FORCE_PATH_STYLE: Joi.string().default('true'),
+        AWS_REGION: Joi.string().default('us-east-1'),
+        AWS_ACCESS_KEY_ID: Joi.string().optional(),
+        AWS_SECRET_ACCESS_KEY: Joi.string().optional(),
+        S3_BUCKET_NAME: Joi.string().optional(),
       }),
       envFilePath: './apps/listings/.env',
     }),
@@ -29,7 +37,7 @@ import * as Joi from 'joi';
     MongooseModule.forFeature([{ name: Listing.name, schema: ListingSchema }]),
   ],
   controllers: [ListingsController, SeedController, HealthController],
-  providers: [ListingsService, SeedService, JwtStrategy, RolesGuard, ListingMarketIdMigrationService, ListingIsDeletedMigrationService, SanitizationMiddleware, MetricsService],
+  providers: [ListingsService, SeedService, JwtStrategy, RolesGuard, ListingMarketIdMigrationService, ListingIsDeletedMigrationService, SanitizationMiddleware, MetricsService, S3ClientService],
   exports: [ListingsService],
 })
 export class ListingsModule implements NestModule {

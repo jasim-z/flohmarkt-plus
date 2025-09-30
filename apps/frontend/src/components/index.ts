@@ -13,6 +13,7 @@ export { default as UnAuthourized } from './UnAuthourized';
 export { default as FleaMarketIllustration } from './FleaMarketIllustration';
 export { ApiErrorNotification } from './ApiErrorNotification';
 export { default as ProfilePhotoUpload } from './ProfilePhotoUpload';
+export { ListingImageUpload } from './ListingImageUpload';
 
 // Test components (for development)
 export { default as ErrorTestComponent } from './ErrorTestComponent';

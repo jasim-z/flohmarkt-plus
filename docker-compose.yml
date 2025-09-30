@@ -117,6 +117,13 @@ services:
       - NODE_ENV=development
       - JWT_EXPIRATION=3600
       - RABBIT_MQ_URI=amqp://guest:guest@rabbitmq:5672/?heartbeat=30&connection_timeout=30000
+      - S3_ENDPOINT=http://minio:9000
+      - S3_EXTERNAL_ENDPOINT=http://localhost:9000
+      - S3_FORCE_PATH_STYLE=true
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+      - S3_BUCKET_NAME=flohmarkt-uploads
     env_file:
       - apps/listings/.env
     secrets:
@@ -133,6 +140,8 @@ services:
         condition: service_started
       auth:
         condition: service_started
+      minio:
+        condition: service_healthy
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules

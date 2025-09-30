@@ -101,7 +101,14 @@ export class CreateListingDto {
   @IsString({ each: true })
   @IsOptional()
   @ArrayMaxSize(10, { message: 'Maximum 10 images allowed' })
-  @IsUrl({}, { each: true, message: 'Each image must be a valid URL' })
+  @IsUrl({ 
+    protocols: ['http', 'https'],
+    require_protocol: true,
+    allow_underscores: true,
+    allow_trailing_dot: false,
+    allow_protocol_relative_urls: false,
+    host_whitelist: ['localhost', '127.0.0.1', 'minio']
+  }, { each: true, message: 'Each image must be a valid URL' })
   images?: string[];
 
   @IsString()

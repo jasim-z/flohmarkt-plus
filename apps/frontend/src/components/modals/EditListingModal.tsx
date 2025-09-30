@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { FaTimes, FaUpload, FaMapMarkerAlt, FaCalendar, FaClock, FaDollarSign, FaBox, FaTag, FaTruck, FaInfoCircle } from 'react-icons/fa';
 import { Listing, CreateListingRequest, updateListing } from '@/app/api/listings';
 import { formatPrice } from '@/lib/utils';
+import { ListingImageUpload } from '@/components';
 
 interface EditListingModalProps {
   isOpen: boolean;
@@ -299,6 +300,14 @@ export default function EditListingModal({
             />
             {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
           </div>
+
+          {/* Product Images */}
+          <ListingImageUpload
+            images={formData.images || []}
+            onImagesChange={(images) => setFormData(prev => ({ ...prev, images }))}
+            maxImages={5}
+            disabled={isSubmitting}
+          />
 
           {/* Price and Condition */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
