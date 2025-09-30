@@ -51,13 +51,13 @@ export default function SellerExploreMarkets() {
       let filteredData = response.data;
 
       // Exclude markets the seller already joined
-      if (user?._id) {
-        filteredData = filteredData.filter(m => !(m.registeredVendors || []).includes(user._id));
+      if (user?.id) {
+        filteredData = filteredData.filter(m => !(m.registeredVendors || []).includes(user.id));
       }
       
       // Apply status filter on the frontend using calculated status
       if (statusFilter) {
-        filteredData = response.data.filter(market => 
+        filteredData = filteredData.filter(market => 
           calculateMarketStatus(market) === statusFilter
         );
       }
@@ -77,7 +77,7 @@ export default function SellerExploreMarkets() {
       setLoading(false);
       setIsInitialLoad(false);
     }
-  }, [searchTerm, statusFilter, user?._id]);
+  }, [searchTerm, statusFilter, user?.id]);
 
   useEffect(() => {
     if (isLoaded) {
@@ -166,8 +166,8 @@ export default function SellerExploreMarkets() {
   };
 
   const isSellerJoined = (market: Market) => {
-    if (!user || !user._id || !market.registeredVendors) return false;
-    return market.registeredVendors.includes(user._id);
+    if (!user || !user.id || !market.registeredVendors) return false;
+    return market.registeredVendors.includes(user.id);
   };
 
   const getVendorAvailability = (market: Market) => {

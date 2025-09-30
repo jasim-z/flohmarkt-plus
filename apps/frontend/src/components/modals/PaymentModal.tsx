@@ -45,7 +45,7 @@ export default function PaymentModal({
     if (typeof price === 'object' && price.$numberDecimal) {
       priceValue = price.$numberDecimal;
     } else {
-      priceValue = price;
+      priceValue = String(price);
     }
     
     const priceNum = parseFloat(priceValue);

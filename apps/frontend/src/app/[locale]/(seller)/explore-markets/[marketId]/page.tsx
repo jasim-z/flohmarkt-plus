@@ -94,11 +94,11 @@ export default function MarketDetail() {
 
   // Fetch listings for the seller in this market
   const fetchListings = useCallback(async (params: GetListingsParams = {}) => {
-    if (!market || !user?._id) return;
+    if (!market || !user?.id) return;
     
     try {
       setListingsLoading(true);
-      const response = await getListingsBySellerAndMarket(user._id, market._id, params);
+      const response = await getListingsBySellerAndMarket(user.id, market._id, params);
       console.log('Fetched listings response:', response);
       console.log('Listings data:', response.data);
       setListings(response.data);
@@ -165,11 +165,11 @@ export default function MarketDetail() {
   // Check if seller is already joined
   const checkJoinStatus = useCallback(() => {
     if (market && user) {
-      const joined = market.registeredVendors?.includes(user._id || '');
+      const joined = market.registeredVendors?.includes(user.id || '');
       setIsJoined(!!joined);
       
       // If joined, fetch listings with current pagination
-      if (joined && user._id) {
+      if (joined && user.id) {
         const params: GetListingsParams = {
           page: currentPage,
           limit: 10,

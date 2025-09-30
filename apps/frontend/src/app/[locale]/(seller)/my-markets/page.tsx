@@ -6,7 +6,7 @@ import { DataTable, Column } from '@/components/ui/data-table';
 import { Market, getMarkets, PaginatedMarketsResponse } from '@/app/api/markets';
 import UnAuthourized from '@/components/UnAuthourized';
 import { Badge } from '@/components/ui/badge';
-import { FaStore, FaCalendar, FaClock, FaExternalLinkAlt } from 'react-icons/fa';
+import { FaStore, FaCalendar, FaClock } from 'react-icons/fa';
 import { useParams, useRouter } from 'next/navigation';
 
 export default function MyMarkets() {
@@ -89,25 +89,28 @@ export default function MyMarkets() {
   ];
 
   const fetchMarkets = useCallback(async () => {
-    if (!user?._id) return;
+    if (!user?.id) return;
+    
     try {
       setLoading(true);
-      const params: any = { page, limit: 10, userId: user._id };
+      const params: Record<string, string | number> = { page, limit: 10, userId: String(user.id) };
       if (searchTerm) params.search = searchTerm;
       if (sortConfig.key) {
         params.sortBy = String(sortConfig.key);
         params.sortOrder = sortConfig.direction;
       }
+      
       const res: PaginatedMarketsResponse = await getMarkets(params);
       setMarkets(res.data);
       setTotalPages(res.pagination.totalPages);
       setTotalItems(res.pagination.total);
-    } catch (e: any) {
-      setError(e?.message || 'Failed to fetch markets');
+    } catch (e: unknown) {
+      const error = e as Error;
+      setError(error?.message || 'Failed to fetch markets');
     } finally {
       setLoading(false);
     }
-  }, [page, user?._id, searchTerm, sortConfig]);
+  }, [page, user, searchTerm, sortConfig]);
 
   useEffect(() => {
     if (isLoaded && role === 'seller') {
