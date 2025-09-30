@@ -10,7 +10,7 @@ import { useUser } from "@/contexts/UserContext";
 export default function Dashboard() {
   const t = useTranslations();
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
-  const { role, isLoaded } = useUser();
+  const { user, role, isLoaded } = useUser();
 
   const toggleProject = (projectId: string) => {
     const newExpanded = new Set(expandedProjects);

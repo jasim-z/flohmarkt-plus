@@ -35,9 +35,9 @@ export class S3ClientService {
       ContentType: contentType,
     });
 
-    // Create a separate S3 client for presigned URLs that uses the external endpoint
-    const externalEndpoint = process.env.S3_EXTERNAL_ENDPOINT || process.env.S3_ENDPOINT;
-    if (externalEndpoint && externalEndpoint !== process.env.S3_ENDPOINT) {
+    // Always use the external endpoint for presigned URLs if available
+    const externalEndpoint = process.env.S3_EXTERNAL_ENDPOINT;
+    if (externalEndpoint) {
       const externalS3Client = new S3Client({
         region: process.env.AWS_REGION || 'us-east-1',
         endpoint: externalEndpoint,

@@ -5,10 +5,13 @@ import {
   Request,
   Res,
   Get,
+  Put,
+  Body,
+  BadRequestException,
 } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AuthService } from './auth.service';
-import { LocalAuthGuard, JwtAuthGuard } from '@app/common';
+import { LocalAuthGuard, JwtAuthGuard, S3ClientService, UpdateUserDto } from '@app/common';
 import { UsersService } from './users/users.service';
 import { Types } from 'mongoose';
 
@@ -17,6 +20,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
+    private readonly s3ClientService: S3ClientService,
   ) {}
 
   @UseGuards(LocalAuthGuard)
@@ -33,8 +37,49 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  getMe(@Request() req) {
-    return req.user;
+  async getMe(@Request() req) {
+    // Get full user data including avatar
+    const user = await this.usersService.getUser({ _id: req.user._id });
+    return {
+      id: user._id,
+      email: user.email,
+      role: user.role,
+      displayName: user.displayName,
+      avatar: user.avatar,
+      city: user.city,
+      neighborhood: user.neighborhood,
+      bio: user.bio,
+      phoneNumber: user.phoneNumber,
+      isVerified: user.isVerified,
+      rating: user.rating,
+      isActive: user.isActive,
+    };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('profile')
+  async updateProfile(@Request() req, @Body() updateData: UpdateUserDto) {
+    const userId = req.user._id;
+    return this.usersService.updateUserProfile(userId, updateData);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('profile/presign-upload')
+  async presignProfileUpload(@Request() req) {
+    const userId = req.user._id;
+    const fileName = `profile-${userId}-${Date.now()}.jpg`;
+    const key = this.s3ClientService.generateUserAvatarKey(userId, fileName);
+    
+    const presignedUrl = await this.s3ClientService.getPresignedUploadUrl(key, 'image/jpeg');
+    const publicUrl = this.s3ClientService.getPublicUrl(key);
+
+    return {
+      success: true,
+      presignedUrl,
+      key,
+      publicUrl,
+      expiresIn: 3600,
+    };
   }
 
   @MessagePattern('get_user')

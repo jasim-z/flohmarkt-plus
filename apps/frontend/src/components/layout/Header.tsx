@@ -269,9 +269,30 @@ export default function Header() {
                 onClick={() => setIsAccountOpen(!isAccountOpen)}
                 className="flex items-center space-x-2 cursor-pointer px-2 sm:px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors duration-200 min-h-[44px]"
               >
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <FaUserCircle size={18} className="text-white sm:w-5 sm:h-5" />
-                </div>
+                {user?.avatar ? (
+                  <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-gray-200">
+                    <img
+                      src={user.avatar}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // Fallback to default icon if image fails to load
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const fallback = target.nextElementSibling as HTMLElement;
+                        if (fallback) fallback.style.display = 'flex';
+                      }}
+                    />
+                    {/* Fallback Icon */}
+                    <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 rounded-full items-center justify-center hidden">
+                      <FaUserCircle size={18} className="text-white sm:w-5 sm:h-5" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <FaUserCircle size={18} className="text-white sm:w-5 sm:h-5" />
+                  </div>
+                )}
                 <span className="hidden sm:inline text-gray-700 font-medium">
                   {user?.displayName || user?.email || 'Account'}
                 </span>
@@ -299,7 +320,7 @@ export default function Header() {
                     onClick={() => {
                       setIsAccountOpen(false);
                       const profilePath = user?.role === 'admin' 
-                        ? 'admin/profile' 
+                        ? 'profile' 
                         : user?.role === 'seller' 
                         ? 'seller-profile' 
                         : 'user-profile';

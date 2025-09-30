@@ -201,7 +201,11 @@ export class ApiErrorHandler {
    */
   handlePermissionError(): void {
     if (typeof window !== 'undefined') {
-      window.location.href = '/unauthorized';
+      // Derive current locale from the URL prefix or fallback to 'en'
+      const match = window.location.pathname.match(/^\/([a-zA-Z-]{2,5})(?:\/|$)/);
+      const locale = match?.[1] || 'en';
+      
+      window.location.href = `/${locale}/unauthorized`;
     }
   }
 }

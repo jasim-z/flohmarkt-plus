@@ -13,6 +13,7 @@ import {
 } from 'react-icons/fa';
 import { getMarkets, Market } from '@/app/api/markets';
 import { MarketCard } from '@/components/business';
+import { ProfilePhotoUpload } from '@/components';
 
 interface FilterState {
   search: string;

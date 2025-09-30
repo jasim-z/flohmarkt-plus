@@ -18,6 +18,7 @@ export * from './decorators/roles.decorator';
 // Flea Market App DTOs
 export * from './dto/user/create-user.request';
 export * from './dto/user/create-user.dto';
+export * from './dto/user/update-user.dto';
 export * from './dto/user/get-users.dto';
 export * from './dto/user/paginated-users.response';
 export * from './dto/market/create-market.dto';

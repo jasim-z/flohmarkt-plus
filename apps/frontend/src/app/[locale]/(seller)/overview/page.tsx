@@ -1,6 +1,5 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { FaStore, FaUsers, FaCheckCircle, FaChartLine, FaCalendar } from "react-icons/fa";
 import Link from "next/link";
 import UnAuthourized from "@/components/UnAuthourized";
@@ -10,7 +9,6 @@ import { getMarkets, Market } from "@/app/api/markets";
 import { useParams } from "next/navigation";
 
 export default function SellerOverview() {
-  const t = useTranslations();
   const { role, isLoaded, user } = useUser();
   const params = useParams();
 
@@ -28,7 +26,7 @@ export default function SellerOverview() {
       try {
         const res = await getMarkets({ page: 1, limit: 1, userId: user._id });
         setActiveMarkets(res.pagination.total || 0);
-      } catch (e) {
+      } catch {
         setActiveMarkets(0);
       }
     })();
@@ -38,7 +36,7 @@ export default function SellerOverview() {
       try {
         const res = await getMarkets({ page: 1, limit: 3, userId: user._id, status: 'upcoming', sortBy: 'date', sortOrder: 'asc' });
         setUpcomingMarkets(res.data || []);
-      } catch (e) {
+      } catch {
         setUpcomingMarkets([]);
       }
     })();
@@ -52,17 +50,17 @@ export default function SellerOverview() {
         if (!resp.ok) throw new Error('orders failed');
         const orders = await resp.json();
         // Count non-cancelled orders as sales
-        const salesCount = Array.isArray(orders) ? orders.filter((o: any) => o?.status !== 'cancelled').length : 0;
+        const salesCount = Array.isArray(orders) ? orders.filter((o: { status?: string }) => o?.status !== 'cancelled').length : 0;
         setTotalSales(salesCount);
-      } catch (e) {
+      } catch {
         setTotalSales(0);
       }
     })();
 
     // Rating & Verified from user profile
-    setRating(Number((user as any)?.rating || 0));
-    setVerified(Boolean((user as any)?.isVerified));
-  }, [isLoaded, user?._id]);
+    setRating(Number(user?.rating || 0));
+    setVerified(Boolean(user?.isVerified));
+  }, [isLoaded, user?._id, user]);
 
   if (role !== 'seller' && isLoaded) return <UnAuthourized />;
 

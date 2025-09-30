@@ -12,6 +12,7 @@ export { default as Toast } from './Toast';
 export { default as UnAuthourized } from './UnAuthourized';
 export { default as FleaMarketIllustration } from './FleaMarketIllustration';
 export { ApiErrorNotification } from './ApiErrorNotification';
+export { default as ProfilePhotoUpload } from './ProfilePhotoUpload';
 
 // Test components (for development)
 export { default as ErrorTestComponent } from './ErrorTestComponent';

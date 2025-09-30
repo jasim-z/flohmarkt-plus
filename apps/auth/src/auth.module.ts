@@ -1,7 +1,7 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-import { RmqModule, DatabaseModule, HealthController, MetricsService, MetricsMiddleware, CorrelationMiddleware } from '@app/common';
+import { RmqModule, DatabaseModule, HealthController, MetricsService, MetricsMiddleware, CorrelationMiddleware, S3ClientService } from '@app/common';
 import * as Joi from 'joi';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -27,6 +27,14 @@ import { RateLimitMiddleware, RATE_LIMITS } from './middleware/rate-limit.middle
         MONGODB_URI: Joi.string().required(),
         RABBIT_MQ_URI: Joi.string().required(),
         RABBIT_MQ_AUTH_QUEUE: Joi.string().required(),
+        // S3 Configuration (optional for auth service)
+        S3_ENDPOINT: Joi.string().optional(),
+        S3_EXTERNAL_ENDPOINT: Joi.string().optional(),
+        S3_FORCE_PATH_STYLE: Joi.string().default('true'),
+        AWS_REGION: Joi.string().default('us-east-1'),
+        AWS_ACCESS_KEY_ID: Joi.string().optional(),
+        AWS_SECRET_ACCESS_KEY: Joi.string().optional(),
+        S3_BUCKET_NAME: Joi.string().optional(),
       }),
       load: [loadConfig],
     }),
@@ -47,6 +55,7 @@ import { RateLimitMiddleware, RATE_LIMITS } from './middleware/rate-limit.middle
     JwtStrategy,
     SeedService,
     MetricsService,
+    S3ClientService,
     {
       provide: 'IUserService',
       useExisting: UsersService,

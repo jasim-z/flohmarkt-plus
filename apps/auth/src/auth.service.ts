@@ -94,6 +94,7 @@ export class AuthService {
           email: user.email.trim().toLowerCase(),
           role: user.role || 'buyer',
           displayName: user.displayName || '',
+          avatar: user.avatar || '',
           city: user.city || '',
           neighborhood: user.neighborhood || '',
         },
