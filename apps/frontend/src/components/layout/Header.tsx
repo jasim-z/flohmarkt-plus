@@ -48,7 +48,7 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Load unread total periodically
+  // Load unread total periodically (reduced frequency)
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -59,7 +59,8 @@ export default function Header() {
       } catch {}
     };
     load();
-    const id = setInterval(load, 30000);
+    // Increased from 30s to 120s to reduce load
+    const id = setInterval(load, 120000);
     return () => { cancelled = true; clearInterval(id); };
   }, [user?._id]);
 

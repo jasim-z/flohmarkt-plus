@@ -323,12 +323,15 @@ services:
       target: development
       args:
         - NODE_OPTIONS=--max-old-space-size=1024
-    command: pnpm dev
+    command: pnpm dev:stable
     environment:
       - NODE_ENV=development
-      - WATCHPACK_POLLING=true
+      - WATCHPACK_POLLING=false
+      - CHOKIDAR_USEPOLLING=false
       - NEXT_TELEMETRY_DISABLED=1
       - NODE_OPTIONS=--max-old-space-size=2048
+      - TURBO_FORCE=true
+      - NEXT_WATCH_IGNORE="node_modules,\.next,\.git,dist,coverage"
     depends_on:
       - auth
       - listings
@@ -336,9 +339,22 @@ services:
       - billing
       - messages
     volumes:
-      - ./apps/frontend:/app
+      # Mount only source files, not build artifacts or config files
+      - ./apps/frontend/src:/app/src
+      - ./apps/frontend/public:/app/public
+      - ./apps/frontend/package.json:/app/package.json
+      - ./apps/frontend/pnpm-lock.yaml:/app/pnpm-lock.yaml
+      # Remove config files from volume mounting to prevent restarts
+      # - ./apps/frontend/next.config.ts:/app/next.config.ts
+      - ./apps/frontend/tsconfig.json:/app/tsconfig.json
+      - ./apps/frontend/tailwind.config.js:/app/tailwind.config.js
+      - ./apps/frontend/postcss.config.js:/app/postcss.config.js
+      # Exclude node_modules and build directories to prevent excessive watching
       - /app/node_modules
       - /app/.next
+      - /app/.turbo
+      - /app/dist
+      - /app/coverage
     ports:
       - '3000:3000'
     # Performance and stability improvements
@@ -351,12 +367,13 @@ services:
           memory: 1G
           cpus: '0.5'
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+    # Disable health check in development to reduce load
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+    #   interval: 120s
+    #   timeout: 15s
+    #   retries: 2
+    #   start_period: 60s
 
   # Prometheus - Metrics collection and storage
   prometheus:

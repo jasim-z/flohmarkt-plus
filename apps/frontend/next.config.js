@@ -1,8 +1,9 @@
-import { NextConfig } from 'next';
-import createNextIntlPlugin from 'next-intl/plugin';
+// Static development configuration to prevent restarts
+const createNextIntlPlugin = require('next-intl/plugin');
 
-// Stable configuration that doesn't change during development
-const nextConfig: NextConfig = {
+const withNextIntl = createNextIntlPlugin();
+
+const nextConfig = {
   // Performance optimizations - keep static
   experimental: {
     workerThreads: false,
@@ -10,11 +11,16 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['react-icons', '@radix-ui/react-icons'],
   },
   
-  // External packages configuration (moved from experimental)
+  // External packages configuration
   serverExternalPackages: [],
   
   // Disable features that cause restarts
   reactStrictMode: false,
+  
+  // Development optimizations - keep static to prevent restarts
+  compiler: {
+    removeConsole: false,
+  },
   
   // Image configuration
   images: {
@@ -50,11 +56,6 @@ const nextConfig: NextConfig = {
     dangerouslyAllowSVG: true,
     contentDispositionType: 'attachment',
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
-  },
-  
-  // Development optimizations - keep static to prevent restarts
-  compiler: {
-    removeConsole: false,
   },
   
   // Webpack optimizations
@@ -130,5 +131,4 @@ const nextConfig: NextConfig = {
   output: 'standalone',
 };
 
-const withNextIntl = createNextIntlPlugin();
-export default withNextIntl(nextConfig);
+module.exports = withNextIntl(nextConfig);

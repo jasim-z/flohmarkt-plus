@@ -2,6 +2,16 @@ import { NextResponse } from 'next/server';
 
 // Simple metrics endpoint for Prometheus monitoring
 export async function GET() {
+  // Disable metrics in development to reduce load
+  if (process.env.NODE_ENV === 'development') {
+    return new NextResponse('Metrics disabled in development', {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+    });
+  }
+
   const timestamp = Date.now();
   
   // Basic application metrics in Prometheus format
