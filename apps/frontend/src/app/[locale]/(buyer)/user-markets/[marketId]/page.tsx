@@ -20,7 +20,10 @@ import {
   FaInfoCircle,
   FaTimes,
   FaBox,
-  FaEye
+  FaEye,
+  FaImage,
+  FaChevronLeft,
+  FaChevronRight
 } from 'react-icons/fa';
 import { getMarketDetails, Market, Vendor } from '@/app/api/markets';
 import { getListingsByMarket, Listing } from '@/app/api/listings';
@@ -97,6 +100,14 @@ export default function MarketDetails() {
   const [loadingMoreListings, setLoadingMoreListings] = useState(false);
   const [hasMoreVendors, setHasMoreVendors] = useState(true);
   const [loadingMoreVendors, setLoadingMoreVendors] = useState(false);
+
+  // Additional images modal state
+  const [showAdditionalImagesModal, setShowAdditionalImagesModal] = useState(false);
+
+  // Photo viewer state
+  const [showPhotoViewer, setShowPhotoViewer] = useState(false);
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const [allPhotos, setAllPhotos] = useState<string[]>([]);
 
   // Check authentication
   useEffect(() => {
@@ -207,6 +218,33 @@ export default function MarketDetails() {
     } finally {
       setLoadingMoreVendors(false);
     }
+  };
+
+  // Photo viewer functions
+  const openPhotoViewer = (photoIndex: number) => {
+    if (!marketDetails?.market) return;
+    
+    const photos = [];
+    if (marketDetails.market.bannerImage) photos.push(marketDetails.market.bannerImage);
+    if (marketDetails.market.additionalImages) photos.push(...marketDetails.market.additionalImages);
+    
+    setAllPhotos(photos);
+    setCurrentPhotoIndex(photoIndex);
+    setShowPhotoViewer(true);
+  };
+
+  const closePhotoViewer = () => {
+    setShowPhotoViewer(false);
+    setCurrentPhotoIndex(0);
+    setAllPhotos([]);
+  };
+
+  const goToPreviousPhoto = () => {
+    setCurrentPhotoIndex(prev => prev > 0 ? prev - 1 : allPhotos.length - 1);
+  };
+
+  const goToNextPhoto = () => {
+    setCurrentPhotoIndex(prev => prev < allPhotos.length - 1 ? prev + 1 : 0);
   };
 
   // Infinite scroll handlers
@@ -382,7 +420,8 @@ export default function MarketDetails() {
                 <img 
                   src={market.bannerImage} 
                   alt={market.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity duration-200"
+                  onClick={() => openPhotoViewer(0)}
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.style.display = 'none';
@@ -468,6 +507,21 @@ export default function MarketDetails() {
             </div>
             </div>
           </div>
+          
+          {/* Additional Images Button */}
+          {market.additionalImages && market.additionalImages.length > 0 && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <button
+                onClick={() => setShowAdditionalImagesModal(true)}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors duration-200"
+              >
+                <FaImage className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  View Additional Images ({market.additionalImages.length})
+                </span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Market Statistics Section */}
@@ -843,6 +897,113 @@ export default function MarketDetails() {
           )}
         </div>
       </div>
+
+      {/* Additional Images Modal */}
+      {showAdditionalImagesModal && market.additionalImages && market.additionalImages.length > 0 && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {market.name} - Additional Images
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {market.additionalImages.length} additional images for this market
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAdditionalImagesModal(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+              >
+                <FaTimes className="h-5 w-5" />
+              </button>
+            </div>
+            
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {market.additionalImages.map((image, index) => (
+                  <div key={index} className="relative">
+                    <img
+                      src={image}
+                      alt={`Additional image ${index + 1}`}
+                      className="w-full h-48 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity duration-200"
+                      onClick={() => openPhotoViewer(index + (market.bannerImage ? 1 : 0))}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/placeholder-image.png';
+                      }}
+                    />
+                    <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                      {index + 1}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Modal Footer */}
+            <div className="flex justify-end p-6 border-t border-gray-200">
+              <button
+                onClick={() => setShowAdditionalImagesModal(false)}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors duration-200"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full-Screen Photo Viewer */}
+      {showPhotoViewer && allPhotos.length > 0 && (
+        <div className="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-[60]">
+          {/* Close Button */}
+          <button
+            onClick={closePhotoViewer}
+            className="absolute top-4 right-4 z-10 p-2 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-70 transition-all duration-200"
+          >
+            <FaTimes className="h-6 w-6" />
+          </button>
+
+          {/* Navigation Arrows */}
+          {allPhotos.length > 1 && (
+            <>
+              <button
+                onClick={goToPreviousPhoto}
+                className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 p-3 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-70 transition-all duration-200"
+              >
+                <FaChevronLeft className="h-6 w-6" />
+              </button>
+              <button
+                onClick={goToNextPhoto}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 p-3 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-70 transition-all duration-200"
+              >
+                <FaChevronRight className="h-6 w-6" />
+              </button>
+            </>
+          )}
+
+          {/* Main Image */}
+          <div className="flex items-center justify-center w-full h-full p-4">
+            <img
+              src={allPhotos[currentPhotoIndex]}
+              alt={`Photo ${currentPhotoIndex + 1}`}
+              className="max-w-full max-h-full object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/placeholder-image.png';
+              }}
+            />
+          </div>
+
+          {/* Photo Counter */}
+          {allPhotos.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-4 py-2 rounded-full text-sm">
+              {currentPhotoIndex + 1} / {allPhotos.length}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 } 

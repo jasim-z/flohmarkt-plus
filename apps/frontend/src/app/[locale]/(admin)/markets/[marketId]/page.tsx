@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaArrowLeft, FaCheckCircle, FaTimesCircle, FaExclamationTriangle, FaUserShield, FaStar, FaSearch, FaSort, FaSortUp, FaSortDown, FaImage, FaTimes } from "react-icons/fa";
+import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaArrowLeft, FaCheckCircle, FaTimesCircle, FaExclamationTriangle, FaUserShield, FaStar, FaSearch, FaSort, FaSortUp, FaSortDown, FaImage, FaTimes, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { Market, getMarketDetails, Vendor, GetVendorsParams, toggleMarketActive } from "../../../../api/markets";
 
 // Utility function to calculate market status based on current date/time
@@ -136,6 +136,11 @@ export default function MarketDetail() {
   
   // Additional images modal state
   const [showAdditionalImagesModal, setShowAdditionalImagesModal] = useState(false);
+  
+  // Photo viewer state
+  const [showPhotoViewer, setShowPhotoViewer] = useState(false);
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const [allPhotos, setAllPhotos] = useState<string[]>([]);
 
   // Debounce search term for performance
   useEffect(() => {
@@ -276,6 +281,33 @@ export default function MarketDetail() {
     }
   }, [params.marketId]);
 
+  // Photo viewer functions
+  const openPhotoViewer = (photoIndex: number) => {
+    if (!market) return;
+    
+    const photos = [];
+    if (market.bannerImage) photos.push(market.bannerImage);
+    if (market.additionalImages) photos.push(...market.additionalImages);
+    
+    setAllPhotos(photos);
+    setCurrentPhotoIndex(photoIndex);
+    setShowPhotoViewer(true);
+  };
+
+  const closePhotoViewer = () => {
+    setShowPhotoViewer(false);
+    setCurrentPhotoIndex(0);
+    setAllPhotos([]);
+  };
+
+  const goToPreviousPhoto = () => {
+    setCurrentPhotoIndex(prev => prev > 0 ? prev - 1 : allPhotos.length - 1);
+  };
+
+  const goToNextPhoto = () => {
+    setCurrentPhotoIndex(prev => prev < allPhotos.length - 1 ? prev + 1 : 0);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6">
@@ -385,7 +417,8 @@ export default function MarketDetail() {
                 <img
                   src={market.bannerImage}
                   alt={`${market.name} banner`}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity duration-200"
+                  onClick={() => openPhotoViewer(0)}
                   onError={(e) => {
                     // Fallback to default icon if image fails to load
                     const target = e.target as HTMLImageElement;
@@ -816,7 +849,8 @@ export default function MarketDetail() {
                     <img
                       src={image}
                       alt={`Additional image ${index + 1}`}
-                      className="w-full h-48 object-cover rounded-lg border border-gray-200"
+                      className="w-full h-48 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity duration-200"
+                      onClick={() => openPhotoViewer(index + (market.bannerImage ? 1 : 0))}
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = '/placeholder-image.png';
                       }}
@@ -839,6 +873,56 @@ export default function MarketDetail() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Full-Screen Photo Viewer */}
+      {showPhotoViewer && allPhotos.length > 0 && (
+        <div className="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-[60]">
+          {/* Close Button */}
+          <button
+            onClick={closePhotoViewer}
+            className="absolute top-4 right-4 z-10 p-2 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-70 transition-all duration-200"
+          >
+            <FaTimes className="h-6 w-6" />
+          </button>
+
+          {/* Navigation Arrows */}
+          {allPhotos.length > 1 && (
+            <>
+              <button
+                onClick={goToPreviousPhoto}
+                className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 p-3 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-70 transition-all duration-200"
+              >
+                <FaChevronLeft className="h-6 w-6" />
+              </button>
+              <button
+                onClick={goToNextPhoto}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 p-3 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-70 transition-all duration-200"
+              >
+                <FaChevronRight className="h-6 w-6" />
+              </button>
+            </>
+          )}
+
+          {/* Main Image */}
+          <div className="flex items-center justify-center w-full h-full p-4">
+            <img
+              src={allPhotos[currentPhotoIndex]}
+              alt={`Photo ${currentPhotoIndex + 1}`}
+              className="max-w-full max-h-full object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/placeholder-image.png';
+              }}
+            />
+          </div>
+
+          {/* Photo Counter */}
+          {allPhotos.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-4 py-2 rounded-full text-sm">
+              {currentPhotoIndex + 1} / {allPhotos.length}
+            </div>
+          )}
         </div>
       )}
     </div>
