@@ -127,9 +127,30 @@ export default function Users() {
       sortable: true,
       render: (value: string | boolean | undefined, row: User) => (
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-            <FaUser className="h-5 w-5 text-white" />
-          </div>
+          {row.avatar ? (
+            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-200">
+              <img
+                src={row.avatar}
+                alt={row.displayName}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  // Fallback to default icon if image fails to load
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  const fallback = target.nextElementSibling as HTMLElement;
+                  if (fallback) fallback.style.display = 'flex';
+                }}
+              />
+              {/* Fallback Icon */}
+              <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 rounded-full items-center justify-center hidden">
+                <FaUser className="h-5 w-5 text-white" />
+              </div>
+            </div>
+          ) : (
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+              <FaUser className="h-5 w-5 text-white" />
+            </div>
+          )}
           <div className="flex flex-col">
             <span className="text-sm font-medium text-gray-900">
               {row.displayName}

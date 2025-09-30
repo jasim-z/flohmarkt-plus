@@ -154,7 +154,6 @@ export class UsersService {
         createdAt: 1,
         updatedAt: 1,
       })
-      .lean()
       .exec();
 
     // Transform the data to match the expected interface
@@ -164,6 +163,14 @@ export class UsersService {
       displayName: user.displayName || '',
       role: user.role || '',
       isActive: user.isActive ?? false,
+      avatar: user.avatar || undefined,
+      city: user.city || undefined,
+      neighborhood: user.neighborhood || undefined,
+      rating: user.rating || undefined,
+      totalSales: user.totalSales || undefined,
+      totalReviews: user.totalReviews || undefined,
+      isVerified: user.isVerified || undefined,
+      badges: user.badges || undefined,
       createdAt: user.createdAt?.toISOString() || new Date().toISOString(),
       updatedAt: user.updatedAt?.toISOString() || new Date().toISOString(),
     }));

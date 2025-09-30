@@ -149,9 +149,30 @@ export default function UserDetail() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8">
           <div className="flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-6">
             {/* Avatar */}
-            <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-              <FaUser className="h-10 w-10 sm:h-12 sm:w-12 text-white" />
-            </div>
+            {user.avatar ? (
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-4 border-white shadow-lg">
+                <img
+                  src={user.avatar}
+                  alt={user.displayName}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Fallback to default icon if image fails to load
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const fallback = target.nextElementSibling as HTMLElement;
+                    if (fallback) fallback.style.display = 'flex';
+                  }}
+                />
+                {/* Fallback Icon */}
+                <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 rounded-full items-center justify-center hidden">
+                  <FaUser className="h-10 w-10 sm:h-12 sm:w-12 text-white" />
+                </div>
+              </div>
+            ) : (
+              <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                <FaUser className="h-10 w-10 sm:h-12 sm:w-12 text-white" />
+              </div>
+            )}
             
             {/* User Info */}
             <div className="flex-1 w-full text-center sm:text-left">
