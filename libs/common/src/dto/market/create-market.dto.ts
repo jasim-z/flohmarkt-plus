@@ -72,7 +72,7 @@ export class CreateMarketDto {
     allow_underscores: true,
     allow_trailing_dot: false,
     allow_protocol_relative_urls: false,
-    host_whitelist: ['localhost', '127.0.0.1', 'minio']
+    host_whitelist: ['localhost', '127.0.0.1', 'minio', 'flohmarkt-uploads-bucket.s3.eu-central-1.amazonaws.com']
   }, { message: 'Banner image must be a valid URL' })
   bannerImage: string;
 
@@ -86,7 +86,7 @@ export class CreateMarketDto {
     allow_underscores: true,
     allow_trailing_dot: false,
     allow_protocol_relative_urls: false,
-    host_whitelist: ['localhost', '127.0.0.1', 'minio']
+    host_whitelist: ['localhost', '127.0.0.1', 'minio', 'flohmarkt-uploads-bucket.s3.eu-central-1.amazonaws.com']
   }, { each: true, message: 'Each additional image must be a valid URL' })
   additionalImages?: string[];
 

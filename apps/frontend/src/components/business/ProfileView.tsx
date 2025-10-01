@@ -143,7 +143,7 @@ export function ProfileView({ userId, isOwnProfile = false, viewerRole }: Profil
       
       console.log('File uploaded successfully');
       
-      const newAvatarUrl = presignResponse.publicUrl;
+      const newAvatarUrl = presignResponse.downloadUrl;
       console.log('Updating user profile with new avatar URL:', newAvatarUrl);
       await updateUserProfile({ avatar: newAvatarUrl });
       console.log('Profile updated successfully');

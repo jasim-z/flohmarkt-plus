@@ -234,7 +234,7 @@ export async function runIsDeletedMigration(): Promise<void> {
   }
 }
 
-export async function presignListingUpload(fileName: string, contentType: string): Promise<{ success: boolean; presignedUrl: string; publicUrl: string; key: string; expiresIn: number }> {
+export async function presignListingUpload(fileName: string, contentType: string): Promise<{ success: boolean; presignedUrl: string; downloadUrl: string; key: string; expiresIn: number }> {
   try {
     const response = await listingsApiClient.post('/listings/presign-upload', {
       fileName,

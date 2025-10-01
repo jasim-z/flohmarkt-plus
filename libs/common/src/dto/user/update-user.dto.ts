@@ -25,7 +25,7 @@ export class UpdateUserDto {
     allow_underscores: true,
     allow_trailing_dot: false,
     allow_protocol_relative_urls: false,
-    host_whitelist: ['localhost', '127.0.0.1', 'minio']
+    host_whitelist: ['localhost', '127.0.0.1', 'minio', 'flohmarkt-uploads-bucket.s3.eu-central-1.amazonaws.com']
   }, { message: 'Avatar must be a valid URL' })
   avatar?: string;
 

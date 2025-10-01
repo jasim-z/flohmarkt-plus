@@ -77,13 +77,13 @@ export class ListingsController {
     // Get presigned URL for upload
     const presignedUrl = await this.s3ClientService.getPresignedUploadUrl(key, contentType);
     
-    // Get public URL for the uploaded file
-    const publicUrl = this.s3ClientService.getPublicUrl(key);
+    // Generate presigned download URL for private bucket access
+    const downloadUrl = await this.s3ClientService.getPresignedDownloadUrl(key);
     
     return {
       success: true,
       presignedUrl,
-      publicUrl,
+      downloadUrl,
       key,
       expiresIn: 3600, // 1 hour
     };

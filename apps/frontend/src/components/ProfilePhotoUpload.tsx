@@ -65,10 +65,10 @@ export default function ProfilePhotoUpload({
       }
 
       // Update user profile with new avatar URL
-      await updateUserProfile({ avatar: presignResponse.publicUrl });
+      await updateUserProfile({ avatar: presignResponse.downloadUrl });
       
       // Update parent component
-      onAvatarUpdate(presignResponse.publicUrl);
+      onAvatarUpdate(presignResponse.downloadUrl);
       
       // Clean up preview URL
       if (previewUrl) {

@@ -73,7 +73,7 @@ export async function uploadFile(
     // Update progress to success
     const result: UploadResult = {
       file,
-      url: presignResponse.publicUrl,
+      url: presignResponse.downloadUrl,
       key: presignResponse.key
     };
 

@@ -96,7 +96,7 @@ export interface PresignUploadResponse {
   success: boolean;
   presignedUrl: string;
   key: string;
-  publicUrl: string;
+  downloadUrl: string;
   expiresIn: number;
 }
 

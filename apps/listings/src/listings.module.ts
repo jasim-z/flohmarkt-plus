@@ -22,8 +22,8 @@ import * as Joi from 'joi';
         MONGODB_URI: Joi.string().required(),
         PORT: Joi.number().required(),
         // S3 Configuration
-        S3_ENDPOINT: Joi.string().optional(),
-        S3_EXTERNAL_ENDPOINT: Joi.string().optional(),
+        S3_ENDPOINT: Joi.string().allow('').optional(),
+        S3_EXTERNAL_ENDPOINT: Joi.string().allow('').optional(),
         S3_FORCE_PATH_STYLE: Joi.string().default('true'),
         AWS_REGION: Joi.string().default('us-east-1'),
         AWS_ACCESS_KEY_ID: Joi.string().optional(),
