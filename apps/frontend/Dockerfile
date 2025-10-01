@@ -19,9 +19,9 @@ COPY package.json pnpm-lock.yaml ./
 
 # Install dependencies with optimizations
 # Use memory-efficient install with fallback
-RUN pnpm install --frozen-lockfile --prefer-offline --no-optional || \
-    pnpm install --no-optional || \
-    pnpm install --no-optional --shamefully-hoist
+RUN pnpm install --no-frozen-lockfile --prefer-offline --no-optional --network-concurrency=1 --child-concurrency=1 || \
+    pnpm install --no-optional --network-concurrency=1 --child-concurrency=1 || \
+    pnpm install --no-optional --shamefully-hoist --network-concurrency=1 --child-concurrency=1
 
 # Copy source code
 COPY . .

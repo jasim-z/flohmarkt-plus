@@ -7,8 +7,6 @@ const nextConfig = {
   // Performance optimizations - keep static
   experimental: {
     workerThreads: false,
-    cpus: 1,
-    optimizePackageImports: ['react-icons', '@radix-ui/react-icons'],
   },
   
   // External packages configuration
@@ -104,10 +102,11 @@ const nextConfig = {
             },
           },
         },
-        // Disable source maps in development for better performance
-        devtool: false,
       };
-      
+
+      // Disable source maps in development for better performance
+      config.devtool = false;
+
       // Reduce bundle analysis overhead
       config.stats = 'minimal';
     }
