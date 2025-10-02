@@ -136,6 +136,23 @@ export default function MarketDetails() {
     }
   }, [exploreMode, params.marketId]);
 
+  // Always fetch listings count for statistics (lightweight request)
+  useEffect(() => {
+    if (!params.marketId) return;
+    (async () => {
+      try {
+        const response = await getListingsByMarket(params.marketId as string, { page: 1, limit: 1 });
+        setListingsPagination(prev => ({
+          ...prev,
+          total: response.pagination.total,
+          totalPages: response.pagination.totalPages,
+        }));
+      } catch (err) {
+        console.error('Error fetching listings count:', err);
+      }
+    })();
+  }, [params.marketId]);
+
 
 
   const fetchMarketDetails = async () => {
@@ -143,6 +160,8 @@ export default function MarketDetails() {
       setLoading(true);
       const response = await getMarketDetails(params.marketId as string);
       setMarketDetails(response);
+      // Set hasMoreVendors based on pagination response
+      setHasMoreVendors(response.pagination.hasNext);
     } catch (err) {
       console.error('Error fetching market details:', err);
       setError('Failed to load market details. Please try again.');
@@ -211,8 +230,9 @@ export default function MarketDetails() {
           vendors: [...prev!.vendors, ...response.vendors],
           pagination: response.pagination
         }));
-        setHasMoreVendors(response.pagination.hasNext);
       }
+      // Always update hasMoreVendors based on pagination response
+      setHasMoreVendors(response.pagination.hasNext);
     } catch (err) {
       console.error('Error loading more vendors:', err);
     } finally {
@@ -541,7 +561,7 @@ export default function MarketDetails() {
               <div className="text-sm text-gray-600">Avg Vendor Ratings</div>
             </div>
             <div className="bg-gray-50 rounded-lg p-3 text-center">
-              <div className="text-2xl font-bold text-purple-600">{listings.length}</div>
+              <div className="text-2xl font-bold text-purple-600">{listingsPagination.total}</div>
               <div className="text-sm text-gray-600">Total Items</div>
             </div>
           </div>
@@ -645,10 +665,11 @@ export default function MarketDetails() {
                 <p className="text-gray-500">Try adjusting your search terms</p>
               </div>
             ) : (
-              <div className={viewMode === 'grid' 
-                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' 
-                : 'space-y-4'
-              }>
+              <>
+                <div className={viewMode === 'grid' 
+                  ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' 
+                  : 'space-y-4'
+                }>
                 {filteredVendors.map((vendor) => (
                   <div
                     key={vendor._id}
@@ -760,24 +781,25 @@ export default function MarketDetails() {
                     </div>
                   </div>
                 ))}
-                
-                {/* Infinite Scroll Loading Indicator for Vendors */}
-                {loadingMoreVendors && (
-                  <div className="mt-8 flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="border-4 border-blue-600 border-t-transparent rounded-full w-8 h-8 mx-auto mb-4 animate-spin"></div>
-                      <p className="text-gray-600">Loading more vendors...</p>
-                    </div>
-                  </div>
-                )}
-                
-                {/* End of Results for Vendors */}
-                {!hasMoreVendors && filteredVendors.length > 0 && (
-                  <div className="mt-8 text-center">
-                    <p className="text-gray-500 text-sm">You&apos;ve reached the end of all vendors</p>
-                  </div>
-                )}
               </div>
+              
+              {/* Infinite Scroll Loading Indicator for Vendors */}
+              {loadingMoreVendors && (
+                <div className="mt-8 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="border-4 border-blue-600 border-t-transparent rounded-full w-8 h-8 mx-auto mb-4 animate-spin"></div>
+                    <p className="text-gray-600">Loading more vendors...</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* End of Results for Vendors */}
+              {!hasMoreVendors && filteredVendors.length > 0 && (
+                <div className="mt-8 text-center">
+                  <p className="text-gray-500 text-sm">You&apos;ve reached the end of all vendors</p>
+                </div>
+              )}
+              </>
             )
           ) : (
             /* Items Display */
@@ -865,11 +887,8 @@ export default function MarketDetails() {
                       
                       {/* Action Buttons */}
                       <div className="flex items-center space-x-2">
-                        <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors duration-200">
-                          Buy Now
-                        </button>
-                        <button className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium py-2 px-3 rounded-lg transition-colors duration-200">
-                          Message Vendor
+                        <button className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors duration-200">
+                          Message Seller
                         </button>
                       </div>
                     </div>

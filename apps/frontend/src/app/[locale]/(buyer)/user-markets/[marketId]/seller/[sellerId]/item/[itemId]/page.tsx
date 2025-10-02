@@ -190,10 +190,6 @@ export default function ItemDetail() {
     }
   };
 
-  const handleBuyNow = () => {
-    // TODO: Implement purchase flow
-    console.log('Buy now clicked');
-  };
 
   if (authLoading || !isLoaded) {
     return (
@@ -508,15 +504,8 @@ export default function ItemDetail() {
               {/* Action Buttons */}
               <div className="space-y-3">
                 <button
-                  onClick={handleBuyNow}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2"
-                >
-                  <FaBox className="w-5 h-5" />
-                  <span>Buy Now</span>
-                </button>
-                <button
                   onClick={handleMessageSeller}
-                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2"
                 >
                   <FaHandshake className="w-5 h-5" />
                   <span>Message Seller</span>

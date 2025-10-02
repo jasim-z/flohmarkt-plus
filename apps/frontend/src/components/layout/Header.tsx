@@ -164,16 +164,6 @@ export default function Header() {
                     My Markets
                   </Link>
                   <Link 
-                    href={`/${params.locale}/orders`} 
-                    className={`font-medium transition-colors duration-200 ${
-                      pathname.includes('/orders') 
-                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
-                        : 'text-gray-600 hover:text-blue-600'
-                    }`}
-                  >
-                    Orders
-                  </Link>
-                  <Link 
                     href={`/${params.locale}/messages`} 
                     className={`font-medium transition-colors duration-200 relative ${
                       pathname.includes('/messages') 
@@ -212,16 +202,6 @@ export default function Header() {
                     }`}
                   >
                     Browse
-                  </Link>
-                  <Link 
-                    href={`/${params.locale}/user-orders`} 
-                    className={`font-medium transition-colors duration-200 ${
-                      pathname.includes('/user-orders') 
-                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
-                        : 'text-gray-600 hover:text-blue-600'
-                    }`}
-                  >
-                    Orders
                   </Link>
                   <Link 
                     href={`/${params.locale}/user-messages`} 
@@ -427,17 +407,6 @@ export default function Header() {
                     My Markets
                   </Link>
                   <Link 
-                    href={`/${params.locale}/orders`} 
-                    className={`block px-4 py-3 text-base font-medium rounded-lg transition-colors duration-200 ${
-                      pathname.includes('/orders') 
-                        ? 'bg-blue-50 text-blue-600' 
-                        : 'text-gray-700 hover:bg-gray-50'
-                    }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Orders
-                  </Link>
-                  <Link 
                     href={`/${params.locale}/messages`} 
                     className={`block px-4 py-3 text-base font-medium rounded-lg transition-colors duration-200 relative ${
                       pathname.includes('/messages') 
@@ -481,17 +450,6 @@ export default function Header() {
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Browse
-                  </Link>
-                  <Link 
-                    href={`/${params.locale}/user-orders`} 
-                    className={`block px-4 py-3 text-base font-medium rounded-lg transition-colors duration-200 ${
-                      pathname.includes('/user-orders') 
-                        ? 'bg-blue-50 text-blue-600' 
-                        : 'text-gray-700 hover:bg-gray-50'
-                    }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Orders
                   </Link>
                   <Link 
                     href={`/${params.locale}/user-messages`} 

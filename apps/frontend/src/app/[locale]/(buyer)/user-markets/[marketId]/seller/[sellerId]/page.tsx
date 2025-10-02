@@ -544,10 +544,7 @@ export default function SellerItems() {
                       
                       {/* Action Buttons */}
                       <div className="flex items-center space-x-2">
-                        <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors duration-200">
-                          Buy Now
-                        </button>
-                        <button className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium py-2 px-3 rounded-lg transition-colors duration-200">
+                        <button className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors duration-200">
                           Message Seller
                         </button>
                       </div>
