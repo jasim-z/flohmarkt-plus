@@ -71,13 +71,13 @@ export class AuthController {
     const key = this.s3ClientService.generateUserAvatarKey(userId, fileName);
     
     const presignedUrl = await this.s3ClientService.getPresignedUploadUrl(key, 'image/jpeg');
-    const downloadUrl = await this.s3ClientService.getPresignedDownloadUrl(key);
+    const publicUrl = this.s3ClientService.getPublicUrl(key);
 
     return {
       success: true,
       presignedUrl,
       key,
-      downloadUrl,
+      publicUrl,
       expiresIn: 3600,
     };
   }

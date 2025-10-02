@@ -73,7 +73,7 @@ export function ListingImageUpload({
           }
 
           // Add to images array
-          newImages.push(presignResponse.downloadUrl);
+          newImages.push(presignResponse.publicUrl);
           setUploadProgress(prev => ({ ...prev, [fileId]: 100 }));
           
         } catch (error: any) {

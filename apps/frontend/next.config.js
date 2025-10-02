@@ -15,6 +15,16 @@ const nextConfig = {
   // Disable features that cause restarts
   reactStrictMode: false,
   
+  // Chunk loading configuration
+  generateEtags: false,
+  poweredByHeader: false,
+  
+  // Development optimizations
+  onDemandEntries: {
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
+  },
+  
   // Development optimizations - keep static to prevent restarts
   compiler: {
     removeConsole: false,
@@ -95,23 +105,31 @@ const nextConfig = {
         ],
       };
       
-      // Reduce memory usage and improve performance
+      // Simplified chunk splitting for development
       config.optimization = {
         ...config.optimization,
         splitChunks: {
           chunks: 'all',
+          minSize: 20000,
+          maxSize: 244000,
           cacheGroups: {
+            default: {
+              minChunks: 2,
+              priority: -20,
+              reuseExistingChunk: true,
+            },
             vendor: {
               test: /[\\/]node_modules[\\/]/,
               name: 'vendors',
+              priority: -10,
               chunks: 'all',
             },
           },
         },
       };
 
-      // Disable source maps in development for better performance
-      config.devtool = false;
+      // Enable source maps for better debugging
+      config.devtool = 'eval-cheap-module-source-map';
 
       // Reduce bundle analysis overhead
       config.stats = 'minimal';

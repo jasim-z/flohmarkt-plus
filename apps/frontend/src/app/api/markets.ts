@@ -274,7 +274,7 @@ export interface PresignUploadResponse {
   success: boolean;
   presignedUrl: string;
   key: string;
-  downloadUrl: string;
+  publicUrl: string;
   expiresIn: number;
 }
 

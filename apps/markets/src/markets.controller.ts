@@ -311,14 +311,14 @@ export class MarketsController {
     // Generate presigned URL
     const presignedUrl = await this.s3ClientService.getPresignedUploadUrl(key, contentType);
     
-    // Generate presigned download URL for private bucket access
-    const downloadUrl = await this.s3ClientService.getPresignedDownloadUrl(key);
+    // Get public URL for the uploaded file
+    const publicUrl = this.s3ClientService.getPublicUrl(key);
 
     return {
       success: true,
       presignedUrl,
       key,
-      downloadUrl,
+      publicUrl,
       marketId: usedMarketId, // The market ID that was used (temporary or real)
       expiresIn: 3600, // 1 hour
     };
