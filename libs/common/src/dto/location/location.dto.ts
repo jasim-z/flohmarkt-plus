@@ -99,4 +99,15 @@ export class MarketSearchByLocationDto {
   @Min(1)
   @Max(500)
   radiusKm?: number = 50;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  page?: number = 1;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(100)
+  limit?: number = 10;
 }

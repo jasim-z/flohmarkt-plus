@@ -436,12 +436,28 @@ export class MarketsController {
       searchDto.radiusKm
     );
 
+    // Apply pagination
+    const page = searchDto.page || 1;
+    const limit = searchDto.limit || 10;
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    
+    const paginatedMarkets = nearbyMarkets.slice(startIndex, endIndex);
+    const totalPages = Math.ceil(nearbyMarkets.length / limit);
+
     return {
-      markets: nearbyMarkets.map(item => ({
+      markets: paginatedMarkets.map(item => ({
         ...item.market.toObject(),
         distance: Math.round(item.distance * 100) / 100, // Round to 2 decimal places
       })),
-      totalFound: nearbyMarkets.length,
+      pagination: {
+        page,
+        limit,
+        total: nearbyMarkets.length,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      },
       searchRadius: searchDto.radiusKm,
     };
   }

@@ -42,6 +42,8 @@ export interface MarketSearchByLocationRequest {
   latitude: number;
   longitude: number;
   radiusKm?: number;
+  page?: number;
+  limit?: number;
 }
 
 export interface MarketSearchByLocationResponse {
@@ -66,7 +68,14 @@ export interface MarketSearchByLocationResponse {
     additionalImages: string[];
     distance: number;
   }>;
-  totalFound: number;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
   searchRadius: number;
 }
 
