@@ -14,6 +14,8 @@ import {
 import { getMarkets, Market } from '@/app/api/markets';
 import { MarketCard } from '@/components/business';
 import { ProfilePhotoUpload } from '@/components';
+import LocationPicker from '@/components/LocationPicker';
+import { LocationResult, searchMarketsByLocation } from '@/app/api/location';
 
 interface FilterState {
   search: string;
@@ -38,7 +40,8 @@ const SORT_OPTIONS = [
   { value: 'date', label: 'Date' },
   { value: 'name', label: 'Name' },
   { value: 'vendorLimit', label: 'Vendor Count' },
-  { value: 'startTime', label: 'Start Time' }
+  { value: 'startTime', label: 'Start Time' },
+  { value: 'distance', label: 'Distance' }
 ];
 
 
@@ -54,6 +57,8 @@ export default function BuyerMarkets() {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedLocation, setSelectedLocation] = useState<LocationResult | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     search: '',
     category: 'All Markets',
@@ -64,6 +69,43 @@ export default function BuyerMarkets() {
   
   // Ref for the sentinel element (trigger for infinite scroll)
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Location change handler
+  const handleLocationChange = async (location: LocationResult | null) => {
+    setSelectedLocation(location);
+    setCurrentPage(1);
+    setHasMore(true);
+    
+    if (location) {
+      setLocationLoading(true);
+      try {
+        // Fetch markets by location
+        const response = await searchMarketsByLocation({
+          latitude: location.lat,
+          longitude: location.lon,
+          radiusKm: 50, // 50km radius
+        });
+        
+        // Convert the response to Market format and add distance
+        const marketsWithDistance = response.markets.map(market => ({
+          ...market,
+          distance: market.distance,
+        }));
+        
+        setMarkets(marketsWithDistance);
+        setError(null);
+      } catch (err: any) {
+        console.error('Error fetching markets by location:', err);
+        setError('Failed to fetch markets for selected location');
+        setMarkets([]);
+      } finally {
+        setLocationLoading(false);
+      }
+    } else {
+      // No location selected, fetch all markets
+      fetchMarkets(1, false);
+    }
+  };
 
   // Check authentication
   useEffect(() => {
@@ -105,6 +147,12 @@ export default function BuyerMarkets() {
         setLoading(true);
       } else {
         setLoadingMore(true);
+      }
+      
+      // If location is selected, don't use regular fetchMarkets
+      if (selectedLocation) {
+        console.log('Location selected, skipping regular fetchMarkets');
+        return;
       }
       
       // Prepare API parameters
@@ -213,8 +261,68 @@ export default function BuyerMarkets() {
     };
   }, [loadMoreMarkets, hasMore, loadingMore, currentPage, markets.length]);
 
-  // Use markets directly from backend - no frontend filtering
-  const filteredMarkets = markets;
+  // Filter markets based on search and location
+  const filteredMarkets = useMemo(() => {
+    if (!selectedLocation) {
+      // No location selected, use markets as-is (backend filtering)
+      return markets;
+    }
+    
+    // Location selected, apply frontend filtering to location-based results
+    let filtered = markets;
+    
+    // Apply search filter
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      filtered = filtered.filter(market => 
+        market.name.toLowerCase().includes(searchLower) ||
+        market.description.toLowerCase().includes(searchLower) ||
+        market.location.toLowerCase().includes(searchLower) ||
+        market.categories.some(cat => cat.toLowerCase().includes(searchLower))
+      );
+    }
+    
+    // Apply category filter
+    if (filters.category !== 'All Markets') {
+      filtered = filtered.filter(market => 
+        market.categories.includes(filters.category)
+      );
+    }
+    
+    // Apply status filter
+    if (filters.status !== 'all') {
+      filtered = filtered.filter(market => market.status === filters.status);
+    }
+    
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let comparison = 0;
+      
+      switch (filters.sortBy) {
+        case 'name':
+          comparison = a.name.localeCompare(b.name);
+          break;
+        case 'date':
+          comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+          break;
+        case 'vendorLimit':
+          comparison = (a.vendorLimit || 0) - (b.vendorLimit || 0);
+          break;
+        case 'startTime':
+          comparison = a.startTime.localeCompare(b.startTime);
+          break;
+        case 'distance':
+          comparison = (a.distance || 0) - (b.distance || 0);
+          break;
+        default:
+          comparison = 0;
+      }
+      
+      return filters.sortOrder === 'asc' ? comparison : -comparison;
+    });
+    
+    return filtered;
+  }, [markets, filters, selectedLocation]);
 
   const handleFilterChange = (key: keyof FilterState, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -281,15 +389,18 @@ export default function BuyerMarkets() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
           <div className="text-center mb-10 md:mb-16">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent drop-shadow-lg">
-              Discover Local Markets
+              {selectedLocation ? `Markets in ${selectedLocation.city || selectedLocation.address}` : 'Discover Local Markets'}
             </h1>
             <p className="text-xl md:text-2xl text-blue-50 max-w-3xl mx-auto leading-relaxed">
-              Find the best flea markets, craft fairs, and local events near you
+              {selectedLocation 
+                ? `Find the best markets near ${selectedLocation.address}` 
+                : 'Find the best flea markets, craft fairs, and local events near you'
+              }
             </p>
           </div>
           
           {/* Search Bar */}
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-3xl mx-auto mb-8">
             <div className="relative group">
               <FaSearch className="absolute left-5 top-1/2 transform -translate-y-1/2 text-blue-400 w-6 h-6 transition-colors group-focus-within:text-blue-500" />
               <input
@@ -300,6 +411,37 @@ export default function BuyerMarkets() {
                 className="w-full pl-16 pr-6 py-4 md:py-5 text-gray-900 rounded-3xl border-0 shadow-2xl focus:ring-4 focus:ring-blue-300/50 focus:outline-none text-lg md:text-xl bg-white/95 backdrop-blur-sm transition-all duration-300 hover:bg-white hover:shadow-3xl search-input"
               />
               <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-blue-400/20 to-purple-500/20 opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 -z-10"></div>
+            </div>
+          </div>
+
+          {/* Location Picker */}
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+              <div className="text-center mb-4">
+                <h3 className="text-lg font-semibold text-white mb-2">
+                  Choose Your Location
+                </h3>
+                <p className="text-blue-100 text-sm">
+                  Select a location to see markets nearby, or browse all markets
+                </p>
+              </div>
+              <LocationPicker
+                onLocationChange={handleLocationChange}
+                placeholder="Search for your location..."
+                showCurrentLocation={true}
+                disabled={locationLoading}
+                className="text-gray-900"
+              />
+              {selectedLocation && (
+                <div className="mt-4 text-center">
+                  <button
+                    onClick={() => handleLocationChange(null)}
+                    className="text-blue-200 hover:text-white text-sm underline"
+                  >
+                    Clear location and show all markets
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -15,7 +15,10 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import type { Express } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 
@@ -51,6 +54,10 @@ import {
   FileUploadValidation,
   PresignUploadDto,
   S3ClientService,
+  LocationService,
+  LocationSearchDto,
+  ReverseGeocodeDto,
+  MarketSearchByLocationDto,
 } from '@app/common';
 import { RateLimitMiddleware, RATE_LIMITS } from './middleware/rate-limit.middleware';
 import { SanitizationMiddleware } from './middleware/sanitization.middleware';
@@ -69,6 +76,8 @@ export class MarketsController {
     private readonly marketsService: MarketsService,
     private readonly marketPriceMigrationService: MarketPriceMigrationService,
     private readonly s3ClientService: S3ClientService,
+    private readonly locationService: LocationService,
+    @InjectModel('Market') private readonly marketModel: Model<any>,
   ) {}
 
   @Post()
@@ -355,6 +364,85 @@ export class MarketsController {
         category: uploadData.category || 'market',
         url: `https://example.com/uploads/${file.filename}` // Mock URL
       }
+    };
+  }
+
+  @Post('location/search')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'seller', 'buyer')
+  async searchLocations(@Body() searchDto: LocationSearchDto) {
+    const result = await this.locationService.searchLocations(searchDto.query, searchDto.limit);
+    
+    if (!result.success) {
+      throw new BadRequestException(result.error || 'Location search failed');
+    }
+
+    return {
+      results: result.results.map(location => ({
+        displayName: location.displayName,
+        address: this.locationService.formatAddress(location),
+        lat: parseFloat(location.lat),
+        lon: parseFloat(location.lon),
+        placeId: location.placeId,
+        type: location.type,
+        importance: location.importance,
+      })),
+    };
+  }
+
+  @Post('location/reverse-geocode')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'seller', 'buyer')
+  async reverseGeocode(@Body() reverseGeocodeDto: ReverseGeocodeDto) {
+    const result = await this.locationService.reverseGeocode(reverseGeocodeDto.lat, reverseGeocodeDto.lon);
+    
+    if (!result.success) {
+      throw new BadRequestException(result.error || 'Reverse geocoding failed');
+    }
+
+    if (!result.result) {
+      throw new BadRequestException('No location found for the given coordinates');
+    }
+
+    return {
+      result: {
+        displayName: result.result.displayName,
+        address: this.locationService.formatAddress(result.result),
+        lat: parseFloat(result.result.lat),
+        lon: parseFloat(result.result.lon),
+        placeId: result.result.placeId,
+        type: result.result.type,
+        importance: result.result.importance,
+      },
+    };
+  }
+
+  @Post('search-by-location')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'seller', 'buyer')
+  async searchMarketsByLocation(@Body() searchDto: MarketSearchByLocationDto) {
+    // Directly query markets with coordinates, bypassing findAll filters
+    const marketsWithLocation = await this.marketModel.find({
+      latitude: { $exists: true, $ne: null },
+      longitude: { $exists: true, $ne: null },
+      isDeleted: { $ne: true },
+      isActive: true
+    }).exec();
+    
+    const nearbyMarkets = this.locationService.findMarketsWithinRadius(
+      searchDto.latitude,
+      searchDto.longitude,
+      marketsWithLocation,
+      searchDto.radiusKm
+    );
+
+    return {
+      markets: nearbyMarkets.map(item => ({
+        ...item.market.toObject(),
+        distance: Math.round(item.distance * 100) / 100, // Round to 2 decimal places
+      })),
+      totalFound: nearbyMarkets.length,
+      searchRadius: searchDto.radiusKm,
     };
   }
 

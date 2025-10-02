@@ -11,6 +11,13 @@ interface EditMarketForm {
   name: string;
   description: string;
   location: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
+  state?: string;
+  latitude?: number;
+  longitude?: number;
   date: string;
   startTime: string;
   endTime: string;
@@ -50,6 +57,13 @@ export default function EditMarket() {
     name: '',
     description: '',
     location: '',
+    address: '',
+    city: '',
+    postalCode: '',
+    country: '',
+    state: '',
+    latitude: undefined,
+    longitude: undefined,
     date: '',
     startTime: '',
     endTime: '',
@@ -84,6 +98,13 @@ export default function EditMarket() {
           name: foundMarket.name,
           description: foundMarket.description,
           location: foundMarket.location,
+          address: foundMarket.address || '',
+          city: foundMarket.city || '',
+          postalCode: foundMarket.postalCode || '',
+          country: foundMarket.country || '',
+          state: foundMarket.state || '',
+          latitude: foundMarket.latitude,
+          longitude: foundMarket.longitude,
           date: formattedDate,
           startTime: foundMarket.startTime,
           endTime: foundMarket.endTime,
@@ -327,10 +348,18 @@ export default function EditMarket() {
       // Ensure 1:1 logic - booths available equals vendor limit
       const finalBoothsAvailable = formData.vendorLimit || formData.boothsAvailable;
       
+      const normalize = (v: any) => (v === '' ? undefined : v);
       const marketData: Partial<CreateMarketRequest> = {
         name: formData.name,
         description: formData.description,
         location: formData.location,
+        address: normalize(formData.address),
+        city: normalize(formData.city),
+        postalCode: normalize(formData.postalCode),
+        country: normalize(formData.country),
+        state: normalize(formData.state),
+        latitude: formData.latitude,
+        longitude: formData.longitude,
         date: formData.date,
         startTime: formData.startTime,
         endTime: formData.endTime,

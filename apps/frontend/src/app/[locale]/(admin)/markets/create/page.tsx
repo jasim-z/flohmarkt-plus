@@ -6,16 +6,25 @@ import { useRouter } from "next/navigation";
 import { FaStore, FaMapMarkerAlt, FaImage, FaUsers, FaTags, FaArrowLeft, FaSave, FaTimes, FaTrash, FaPlus, FaUpload } from "react-icons/fa";
 import { createMarket, CreateMarketRequest } from "../../../../api/markets";
 import { uploadFile, validateFile, createPreviewUrl, revokePreviewUrl, UploadProgress } from "@/app/lib/uploadUtils";
+import LocationPicker from "@/components/LocationPicker";
+import { LocationResult } from "@/app/api/location";
 
 interface CreateMarketForm {
   name: string;
   description: string;
   location: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
+  state?: string;
+  latitude?: number;
+  longitude?: number;
   date: string;
   startTime: string;
   endTime: string;
   isActive: boolean;
-  bannerImage: string;
+  bannerImage?: string;
   additionalImages: string[];
   vendorLimit?: number;
   boothsAvailable?: number;
@@ -48,11 +57,18 @@ export default function CreateMarket() {
     name: '',
     description: '',
     location: '',
+    address: '',
+    city: '',
+    postalCode: '',
+    country: '',
+    state: '',
+    latitude: undefined,
+    longitude: undefined,
     date: '',
     startTime: '',
     endTime: '',
     isActive: true,
-    bannerImage: '',
+    bannerImage: undefined,
     additionalImages: [],
     vendorLimit: undefined,
     boothsAvailable: undefined,
@@ -63,6 +79,66 @@ export default function CreateMarket() {
   const [bannerImage, setBannerImage] = useState<UploadedImage | null>(null);
   const [additionalImages, setAdditionalImages] = useState<UploadedImage[]>([]);
   const [, setUploadProgress] = useState<UploadProgress[]>([]);
+
+  // Location change handler
+  const handleLocationChange = (location: LocationResult | null) => {
+    if (location) {
+      const display = location.displayName || location.address || '';
+      const parts = display.split(',').map(p => p.trim());
+
+      // Try robust regex: ", <postal> <city>, <state>, <country>" at the end
+      const match = display.match(/,\s*(\d{4,5})\s+([^,]+),\s*([^,]+),\s*([^,]+)\s*$/);
+      let postalCode = '';
+      let city = '';
+      let state = '';
+      let country = '';
+
+      if (match) {
+        postalCode = match[1] || '';
+        city = (match[2] || '').trim();
+        state = (match[3] || '').trim();
+        country = (match[4] || '').trim();
+      } else {
+        // Fallback heuristics
+        const postalCodeMatch = display.match(/\b\d{4,5}\b/);
+        postalCode = postalCodeMatch ? postalCodeMatch[0] : '';
+
+        // City: segment that contains postal, with postal removed
+        const cityPart = postalCode ? parts.find(p => p.includes(postalCode)) : undefined;
+        city = cityPart ? cityPart.replace(postalCode, '').trim() : '';
+
+        // State and country from trailing segments
+        if (parts.length >= 2) {
+          country = parts[parts.length - 1] || '';
+          state = parts[parts.length - 2] || '';
+        }
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        location: location.address,
+        address: location.address,
+        city,
+        postalCode,
+        country,
+        state,
+        latitude: location.lat,
+        longitude: location.lon,
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        location: '',
+        address: '',
+        city: '',
+        postalCode: '',
+        country: '',
+        state: '',
+        latitude: undefined,
+        longitude: undefined,
+      }));
+    }
+  };
 
   const handleInputChange = (field: keyof CreateMarketForm, value: string | number | boolean | undefined) => {
     setFormData(prev => {
@@ -184,7 +260,7 @@ export default function CreateMarket() {
     if (bannerImage) {
       revokePreviewUrl(bannerImage.previewUrl);
       setBannerImage(null);
-      setFormData(prev => ({ ...prev, bannerImage: '' }));
+      setFormData(prev => ({ ...prev, bannerImage: undefined }));
     }
   };
 
@@ -207,9 +283,20 @@ export default function CreateMarket() {
     setSuccess(null);
 
     try {
-      // Validate required fields
-      if (!formData.name || !formData.description || !formData.location || !formData.date || !formData.startTime || !formData.endTime || !formData.bannerImage) {
-        throw new Error('Please fill in all required fields including banner image');
+      // Debug: Log form data to see what's being submitted
+      console.log('Form data being submitted:', formData);
+      
+      // Validate required fields with specific error messages
+      const missingFields = [];
+      if (!formData.name) missingFields.push('Market name');
+      if (!formData.description) missingFields.push('Market description');
+      if (!formData.location) missingFields.push('Market location');
+      if (!formData.date) missingFields.push('Market date');
+      if (!formData.startTime) missingFields.push('Start time');
+      if (!formData.endTime) missingFields.push('End time');
+      
+      if (missingFields.length > 0) {
+        throw new Error(`Please fill in the following required fields: ${missingFields.join(', ')}`);
       }
 
       // Validate time logic
@@ -241,10 +328,18 @@ export default function CreateMarket() {
       // Ensure 1:1 logic - booths available equals vendor limit
       const finalBoothsAvailable = formData.vendorLimit || formData.boothsAvailable;
       
+      const normalize = (v: any) => (v === '' ? undefined : v);
       const marketData: CreateMarketRequest = {
         name: formData.name,
         description: formData.description,
         location: formData.location,
+        address: normalize(formData.address),
+        city: normalize(formData.city),
+        postalCode: normalize(formData.postalCode),
+        country: normalize(formData.country),
+        state: normalize(formData.state),
+        latitude: formData.latitude,
+        longitude: formData.longitude,
         date: formData.date,
         startTime: formData.startTime,
         endTime: formData.endTime,
@@ -361,16 +456,12 @@ export default function CreateMarket() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Location *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.location}
-                    onChange={(e) => handleInputChange('location', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter market location"
-                    required
+                  <LocationPicker
+                    onLocationChange={handleLocationChange}
+                    placeholder="Search for market location..."
+                    label="Location"
+                    required={true}
+                    showCurrentLocation={true}
                   />
                 </div>
 

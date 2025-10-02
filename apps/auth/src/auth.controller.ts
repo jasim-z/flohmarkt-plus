@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AuthService } from './auth.service';
-import { LocalAuthGuard, JwtAuthGuard, S3ClientService, UpdateUserDto } from '@app/common';
+import { LocalAuthGuard, JwtAuthGuard, S3ClientService, UpdateUserDto, LocationService, LocationSearchDto, LocationUpdateDto, ReverseGeocodeDto } from '@app/common';
 import { UsersService } from './users/users.service';
 import { Types } from 'mongoose';
 
@@ -21,6 +21,7 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
     private readonly s3ClientService: S3ClientService,
+    private readonly locationService: LocationService,
   ) {}
 
   @UseGuards(LocalAuthGuard)
@@ -108,5 +109,79 @@ export class AuthController {
       console.error('Error getting user:', error);
       return null;
     }
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('location/search')
+  async searchLocations(@Body() searchDto: LocationSearchDto) {
+    const result = await this.locationService.searchLocations(searchDto.query, searchDto.limit);
+    
+    if (!result.success) {
+      throw new BadRequestException(result.error || 'Location search failed');
+    }
+
+    return {
+      results: result.results.map(location => ({
+        displayName: location.displayName,
+        address: this.locationService.formatAddress(location),
+        lat: parseFloat(location.lat),
+        lon: parseFloat(location.lon),
+        placeId: location.placeId,
+        type: location.type,
+        importance: location.importance,
+      })),
+    };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('location/reverse-geocode')
+  async reverseGeocode(@Body() reverseGeocodeDto: ReverseGeocodeDto) {
+    const result = await this.locationService.reverseGeocode(reverseGeocodeDto.lat, reverseGeocodeDto.lon);
+    
+    if (!result.success) {
+      throw new BadRequestException(result.error || 'Reverse geocoding failed');
+    }
+
+    if (!result.result) {
+      throw new BadRequestException('No location found for the given coordinates');
+    }
+
+    return {
+      result: {
+        displayName: result.result.displayName,
+        address: this.locationService.formatAddress(result.result),
+        lat: parseFloat(result.result.lat),
+        lon: parseFloat(result.result.lon),
+        placeId: result.result.placeId,
+        type: result.result.type,
+        importance: result.result.importance,
+      },
+    };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('location')
+  async updateLocation(@Request() req, @Body() locationDto: LocationUpdateDto) {
+    const userId = req.user._id;
+    
+    // Update user location
+    const updatedUser = await this.usersService.updateUserProfile(userId, locationDto);
+    
+    return {
+      success: true,
+      user: {
+        id: updatedUser._id,
+        email: updatedUser.email,
+        displayName: updatedUser.displayName,
+        city: updatedUser.city,
+        neighborhood: updatedUser.neighborhood,
+        postalCode: updatedUser.postalCode,
+        address: updatedUser.address,
+        country: updatedUser.country,
+        state: updatedUser.state,
+        latitude: updatedUser.latitude,
+        longitude: updatedUser.longitude,
+      },
+    };
   }
 }

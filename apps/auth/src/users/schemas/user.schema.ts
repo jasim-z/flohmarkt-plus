@@ -34,11 +34,23 @@ export class User extends AbstractDocument {
   @Prop()
   neighborhood?: string;
 
+  @Prop()
+  postalCode?: string;
+
+  @Prop()
+  address?: string;
+
   @Prop({ type: Number })
   latitude?: number;
 
   @Prop({ type: Number })
   longitude?: number;
+
+  @Prop()
+  country?: string;
+
+  @Prop()
+  state?: string;
 
   @Prop()
   phoneNumber?: string;
@@ -78,7 +90,9 @@ export class User extends AbstractDocument {
 export const UserSchema = SchemaFactory.createForClass(User);
 
 // Indexes for geospatial queries and search
-UserSchema.index({ location: '2dsphere' });
+UserSchema.index({ latitude: 1, longitude: 1 });
 UserSchema.index({ city: 1, neighborhood: 1 });
+UserSchema.index({ postalCode: 1 });
+UserSchema.index({ country: 1, state: 1, city: 1 });
 // Unique index for email is already defined via @Prop({ unique: true })
 UserSchema.index({ role: 1 });

@@ -7,6 +7,8 @@ import { FaCamera, FaEdit } from 'react-icons/fa';
 import { validateFile } from '@/app/lib/uploadUtils';
 import { presignProfileUpload, updateUserProfile } from '@/app/api/users';
 import { Toast } from '@/components';
+import LocationPicker from '@/components/LocationPicker';
+import { LocationResult, updateUserLocation } from '@/app/api/location';
 
 interface ProfileViewProps {
   userId: string;
@@ -21,6 +23,8 @@ export function ProfileView({ userId, isOwnProfile = false, viewerRole }: Profil
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error'; isVisible: boolean } | null>(null);
+  const [editingLocation, setEditingLocation] = useState(false);
+  const [updatingLocation, setUpdatingLocation] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Prevent redirects during upload
@@ -172,6 +176,55 @@ export function ProfileView({ userId, isOwnProfile = false, viewerRole }: Profil
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+    }
+  };
+
+  // Location change handler
+  const handleLocationChange = async (location: LocationResult | null) => {
+    if (!location || !isOwnProfile) return;
+
+    setUpdatingLocation(true);
+    try {
+      await updateUserLocation({
+        address: location.address,
+        city: location.displayName.split(',')[0]?.trim() || '',
+        postalCode: location.displayName.match(/\d{5}/)?.[0] || '',
+        country: location.displayName.split(',').pop()?.trim() || '',
+        latitude: location.lat,
+        longitude: location.lon,
+      });
+
+      // Update profile state
+      setProfile(prev => prev ? {
+        ...prev,
+        address: location.address,
+        city: location.displayName.split(',')[0]?.trim() || '',
+        postalCode: location.displayName.match(/\d{5}/)?.[0] || '',
+        country: location.displayName.split(',').pop()?.trim() || '',
+        latitude: location.lat,
+        longitude: location.lon,
+      } : null);
+
+      // Update user context
+      if (currentUser && setUser) {
+        setUser({
+          ...currentUser,
+          address: location.address,
+          city: location.displayName.split(',')[0]?.trim() || '',
+          postalCode: location.displayName.match(/\d{5}/)?.[0] || '',
+          country: location.displayName.split(',').pop()?.trim() || '',
+          latitude: location.lat,
+          longitude: location.lon,
+        });
+      }
+
+      setToast({ message: 'Location updated successfully!', type: 'success', isVisible: true });
+      setEditingLocation(false);
+    } catch (err: any) {
+      console.error('Location update failed:', err);
+      setToast({ message: err.message || 'Failed to update location', type: 'error', isVisible: true });
+    } finally {
+      setUpdatingLocation(false);
     }
   };
 
@@ -403,19 +456,50 @@ export function ProfileView({ userId, isOwnProfile = false, viewerRole }: Profil
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Location & Activity</h3>
             
-            {shouldShowField('city') && profile.city && (
-              <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="text-gray-600">City</span>
-                <span className="font-medium text-gray-900">{profile.city}</span>
+            {/* Location Section */}
+            <div className="py-2 border-b border-gray-100">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-gray-600">Location</span>
+                {isOwnProfile && (
+                  <button
+                    onClick={() => setEditingLocation(!editingLocation)}
+                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    disabled={updatingLocation}
+                  >
+                    {editingLocation ? 'Cancel' : 'Edit'}
+                  </button>
+                )}
               </div>
-            )}
-
-            {shouldShowField('neighborhood') && profile.neighborhood && (
-              <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="text-gray-600">Neighborhood</span>
-                <span className="font-medium text-gray-900">{profile.neighborhood}</span>
-              </div>
-            )}
+              
+              {editingLocation && isOwnProfile ? (
+                <div className="mt-2">
+                  <LocationPicker
+                    onLocationChange={handleLocationChange}
+                    placeholder="Search for your location..."
+                    showCurrentLocation={true}
+                    disabled={updatingLocation}
+                  />
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {profile.address && (
+                    <div className="text-sm text-gray-900">{profile.address}</div>
+                  )}
+                  {profile.city && (
+                    <div className="text-sm text-gray-600">{profile.city}</div>
+                  )}
+                  {profile.postalCode && (
+                    <div className="text-sm text-gray-600">{profile.postalCode}</div>
+                  )}
+                  {profile.country && (
+                    <div className="text-sm text-gray-600">{profile.country}</div>
+                  )}
+                  {!profile.address && !profile.city && !profile.postalCode && !profile.country && (
+                    <div className="text-sm text-gray-500 italic">No location set</div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {shouldShowRating() && (
               <div className="flex justify-between py-2 border-b border-gray-100">

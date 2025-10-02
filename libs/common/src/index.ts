@@ -36,6 +36,12 @@ export * from './dto/listing/create-listing.dto';
 export * from './clients/users-service.client';
 export * from './clients/s3.client';
 
+// Services
+export * from './services/location.service';
+
+// Location DTOs
+export * from './dto/location/location.dto';
+
 // Observability
 export * from './middleware/correlation.middleware';
 export * from './interceptors/logging.interceptor';

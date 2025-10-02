@@ -1,7 +1,7 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-import { RmqModule, DatabaseModule, HealthController, MetricsService, MetricsMiddleware, CorrelationMiddleware, S3ClientService } from '@app/common';
+import { RmqModule, DatabaseModule, HealthController, MetricsService, MetricsMiddleware, CorrelationMiddleware, S3ClientService, LocationService } from '@app/common';
 import * as Joi from 'joi';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -56,6 +56,7 @@ import { RateLimitMiddleware, RATE_LIMITS } from './middleware/rate-limit.middle
     SeedService,
     MetricsService,
     S3ClientService,
+    LocationService,
     {
       provide: 'IUserService',
       useExisting: UsersService,

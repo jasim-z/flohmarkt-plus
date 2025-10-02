@@ -90,6 +90,11 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, variant = 'compact', on
             <div className="flex items-center">
               <FaMapMarkerAlt className="w-3 h-3 mr-1 text-red-500" />
               <span className="truncate">{market.location}</span>
+              {market.distance && (
+                <span className="ml-2 text-blue-600 font-medium">
+                  {market.distance.toFixed(1)} km
+                </span>
+              )}
             </div>
             
             <div className="flex items-center">
@@ -147,6 +152,11 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, variant = 'compact', on
           <div className="flex items-center">
             <FaMapMarkerAlt className="w-3 h-3 mr-1 text-red-500" />
             <span className="truncate">{market.location}</span>
+            {market.distance && (
+              <span className="ml-2 text-blue-600 font-medium">
+                {market.distance.toFixed(1)} km
+              </span>
+            )}
           </div>
           
           <div className="flex items-center">

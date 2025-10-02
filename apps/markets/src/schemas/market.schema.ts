@@ -16,6 +16,27 @@ export class Market extends AbstractDocument {
   @Prop({ required: true })
   location: string;
 
+  @Prop()
+  address?: string;
+
+  @Prop()
+  city?: string;
+
+  @Prop()
+  postalCode?: string;
+
+  @Prop()
+  country?: string;
+
+  @Prop()
+  state?: string;
+
+  @Prop({ type: Number })
+  latitude?: number;
+
+  @Prop({ type: Number })
+  longitude?: number;
+
   @Prop({ required: true, type: Date })
   date: Date;
 
@@ -31,8 +52,8 @@ export class Market extends AbstractDocument {
   @Prop({ required: true, type: Types.ObjectId, ref: 'User' })
   createdBy: Types.ObjectId;
 
-  @Prop({ required: true })
-  bannerImage: string;
+  @Prop()
+  bannerImage?: string;
 
   @Prop({ type: [String], default: [] })
   additionalImages: string[];
@@ -63,6 +84,9 @@ export const MarketSchema = SchemaFactory.createForClass(Market);
 
 // Indexes for search and queries
 MarketSchema.index({ location: 1, date: 1 });
+MarketSchema.index({ latitude: 1, longitude: 1 });
+MarketSchema.index({ city: 1, postalCode: 1 });
+MarketSchema.index({ country: 1, state: 1, city: 1 });
 MarketSchema.index({ status: 1 });
 MarketSchema.index({ createdBy: 1 });
 MarketSchema.index({ name: 'text', description: 'text', categories: 'text' });

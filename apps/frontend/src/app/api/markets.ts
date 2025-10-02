@@ -28,6 +28,7 @@ export interface Market {
   isDeleted: boolean;
   createdAt: string;
   updatedAt: string;
+  distance?: number; // Distance in km when location-based search is used
 }
 
 export interface GetMarketsParams {
@@ -46,11 +47,18 @@ export interface CreateMarketRequest {
   name: string;
   description: string;
   location: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
+  state?: string;
+  latitude?: number;
+  longitude?: number;
   date: string;
   startTime: string;
   endTime: string;
   isActive: boolean;
-  bannerImage: string;
+  bannerImage?: string;
   additionalImages?: string[];
   vendorLimit?: number;
   boothsAvailable?: number;

@@ -7,7 +7,7 @@ import { MarketsController } from './markets.controller';
 import { Market, MarketSchema } from './schemas/market.schema';
 import { MarketsRepository } from './markets.repository';
 import { MarketPriceMigrationService } from './migration/add-price-field';
-import { DatabaseModule, JwtStrategy, RolesGuard, HttpUsersServiceClient, CorrelationMiddleware, MetricsService, MetricsMiddleware, HealthController, S3ClientService } from '@app/common';
+import { DatabaseModule, JwtStrategy, RolesGuard, HttpUsersServiceClient, CorrelationMiddleware, MetricsService, MetricsMiddleware, HealthController, S3ClientService, LocationService } from '@app/common';
 import { PassportModule } from '@nestjs/passport';
 import { RateLimitMiddleware, RATE_LIMITS } from './middleware/rate-limit.middleware';
 import { SanitizationMiddleware } from './middleware/sanitization.middleware';
@@ -38,6 +38,7 @@ import * as Joi from 'joi';
     MarketPriceMigrationService,
     MetricsService,
     S3ClientService,
+    LocationService,
     {
       provide: 'USERS_SERVICE_CLIENT',
       useClass: HttpUsersServiceClient,

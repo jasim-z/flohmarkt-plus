@@ -36,6 +36,43 @@ export class UpdateMarketDto {
   @Length(5, 200, { message: 'Market location must be between 5 and 200 characters' })
   location?: string;
 
+  @IsString()
+  @IsOptional()
+  @Length(5, 200, { message: 'Address must be between 5 and 200 characters' })
+  address?: string;
+
+  @IsString()
+  @IsOptional()
+  @Length(2, 100, { message: 'City must be between 2 and 100 characters' })
+  city?: string;
+
+  @IsString()
+  @IsOptional()
+  @Length(5, 10, { message: 'Postal code must be between 5 and 10 characters' })
+  postalCode?: string;
+
+  @IsString()
+  @IsOptional()
+  @Length(2, 100, { message: 'Country must be between 2 and 100 characters' })
+  country?: string;
+
+  @IsString()
+  @IsOptional()
+  @Length(2, 100, { message: 'State must be between 2 and 100 characters' })
+  state?: string;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(-90, { message: 'Latitude must be between -90 and 90' })
+  @Max(90, { message: 'Latitude must be between -90 and 90' })
+  latitude?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(-180, { message: 'Longitude must be between -180 and 180' })
+  @Max(180, { message: 'Longitude must be between -180 and 180' })
+  longitude?: number;
+
   @IsDateString({}, { message: 'Date must be a valid ISO date string' })
   @IsOptional()
   date?: string;
