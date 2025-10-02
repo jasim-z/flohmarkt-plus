@@ -541,13 +541,10 @@ export default function BuyerMarkets() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
           <div className="text-center mb-10 md:mb-16">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent drop-shadow-lg">
-              {selectedLocation ? `Markets in ${selectedLocation.city || selectedLocation.address}` : 'Discover Local Markets'}
+              Discover Local Markets
             </h1>
             <p className="text-xl md:text-2xl text-blue-50 max-w-3xl mx-auto leading-relaxed">
-              {selectedLocation 
-                ? `Find the best markets near ${selectedLocation.address}` 
-                : 'Find the best flea markets, craft fairs, and local events near you'
-              }
+              Find the best flea markets, craft fairs, and local events near you
             </p>
           </div>
           
@@ -734,26 +731,8 @@ export default function BuyerMarkets() {
 
       {/* Mobile Filters Panel */}
       {showMobileFilters && (
-        <div className="lg:hidden bg-white border-b border-gray-200">
+        <div className="lg:hidden bg-gray-50 border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-            {/* Market Count */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <FaStore className="w-4 h-4 text-primary-600" />
-                <span className="text-gray-700 font-medium">
-                  Explore {filteredMarkets.length} markets
-                </span>
-              </div>
-              {hasActiveFilters && (
-                <button
-                  onClick={clearFilters}
-                  className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 hover:border-gray-300"
-                >
-                  <FaTimes className="w-3 h-3" />
-                  <span>Clear filters</span>
-                </button>
-              )}
-            </div>
 
             {/* Status Filter */}
             <div>
@@ -801,75 +780,6 @@ export default function BuyerMarkets() {
         </div>
       )}
 
-      {/* Desktop Filters and Sorting */}
-      <div className="hidden lg:block bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-6">
-              <div className="flex items-center space-x-2">
-                <FaStore className="w-5 h-5 text-primary-600" />
-                <span className="text-gray-700 font-medium text-lg">
-                  Explore {filteredMarkets.length} markets
-                </span>
-              </div>
-              {hasActiveFilters && (
-                <button
-                  onClick={clearFilters}
-                  className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 hover:border-gray-300"
-                >
-                  <FaTimes className="w-3 h-3" />
-                  <span>Clear filters</span>
-                </button>
-              )}
-            </div>
-            
-            <div className="flex items-center space-x-6">
-              {/* Status Filter */}
-              <div className="flex items-center space-x-3">
-                <label className="text-sm font-medium text-gray-700">Status:</label>
-                <select
-                  value={filters.status}
-                  onChange={(e) => handleFilterChange('status', e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white hover:border-gray-400 transition-colors"
-                >
-                  <option value="all">All Markets</option>
-                  <option value="upcoming">Upcoming</option>
-                  <option value="ongoing">Live Now</option>
-                </select>
-              </div>
-              
-              {/* Sort Options */}
-              <div className="flex items-center space-x-3">
-                <label className="text-sm font-medium text-gray-700">Sort by:</label>
-                <div className="flex items-center space-x-2">
-                  <select
-                    value={filters.sortBy}
-                    onChange={(e) => handleSortChange(e.target.value)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white hover:border-gray-400 transition-colors"
-                  >
-                    {SORT_OPTIONS.map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={() => handleSortChange(filters.sortBy)}
-                    className={`p-2 rounded-lg border transition-all duration-200 hover:scale-105 ${
-                      filters.sortOrder === 'asc' 
-                        ? 'border-primary-500 text-primary-600 bg-primary-50 shadow-sm' 
-                        : 'border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-gray-400'
-                    }`}
-                    title={filters.sortOrder === 'asc' ? 'Sort ascending' : 'Sort descending'}
-                  >
-                    {filters.sortOrder === 'asc' ? '↑' : '↓'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Featured Markets Section - Only show when no filters are applied */}
       {featuredMarkets.length > 0 && !hasActiveFilters && (
