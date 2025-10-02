@@ -170,9 +170,11 @@ export class AuthController {
     return {
       success: true,
       user: {
+        _id: updatedUser._id,
         id: updatedUser._id,
         email: updatedUser.email,
         displayName: updatedUser.displayName,
+        role: updatedUser.role,
         city: updatedUser.city,
         neighborhood: updatedUser.neighborhood,
         postalCode: updatedUser.postalCode,

@@ -47,7 +47,7 @@ const SORT_OPTIONS = [
 
 
 export default function BuyerMarkets() {
-  const { user, isLoaded, isLoading: authLoading } = useUser();
+  const { user, isLoaded, isLoading: authLoading, setUserData } = useUser();
   const router = useRouter();
   const params = useParams();
   const [markets, setMarkets] = useState<Market[]>([]);
@@ -92,12 +92,17 @@ export default function BuyerMarkets() {
       setLocationLoading(true);
       try {
         // Save user's location preference
-        await updateUserLocation({
+        const response = await updateUserLocation({
           address: location.address,
           city: location.displayName.split(',')[0]?.trim() || '',
           latitude: location.lat,
           longitude: location.lon,
         });
+        
+        // Update user context with new location data
+        if (response.user) {
+          setUserData(response.user);
+        }
         
         // Fetch first page of markets by location
         await loadLocationMarkets(location, 1, false);
@@ -190,11 +195,24 @@ export default function BuyerMarkets() {
         lon: position.coords.longitude
       });
 
-      if (response.result) {
-        await handleLocationChange(response.result);
-      } else {
-        setError('Could not determine your current location');
-      }
+            if (response.result) {
+              // Save current location to user profile
+              const locationResponse = await updateUserLocation({
+                address: response.result.address,
+                city: response.result.displayName.split(',')[0]?.trim() || '',
+                latitude: response.result.lat,
+                longitude: response.result.lon,
+              });
+              
+              // Update user context with new location data
+              if (locationResponse.user) {
+                setUserData(locationResponse.user);
+              }
+              
+              await handleLocationChange(response.result);
+            } else {
+              setError('Could not determine your current location');
+            }
     } catch (error: any) {
       console.error('Error getting current location:', error);
       if (error.code === 1) {
@@ -223,8 +241,24 @@ export default function BuyerMarkets() {
         type: '',
         importance: 0,
       };
+      
+      // Set the location and show it in the search input
       setSelectedLocation(savedLocation);
-      setLocationSearchValue('');
+      setLocationSearchValue(savedLocation.address);
+      
+      // Clear regular markets and load location markets
+      setMarkets([]);
+      setLocationMarkets([]);
+      setLocationCurrentPage(1);
+      setLocationHasMore(true);
+      
+      // Automatically load markets for the saved location
+      loadLocationMarkets(savedLocation, 1, false).catch(err => {
+        console.error('Error loading saved location markets:', err);
+      });
+    } else if (user && !user.latitude && !user.longitude) {
+      // No saved location, load regular markets
+      fetchMarkets(1, false);
     }
   }, [user]);
 
