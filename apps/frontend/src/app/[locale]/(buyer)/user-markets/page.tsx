@@ -116,7 +116,8 @@ export default function BuyerMarkets() {
       }
     } else {
       // No location selected, fetch all markets
-      fetchMarkets(1, false);
+      // Force bypass of selectedLocation guard inside fetchMarkets
+      fetchMarkets(1, false, true);
     }
   };
 
@@ -307,7 +308,7 @@ export default function BuyerMarkets() {
     }
   }, [user]); // Remove filters dependency since we handle it separately above
 
-  const fetchMarkets = async (page: number = 1, append: boolean = false) => {
+  const fetchMarkets = async (page: number = 1, append: boolean = false, force: boolean = false) => {
     try {
       console.log(`Fetching markets: page=${page}, append=${append}`);
       
@@ -317,8 +318,8 @@ export default function BuyerMarkets() {
         setLoadingMore(true);
       }
       
-      // If location is selected, don't use regular fetchMarkets
-      if (selectedLocation) {
+      // If location is selected, don't use regular fetchMarkets unless forced
+      if (selectedLocation && !force) {
         console.log('Location selected, skipping regular fetchMarkets');
         return;
       }

@@ -82,6 +82,11 @@ export class CreateMarketDto {
   @IsNotEmpty({ message: 'Market date is required' })
   date: string;
 
+  // Optional end date (must be >= date if provided)
+  @IsOptional()
+  @IsDateString({}, { message: 'End date must be a valid ISO date string' })
+  endDate?: string;
+
   @IsString()
   @IsNotEmpty({ message: 'Start time is required' })
   @Matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: 'Start time must be in HH:MM format' })

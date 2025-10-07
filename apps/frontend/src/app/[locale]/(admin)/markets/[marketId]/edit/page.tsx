@@ -315,7 +315,7 @@ export default function EditMarket() {
 
     try {
       // Validate required fields
-      if (!formData.name || !formData.description || !formData.location || !formData.date || !formData.startTime || !formData.endTime) {
+      if (!formData.name || !formData.description || !formData.location || !formData.date || !formData.endDate || !formData.startTime || !formData.endTime) {
         throw new Error('Please fill in all required fields');
       }
 
@@ -327,6 +327,10 @@ export default function EditMarket() {
       // Validate date - market date should not be in the past
       const selectedDate = new Date(formData.date);
       const today = new Date();
+      const endDate = new Date(formData.endDate as string);
+      if (endDate < selectedDate) {
+        throw new Error('End date cannot be earlier than start date');
+      }
       today.setHours(0, 0, 0, 0);
       
       if (selectedDate < today) {
@@ -361,6 +365,7 @@ export default function EditMarket() {
         latitude: formData.latitude,
         longitude: formData.longitude,
         date: formData.date,
+        endDate: formData.endDate,
         startTime: formData.startTime,
         endTime: formData.endTime,
         isActive: formData.isActive,

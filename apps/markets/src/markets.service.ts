@@ -36,17 +36,17 @@ export class MarketsService {
       sanitizedData.vendorLimit = sanitizedData.boothsAvailable;
     }
 
-    // Calculate market status based on date and time
-    const marketDate = new Date(sanitizedData.date);
+    // Calculate market status based on start/end date and time
+    const startDateTime = new Date(`${sanitizedData.date}T${sanitizedData.startTime}`);
+    const endDateStr = sanitizedData.endDate || sanitizedData.date;
+    const endDateTime = new Date(`${endDateStr}T${sanitizedData.endTime}`);
     const now = new Date();
-    const marketStartTime = new Date(sanitizedData.date + 'T' + sanitizedData.startTime);
-    const marketEndTime = new Date(sanitizedData.date + 'T' + sanitizedData.endTime);
-    
+
     let status: string;
-    if (marketDate < now && now < marketEndTime) {
-      status = 'ongoing';
-    } else if (marketDate > now || (marketDate.getTime() === now.getTime() && marketStartTime > now)) {
+    if (startDateTime > now) {
       status = 'upcoming';
+    } else if (now >= startDateTime && now <= endDateTime) {
+      status = 'ongoing';
     } else {
       status = 'past';
     }
@@ -102,17 +102,17 @@ export class MarketsService {
           sanitizedData.vendorLimit = sanitizedData.boothsAvailable;
         }
 
-        // Calculate market status based on date and time
-        const marketDate = new Date(sanitizedData.date);
+        // Calculate market status based on start/end date and time
+        const startDateTime = new Date(`${sanitizedData.date}T${sanitizedData.startTime}`);
+        const endDateStr = sanitizedData.endDate || sanitizedData.date;
+        const endDateTime = new Date(`${endDateStr}T${sanitizedData.endTime}`);
         const now = new Date();
-        const marketStartTime = new Date(sanitizedData.date + 'T' + sanitizedData.startTime);
-        const marketEndTime = new Date(sanitizedData.date + 'T' + sanitizedData.endTime);
-        
+
         let status: string;
-        if (marketDate < now && now < marketEndTime) {
-          status = 'ongoing';
-        } else if (marketDate > now || (marketDate.getTime() === now.getTime() && marketStartTime > now)) {
+        if (startDateTime > now) {
           status = 'upcoming';
+        } else if (now >= startDateTime && now <= endDateTime) {
+          status = 'ongoing';
         } else {
           status = 'past';
         }

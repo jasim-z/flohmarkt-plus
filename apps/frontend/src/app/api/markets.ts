@@ -11,7 +11,8 @@ export interface Market {
   name: string;
   description: string;
   location: string;
-  date: string;
+  date: string; // start date
+  endDate?: string; // new: end date
   startTime: string;
   endTime: string;
   isActive: boolean;

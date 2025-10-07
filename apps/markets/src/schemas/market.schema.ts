@@ -37,8 +37,13 @@ export class Market extends AbstractDocument {
   @Prop({ type: Number })
   longitude?: number;
 
+  // Start date of the market
   @Prop({ required: true, type: Date })
   date: Date;
+
+  // End date of the market (new)
+  @Prop({ type: Date })
+  endDate?: Date;
 
   @Prop({ required: true })
   startTime: string;

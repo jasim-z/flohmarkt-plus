@@ -20,7 +20,8 @@ interface CreateMarketForm {
   state?: string;
   latitude?: number;
   longitude?: number;
-  date: string;
+  date: string; // start date
+  endDate?: string; // end date
   startTime: string;
   endTime: string;
   isActive: boolean;
@@ -65,6 +66,7 @@ export default function CreateMarket() {
     latitude: undefined,
     longitude: undefined,
     date: '',
+    endDate: '',
     startTime: '',
     endTime: '',
     isActive: true,
@@ -145,7 +147,7 @@ export default function CreateMarket() {
       const updated = {
         ...prev,
         [field]: value
-      };
+      } as CreateMarketForm;
       
       // Auto-fill booths available when vendor limit changes (1:1 logic)
       if (field === 'vendorLimit' && typeof value === 'number') {
@@ -283,52 +285,28 @@ export default function CreateMarket() {
     setSuccess(null);
 
     try {
-      // Debug: Log form data to see what's being submitted
-      console.log('Form data being submitted:', formData);
-      
-      // Validate required fields with specific error messages
-      const missingFields = [];
+      const missingFields = [] as string[];
       if (!formData.name) missingFields.push('Market name');
       if (!formData.description) missingFields.push('Market description');
       if (!formData.location) missingFields.push('Market location');
-      if (!formData.date) missingFields.push('Market date');
+      if (!formData.date) missingFields.push('Start date');
+      if (!formData.endDate) missingFields.push('End date');
       if (!formData.startTime) missingFields.push('Start time');
       if (!formData.endTime) missingFields.push('End time');
-      
-      if (missingFields.length > 0) {
-        throw new Error(`Please fill in the following required fields: ${missingFields.join(', ')}`);
+      if (missingFields.length > 0) throw new Error(`Please fill in: ${missingFields.join(', ')}`);
+
+      if (formData.startTime >= formData.endTime && formData.date === formData.endDate) {
+        throw new Error('End time must be after start time when start and end dates are the same');
       }
 
-      // Validate time logic
-      if (formData.startTime >= formData.endTime) {
-        throw new Error('End time must be after start time');
-      }
+      const start = new Date(formData.date);
+      const end = new Date(formData.endDate as string);
+      const today = new Date(); today.setHours(0,0,0,0);
+      if (start < today) throw new Error('Start date cannot be in the past');
+      if (end < start) throw new Error('End date cannot be earlier than start date');
 
-      // Validate date - market date should not be in the past
-      const selectedDate = new Date(formData.date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      if (selectedDate < today) {
-        throw new Error('Market date cannot be in the past');
-      }
-
-      // Validate if market is happening today, ensure start time is in the future
-      if (selectedDate.getTime() === today.getTime()) {
-        const now = new Date();
-        const currentTime = now.getHours() * 60 + now.getMinutes();
-        const [startHours, startMinutes] = formData.startTime.split(':').map(Number);
-        const startTimeInMinutes = startHours * 60 + startMinutes;
-        
-        if (startTimeInMinutes <= currentTime) {
-          throw new Error('If creating a market for today, start time must be in the future');
-        }
-      }
-
-      // Ensure 1:1 logic - booths available equals vendor limit
-      const finalBoothsAvailable = formData.vendorLimit || formData.boothsAvailable;
-      
       const normalize = (v: any) => (v === '' ? undefined : v);
+      const finalBoothsAvailable = formData.vendorLimit || formData.boothsAvailable;
       const marketData: CreateMarketRequest = {
         name: formData.name,
         description: formData.description,
@@ -341,6 +319,7 @@ export default function CreateMarket() {
         latitude: formData.latitude,
         longitude: formData.longitude,
         date: formData.date,
+        endDate: formData.endDate,
         startTime: formData.startTime,
         endTime: formData.endTime,
         isActive: formData.isActive,
@@ -352,9 +331,7 @@ export default function CreateMarket() {
       };
 
       await createMarket(marketData);
-      
-      setSuccess('Market created successfully! The status will be automatically determined based on the date and time.');
-      // Redirect to markets list on success
+      setSuccess('Market created successfully');
       router.push('/en/markets');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create market');
@@ -466,44 +443,23 @@ export default function CreateMarket() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Date *
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) => handleInputChange('date', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Date *</label>
+                  <input type="date" value={formData.date} onChange={(e) => handleInputChange('date', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">End Date *</label>
+                  <input type="date" value={formData.endDate || ''} onChange={(e) => handleInputChange('endDate', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Start Time *
-                  </label>
-                  <input
-                    type="time"
-                    value={formData.startTime}
-                    onChange={(e) => handleInputChange('startTime', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Time *</label>
+                  <input type="time" value={formData.startTime} onChange={(e) => handleInputChange('startTime', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    End Time *
-                  </label>
-                  <input
-                    type="time"
-                    value={formData.endTime}
-                    onChange={(e) => handleInputChange('endTime', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">End Time *</label>
+                  <input type="time" value={formData.endTime} onChange={(e) => handleInputChange('endTime', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required />
                 </div>
               </div>
             </div>
