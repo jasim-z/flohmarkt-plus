@@ -69,6 +69,10 @@ export default function BuyerHome() {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const lastListingRef = useRef<HTMLDivElement | null>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const requestIdRef = useRef(0);
+  const initialLoadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const filtersTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const sortTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check authentication and redirect to markets for buyers
   useEffect(() => {
@@ -86,18 +90,24 @@ export default function BuyerHome() {
   }, [user, isLoaded, authLoading, router, params.locale]);
 
   // Fetch listings with current parameters
-  const fetchListings = useCallback(async (page: number = 1, append: boolean = false) => {
+  const fetchListings = useCallback(async (page: number = 1, append: boolean = false, searchOverride?: string) => {
     try {
+      // Mark this request as the latest one
+      const currentRequestId = ++requestIdRef.current;
       const params: GetListingsParams = {
         page,
         limit: 20,
-        search: searchTerm || undefined,
+        search: (searchOverride ?? searchTerm) || undefined,
         sortBy,
         sortOrder,
         ...filters
       };
 
       const response = await getAllListings(params);
+      // If a newer request was fired, ignore this response
+      if (currentRequestId !== requestIdRef.current) {
+        return;
+      }
       
       // Handle both new paginated response and legacy array response
       let listingsData: Listing[] = [];
@@ -153,12 +163,25 @@ export default function BuyerHome() {
     }
   }, [searchTerm, sortBy, sortOrder, filters]);
 
-  // Initial load
+  // Initial load (debounced to avoid racing with user typing)
   useEffect(() => {
-    if (user && user.role === 'buyer') {
-      fetchListings(1, false);
+    if (initialLoadTimeoutRef.current) {
+      clearTimeout(initialLoadTimeoutRef.current);
     }
-  }, [user, fetchListings]);
+    if (user && user.role === 'buyer') {
+      initialLoadTimeoutRef.current = setTimeout(() => {
+        // If user started typing, skip the initial fetch
+        if (!searchTerm) {
+          fetchListings(1, false);
+        }
+      }, 450);
+    }
+    return () => {
+      if (initialLoadTimeoutRef.current) {
+        clearTimeout(initialLoadTimeoutRef.current);
+      }
+    };
+  }, [user, fetchListings, searchTerm]);
 
   // Handle search
   const handleSearch = useCallback((search: string) => {
@@ -172,27 +195,37 @@ export default function BuyerHome() {
       setCurrentPage(1);
       setListings([]);
       setLoading(true);
-      fetchListings(1, false);
+      fetchListings(1, false, search);
     }, 300);
   }, [fetchListings]);
 
   // Handle filters change
   const handleFiltersChange = useCallback((newFilters: Record<string, unknown>) => {
     setFilters(newFilters);
-    setCurrentPage(1);
-    setListings([]);
-    setLoading(true);
-    fetchListings(1, false);
+    if (filtersTimeoutRef.current) {
+      clearTimeout(filtersTimeoutRef.current);
+    }
+    filtersTimeoutRef.current = setTimeout(() => {
+      setCurrentPage(1);
+      setListings([]);
+      setLoading(true);
+      fetchListings(1, false);
+    }, 400);
   }, [fetchListings]);
 
   // Handle sort change
   const handleSortChange = useCallback((newSortBy: string, newSortOrder: 'asc' | 'desc') => {
     setSortBy(newSortBy);
     setSortOrder(newSortOrder);
-    setCurrentPage(1);
-    setListings([]);
-    setLoading(true);
-    fetchListings(1, false);
+    if (sortTimeoutRef.current) {
+      clearTimeout(sortTimeoutRef.current);
+    }
+    sortTimeoutRef.current = setTimeout(() => {
+      setCurrentPage(1);
+      setListings([]);
+      setLoading(true);
+      fetchListings(1, false);
+    }, 300);
   }, [fetchListings]);
 
   // Handle clear filters

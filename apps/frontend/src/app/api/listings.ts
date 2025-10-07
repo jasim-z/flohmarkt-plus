@@ -71,7 +71,7 @@ export async function getListingsByMarket(marketId: string, params: GetListingsP
     const queryParams = new URLSearchParams();
     if (params.page) queryParams.append('page', params.page.toString());
     if (params.limit) queryParams.append('limit', params.limit.toString());
-    if (params.search) queryParams.append('search', params.search);
+    if (params.search && params.search.trim().length > 0) queryParams.append('search', params.search.trim());
     if (params.sortBy) queryParams.append('sortBy', params.sortBy);
     if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
     if (params.category) queryParams.append('category', params.category);
@@ -100,7 +100,7 @@ export async function getAllListings(params: GetListingsParams = {}): Promise<{ 
     const queryParams = new URLSearchParams();
     if (params.page) queryParams.append('page', params.page.toString());
     if (params.limit) queryParams.append('limit', params.limit.toString());
-    if (params.search) queryParams.append('search', params.search);
+    if (params.search && params.search.trim().length > 0) queryParams.append('search', params.search.trim());
     if (params.sortBy) queryParams.append('sortBy', params.sortBy);
     if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
     if (params.category) queryParams.append('category', params.category);
@@ -132,7 +132,7 @@ export async function getListingsBySellerAndMarket(
     const queryParams = new URLSearchParams();
     if (params.page) queryParams.append('page', params.page.toString());
     if (params.limit) queryParams.append('limit', params.limit.toString());
-    if (params.search) queryParams.append('search', params.search);
+    if (params.search && params.search.trim().length > 0) queryParams.append('search', params.search.trim());
     if (params.sortBy) queryParams.append('sortBy', params.sortBy);
     if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
     
