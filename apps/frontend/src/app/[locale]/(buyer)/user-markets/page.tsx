@@ -13,7 +13,7 @@ import {
   FaMapMarkerAlt,
   FaLocationArrow
 } from 'react-icons/fa';
-import { getMarkets, Market } from '@/app/api/markets';
+import { getMarkets, getFeaturedMarkets, Market } from '@/app/api/markets';
 import { MarketCard } from '@/components/business';
 import { ProfilePhotoUpload } from '@/components';
 import { LocationResult, searchMarketsByLocation, searchLocations, updateUserLocation, reverseGeocode } from '@/app/api/location';
@@ -372,8 +372,8 @@ export default function BuyerMarkets() {
 
   const fetchFeaturedMarkets = async () => {
     try {
-      const response = await getMarkets({ isFeatured: 'true', limit: 4 });
-      setFeaturedMarkets(response.data || []);
+      const response = await getFeaturedMarkets(4);
+      setFeaturedMarkets((response.data || []).slice(0, 4));
     } catch (err) {
       console.error('Error fetching featured markets:', err);
     }
@@ -819,8 +819,12 @@ export default function BuyerMarkets() {
       {/* Featured Markets Section - Only show when no filters are applied */}
       {featuredMarkets.length > 0 && !hasActiveFilters && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-6">Featured Markets</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 mb-12">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900">Featured Markets</h2>
+            <span className="text-xs font-semibold px-2 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200">Curated</span>
+          </div>
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4 md:p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
             {featuredMarkets.map((market) => (
               <MarketCard
                 key={market._id}
@@ -829,12 +833,16 @@ export default function BuyerMarkets() {
                 onClick={() => handleMarketClick(market._id)}
               />
             ))}
+            </div>
           </div>
         </div>
       )}
 
       {/* All Markets Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {featuredMarkets.length > 0 && !hasActiveFilters && (
+          <hr className="border-t border-gray-200 mb-6" />
+        )}
         <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-6">All Markets</h2>
         
         {loading ? (
@@ -910,7 +918,7 @@ export default function BuyerMarkets() {
                       onClick={() => loadMoreMarkets()}
                       className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm"
                     >
-                      Load More Manually
+                      Load More
                     </button>
                   </div>
                 )}

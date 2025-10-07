@@ -166,6 +166,19 @@ export async function getMarkets(params: GetMarketsParams = {}): Promise<Paginat
   }
 }
 
+export async function getFeaturedMarkets(limit: number = 4): Promise<PaginatedMarketsResponse> {
+  try {
+    const searchParams = new URLSearchParams();
+    if (limit) searchParams.append('limit', limit.toString());
+    const url = `/markets/featured?${searchParams.toString()}`;
+    const response = await marketsApiClient.get(url);
+    return response.data;
+  } catch (error) {
+    const apiError = apiErrorHandler.handleError(error);
+    throw apiError;
+  }
+}
+
 export async function getMarketsByUser(userId: string): Promise<Market[]> {
   try {
     const response = await marketsApiClient.get(`/markets/user/${userId}`);

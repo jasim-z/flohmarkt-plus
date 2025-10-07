@@ -21,25 +21,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import type { Express } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
-
-// Extend Express namespace to include Multer
-declare global {
-  namespace Express {
-    namespace Multer {
-      interface File {
-        fieldname: string;
-        originalname: string;
-        encoding: string;
-        mimetype: string;
-        size: number;
-        destination: string;
-        filename: string;
-        path: string;
-        buffer: Buffer;
-      }
-    }
-  }
-}
 import { MarketsService } from './markets.service';
 import { MarketPriceMigrationService } from './migration/add-price-field';
 import { JwtAuthGuard, RolesGuard, Roles } from '@app/common';
@@ -99,8 +80,9 @@ export class MarketsController {
   @Get('featured')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'seller', 'buyer')
-  getFeaturedMarkets() {
-    return this.marketsService.getFeaturedMarkets();
+  getFeaturedMarkets(@Query('limit') limit?: number) {
+    const parsedLimit = limit ? Number(limit) : 4;
+    return this.marketsService.getFeaturedMarkets(parsedLimit);
   }
 
   @Get('user/:userId')

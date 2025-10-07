@@ -57,10 +57,10 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, variant = 'compact', on
         role="button"
         tabIndex={0}
         data-testid="market-card"
-        className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all duration-300 cursor-pointer market-card"
+        className="bg-white rounded-xl shadow-sm border border-amber-200 overflow-hidden hover:shadow-md transition-all duration-300 cursor-pointer market-card ring-1 ring-amber-100"
       >
         {/* Banner Image */}
-        <div className="relative h-32 bg-gradient-to-br from-primary-100 to-primary-200">
+        <div className="relative h-32 bg-gradient-to-br from-amber-50 to-amber-100">
           {market.bannerImage ? (
             <img 
               src={market.bannerImage} 
@@ -69,10 +69,14 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, variant = 'compact', on
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <FaStore data-testid="market-icon" className="w-12 h-12 text-primary-400" />
+              <FaStore data-testid="market-icon" className="w-12 h-12 text-amber-400" />
             </div>
           )}
           
+          {/* Featured Badge */}
+          <div className="absolute top-2 left-2 px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+            Featured
+          </div>
           {/* Status Badge */}
           <div data-testid="market-status" className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-medium ${status.color} status-badge`}>
             <StatusIcon className="inline w-3 h-3 mr-1" />

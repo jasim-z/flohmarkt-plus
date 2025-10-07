@@ -143,30 +143,104 @@ export class MarketsService {
     };
   }
 
-  async getFeaturedMarkets() {
-    const filter = {
+  async getFeaturedMarkets(limit: number = 4) {
+    // Primary: fetch markets explicitly marked as featured
+    const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+
+    const featuredFilter: any = {
       $and: [
-        { isDeleted: false },
-        { isActive: true },
-        { isFeatured: true },
-        // Only show upcoming and ongoing featured markets
         {
           $or: [
-            { status: 'upcoming' },
-            { status: 'ongoing' }
+            { isDeleted: false },
+            { isDeleted: { $exists: false } }
+          ]
+        },
+        { isActive: true },
+        { isFeatured: true },
+        {
+          $or: [
+            // Upcoming markets (future dates or today but hasn't started)
+            {
+              $or: [
+                { date: { $gt: todayEnd } }, // Future date (after today)
+                {
+                  $and: [
+                    { date: { $gte: todayStart, $lt: todayEnd } }, // Today
+                    { startTime: { $gt: now.toTimeString().slice(0, 5) } } // Today but hasn't started
+                  ]
+                }
+              ]
+            },
+            // Ongoing markets (today and currently happening)
+            {
+              $and: [
+                { date: { $gte: todayStart, $lt: todayEnd } }, // Today
+                { startTime: { $lte: now.toTimeString().slice(0, 5) } }, // Started
+                { endTime: { $gte: now.toTimeString().slice(0, 5) } } // Not ended
+              ]
+            }
           ]
         }
       ]
     };
 
-    const markets = await this.marketsRepository.find(filter);
+    let markets = await this.marketsRepository.find(featuredFilter, {
+      sort: { createdAt: -1 },
+      limit,
+    });
+
+    // Fallback: if none are explicitly featured, return most recent active markets
+    if (!markets || markets.length === 0) {
+      const fallbackFilter: any = {
+        $and: [
+          {
+            $or: [
+              { isDeleted: false },
+              { isDeleted: { $exists: false } }
+            ]
+          },
+          { isActive: true },
+          {
+            $or: [
+              // Upcoming markets (future dates or today but hasn't started)
+              {
+                $or: [
+                  { date: { $gt: todayEnd } }, // Future date (after today)
+                  {
+                    $and: [
+                      { date: { $gte: todayStart, $lt: todayEnd } }, // Today
+                      { startTime: { $gt: now.toTimeString().slice(0, 5) } } // Today but hasn't started
+                    ]
+                  }
+                ]
+              },
+              // Ongoing markets (today and currently happening)
+              {
+                $and: [
+                  { date: { $gte: todayStart, $lt: todayEnd } }, // Today
+                  { startTime: { $lte: now.toTimeString().slice(0, 5) } }, // Started
+                  { endTime: { $gte: now.toTimeString().slice(0, 5) } } // Not ended
+                ]
+              }
+            ]
+          }
+        ]
+      };
+      markets = await this.marketsRepository.find(fallbackFilter, {
+        sort: { createdAt: -1 },
+        limit,
+      });
+    }
+
     return {
-      data: markets.slice(0, 10),
+      data: markets,
       pagination: {
         page: 1,
-        limit: 10,
+        limit,
         total: markets.length,
-        totalPages: Math.ceil(markets.length / 10)
+        totalPages: 1
       }
     };
   }
