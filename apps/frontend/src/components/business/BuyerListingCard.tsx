@@ -112,7 +112,12 @@ export default function BuyerListingCard({ listing, onFavorite, onView }: BuyerL
   const isDefaultImage = getImageSrc() === DEFAULT_IMAGE;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 overflow-hidden group">
+    <div
+      onClick={() => onView?.(listing._id)}
+      role="button"
+      tabIndex={0}
+      className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 overflow-hidden group cursor-pointer"
+    >
       {/* Image Section */}
       <div className="relative aspect-square overflow-hidden bg-gray-50">
         {/* Loading State */}
@@ -175,7 +180,7 @@ export default function BuyerListingCard({ listing, onFavorite, onView }: BuyerL
 
         {/* Favorite Button */}
         <button
-          onClick={handleFavorite}
+          onClick={(e) => { e.stopPropagation(); handleFavorite(); }}
           className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-sm hover:bg-gray-50 transition-colors"
         >
           <FaHeart 
@@ -224,13 +229,7 @@ export default function BuyerListingCard({ listing, onFavorite, onView }: BuyerL
           {formatDate(listing.createdAt)}
         </div>
 
-        {/* Action Button */}
-        <button
-          onClick={handleView}
-          className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors text-sm"
-        >
-          View Details
-        </button>
+        {/* Card is clickable; button removed */}
       </div>
     </div>
   );
