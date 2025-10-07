@@ -474,20 +474,6 @@ export default function MarketDetails() {
                     {market.isActive ? 'Active' : 'Inactive'}
                   </span>
                 </div>
-                
-                {/* Action Buttons */}
-                <div className="flex-shrink-0 ml-auto">
-                  <div className="flex items-center space-x-3">
-                    <button className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-medium">
-                      <FaHeart className="w-4 h-4" />
-                      <span>Save Market</span>
-                    </button>
-                    <button className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors duration-200 font-medium">
-                      <FaShare className="w-4 h-4" />
-                      <span>Share</span>
-                    </button>
-                  </div>
-                </div>
               </div>
               
               <p className="text-gray-600 text-base sm:text-lg mb-4 sm:mb-6 break-words">{market.description}</p>

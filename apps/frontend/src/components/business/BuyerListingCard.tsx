@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { FaHeart, FaMapMarkerAlt, FaUser, FaStore, FaEye, FaBox } from "react-icons/fa";
+import { FaMapMarkerAlt, FaUser, FaStore, FaEye, FaBox } from "react-icons/fa";
 import { formatPrice } from "@/lib/utils";
 
 interface BuyerListing {
@@ -50,14 +50,11 @@ const DEFAULT_IMAGE = '/default-listing.svg';
 
 export default function BuyerListingCard({ listing, onFavorite, onView }: BuyerListingCardProps) {
   const [imgSrc, setImgSrc] = useState(listing.images?.[0] || DEFAULT_IMAGE);
-  const [isFavorite, setIsFavorite] = useState(false);
+  
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
 
-  const handleFavorite = () => {
-    setIsFavorite(!isFavorite);
-    onFavorite?.(listing._id);
-  };
+  
 
   const handleView = () => {
     onView?.(listing._id);
@@ -178,15 +175,7 @@ export default function BuyerListingCard({ listing, onFavorite, onView }: BuyerL
           </div>
         </div>
 
-        {/* Favorite Button */}
-        <button
-          onClick={(e) => { e.stopPropagation(); handleFavorite(); }}
-          className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-sm hover:bg-gray-50 transition-colors"
-        >
-          <FaHeart 
-            className={`w-4 h-4 ${isFavorite ? 'text-red-500 fill-current' : 'text-gray-400'}`} 
-          />
-        </button>
+        {/* Favorite Button removed */}
       </div>
 
       {/* Content Section */}
