@@ -145,6 +145,16 @@ export async function getListingsBySellerAndMarket(
   }
 }
 
+export async function getListingById(listingId: string): Promise<Listing> {
+  try {
+    const response = await listingsApiClient.get(`/listings/${listingId}`);
+    return response.data;
+  } catch (error) {
+    const apiError = apiErrorHandler.handleError(error);
+    throw apiError;
+  }
+}
+
 export interface CreateListingRequest {
   title: string;
   description: string;

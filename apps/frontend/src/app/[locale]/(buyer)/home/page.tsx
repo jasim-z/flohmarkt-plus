@@ -229,9 +229,8 @@ export default function BuyerHome() {
 
   // Handle view listing
   const handleViewListing = useCallback((listingId: string) => {
-    // TODO: Navigate to listing detail page
-    console.log('View listing:', listingId);
-  }, []);
+    router.push(`/${params.locale}/listings/${listingId}`);
+  }, [router, params.locale]);
 
   // Loading state
   if (authLoading || !isLoaded) {
