@@ -67,6 +67,12 @@ export class User extends AbstractDocument {
   @Prop({ type: Date })
   verificationTokenExpiry?: Date;
 
+  @Prop()
+  resetPasswordToken?: string;
+
+  @Prop({ type: Date })
+  resetPasswordTokenExpiry?: Date;
+
   @Prop({ default: 0, min: 0, max: 5 })
   rating: number;
 

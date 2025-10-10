@@ -257,6 +257,89 @@ export class UsersService {
     };
   }
 
+  async requestPasswordReset(email: string): Promise<{ success: boolean; message: string }> {
+    const user = await this.userModel.findOne({ email: email.toLowerCase().trim() });
+
+    // For security reasons, always return success even if user not found
+    // This prevents email enumeration attacks
+    if (!user) {
+      return {
+        success: true,
+        message: 'If an account with that email exists, a password reset link has been sent.',
+      };
+    }
+
+    // Generate password reset token
+    const resetPasswordToken = crypto.randomBytes(32).toString('hex');
+    const resetPasswordTokenExpiry = new Date();
+    resetPasswordTokenExpiry.setHours(resetPasswordTokenExpiry.getHours() + 1); // Token expires in 1 hour
+
+    // Update user with reset token
+    await this.userModel.updateOne(
+      { _id: user._id },
+      {
+        $set: {
+          resetPasswordToken,
+          resetPasswordTokenExpiry,
+        },
+      }
+    );
+
+    // Send password reset email
+    this.emailService.sendPasswordResetEmail(
+      user.email,
+      user.name || user.displayName,
+      resetPasswordToken
+    ).catch(err => {
+      console.error('Failed to send password reset email:', err);
+    });
+
+    return {
+      success: true,
+      message: 'If an account with that email exists, a password reset link has been sent.',
+    };
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+    // Find user with valid reset token
+    const user = await this.userModel.findOne({
+      resetPasswordToken: token,
+      resetPasswordTokenExpiry: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return {
+        success: false,
+        message: 'Invalid or expired password reset token',
+      };
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password and remove reset token
+    await this.userModel.updateOne(
+      { _id: user._id },
+      {
+        $set: { password: hashedPassword },
+        $unset: { resetPasswordToken: '', resetPasswordTokenExpiry: '' },
+      }
+    );
+
+    // Send confirmation email
+    this.emailService.sendPasswordResetConfirmationEmail(
+      user.email,
+      user.name || user.displayName
+    ).catch(err => {
+      console.error('Failed to send password reset confirmation email:', err);
+    });
+
+    return {
+      success: true,
+      message: 'Password has been reset successfully',
+    };
+  }
+
   async getUsersByIds(request: GetUsersByIdsRequest): Promise<GetUsersResponse> {
     const { userIds, query } = request;
     const { page = 1, limit = 20, search, sortBy = 'displayName', sortOrder = 'asc', role, isActive } = query;

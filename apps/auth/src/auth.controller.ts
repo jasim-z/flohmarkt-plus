@@ -197,4 +197,29 @@ export class AuthController {
     
     return result;
   }
+
+  @Post('forgot-password')
+  async forgotPassword(@Body() body: { email: string }) {
+    if (!body.email) {
+      throw new BadRequestException('Email is required');
+    }
+
+    const result = await this.usersService.requestPasswordReset(body.email);
+    return result;
+  }
+
+  @Post('reset-password')
+  async resetPassword(@Body() body: { token: string; password: string }) {
+    if (!body.token || !body.password) {
+      throw new BadRequestException('Token and password are required');
+    }
+
+    // Validate password strength (same as signup)
+    if (body.password.length < 8) {
+      throw new BadRequestException('Password must be at least 8 characters long');
+    }
+
+    const result = await this.usersService.resetPassword(body.token, body.password);
+    return result;
+  }
 }

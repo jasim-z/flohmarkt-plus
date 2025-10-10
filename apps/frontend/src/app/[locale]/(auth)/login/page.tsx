@@ -78,9 +78,13 @@ export default function Login() {
           </div>
           <div className="p-6 rounded-2xl shadow-lg border border-gray-200 bg-white/95 backdrop-blur">
             <LoginForm onSuccess={handleLoginSuccess} />
-            <div className="mt-3 flex items-center justify-between text-sm">
-              <span className="text-gray-500"></span>
-              <Link href="#" className="text-blue-600 hover:underline">Forgot password?</Link>
+            <div className="mt-4 text-center">
+              <Link 
+                href={`/${params.locale}/forgot-password`} 
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Forgot password?
+              </Link>
             </div>
             <p className="mt-6 text-center text-gray-500 text-sm">
               {t("login.noAccount")} <Link href={`/${params.locale}/signup`} className="text-blue-600 hover:underline">{t("login.signupLink")}</Link>
