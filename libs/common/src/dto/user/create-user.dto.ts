@@ -7,7 +7,9 @@ import {
   MinLength,
   Min,
   Max,
+  MaxLength,
 } from 'class-validator';
+import { IsStrongPassword } from '../validators/password-strength.validator';
 
 export enum UserRole {
   BUYER = 'buyer',
@@ -20,11 +22,17 @@ export class CreateUserDto {
   email: string;
 
   @IsString()
-  @MinLength(6)
+  @MinLength(8, { message: 'Password must be at least 8 characters long' })
+  @MaxLength(100, { message: 'Password must be less than 100 characters' })
+  @IsStrongPassword()
   password: string;
 
   @IsString()
-  displayName: string;
+  @IsOptional()
+  displayName?: string;
+
+  @IsString()
+  name: string;
 
   @IsString()
   @IsOptional()

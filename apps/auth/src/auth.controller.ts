@@ -41,20 +41,21 @@ export class AuthController {
   async getMe(@Request() req) {
     // Get full user data including avatar
     const user = await this.usersService.getUser({ _id: req.user._id });
-    return {
-      id: user._id,
-      email: user.email,
-      role: user.role,
-      displayName: user.displayName,
-      avatar: user.avatar,
-      city: user.city,
-      neighborhood: user.neighborhood,
-      bio: user.bio,
-      phoneNumber: user.phoneNumber,
-      isVerified: user.isVerified,
-      rating: user.rating,
-      isActive: user.isActive,
-    };
+      return {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+        displayName: user.displayName,
+        avatar: user.avatar,
+        city: user.city,
+        neighborhood: user.neighborhood,
+        bio: user.bio,
+        phoneNumber: user.phoneNumber,
+        isVerified: user.isVerified,
+        rating: user.rating,
+        isActive: user.isActive,
+      };
   }
 
   @UseGuards(JwtAuthGuard)
@@ -99,6 +100,7 @@ export class AuthController {
         _id: user._id,
         email: user.email,
         role: user.role,
+        name: user.name,
         displayName: user.displayName,
         city: user.city,
         neighborhood: user.neighborhood,
@@ -173,6 +175,7 @@ export class AuthController {
         _id: updatedUser._id,
         id: updatedUser._id,
         email: updatedUser.email,
+        name: updatedUser.name,
         displayName: updatedUser.displayName,
         role: updatedUser.role,
         city: updatedUser.city,
@@ -185,5 +188,13 @@ export class AuthController {
         longitude: updatedUser.longitude,
       },
     };
+  }
+
+  @Get('verify-email/:token')
+  async verifyEmail(@Request() req) {
+    const token = req.params.token;
+    const result = await this.usersService.verifyEmail(token);
+    
+    return result;
   }
 }

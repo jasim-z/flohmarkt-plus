@@ -35,6 +35,13 @@ import { RateLimitMiddleware, RATE_LIMITS } from './middleware/rate-limit.middle
         AWS_ACCESS_KEY_ID: Joi.string().optional(),
         AWS_SECRET_ACCESS_KEY: Joi.string().optional(),
         S3_BUCKET_NAME: Joi.string().optional(),
+        // Email Configuration (optional)
+        SMTP_HOST: Joi.string().optional(),
+        SMTP_PORT: Joi.number().default(587),
+        SMTP_USER: Joi.string().optional(),
+        SMTP_PASS: Joi.string().optional(),
+        SMTP_FROM: Joi.string().optional(),
+        FRONTEND_URL: Joi.string().default('http://localhost:3000'),
       }),
       load: [loadConfig],
     }),

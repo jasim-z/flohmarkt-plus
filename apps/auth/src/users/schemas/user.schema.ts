@@ -11,8 +11,11 @@ export class User extends AbstractDocument {
   @Prop({ required: true })
   password: string;
 
+  @Prop()
+  displayName?: string;
+
   @Prop({ required: true })
-  displayName: string;
+  name: string;
 
   @Prop()
   bio?: string;
@@ -57,6 +60,12 @@ export class User extends AbstractDocument {
 
   @Prop({ default: false })
   isVerified: boolean;
+
+  @Prop()
+  verificationToken?: string;
+
+  @Prop({ type: Date })
+  verificationTokenExpiry?: Date;
 
   @Prop({ default: 0, min: 0, max: 5 })
   rating: number;

@@ -5,6 +5,26 @@ import { CHARACTER_LIMITS } from '@/app/lib/security/inputSanitizer';
 const sanitizeString = (str: string) => str.replace(/<[^>]*>/g, '').trim();
 const validateNoHtml = (str: string) => !/<[^>]*>/.test(str);
 
+// Password validation
+const validatePasswordStrength = (password: string) => {
+  // At least 8 characters
+  if (password.length < 8) return false;
+  
+  // At least one uppercase letter
+  if (!/[A-Z]/.test(password)) return false;
+  
+  // At least one lowercase letter
+  if (!/[a-z]/.test(password)) return false;
+  
+  // At least one number
+  if (!/\d/.test(password)) return false;
+  
+  // At least one special character
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) return false;
+  
+  return true;
+};
+
 // Phone number validation
 const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
 const validatePhoneNumber = (phone: string) => {
@@ -37,18 +57,31 @@ export const signupSchema = z.object({
   password: z
     .string()
     .min(1, 'Password is required')
-    .min(6, 'Password must be at least 6 characters')
-    .max(100, 'Password must be less than 100 characters'),
+    .min(8, 'Password must be at least 8 characters')
+    .max(100, 'Password must be less than 100 characters')
+    .refine(validatePasswordStrength, 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'),
   confirmPassword: z
     .string()
     .min(1, 'Please confirm your password'),
+  name: z
+    .string()
+    .min(1, 'Name is required')
+    .min(2, 'Name must be at least 2 characters')
+    .max(50, 'Name must be less than 50 characters')
+    .transform(sanitizeString)
+    .refine(validateNoHtml, 'HTML tags are not allowed'),
   displayName: z
     .string()
-    .min(1, 'Display name is required')
     .min(2, 'Display name must be at least 2 characters')
     .max(50, 'Display name must be less than 50 characters')
     .transform(sanitizeString)
-    .refine(validateNoHtml, 'HTML tags are not allowed'),
+    .refine(validateNoHtml, 'HTML tags are not allowed')
+    .optional()
+    .or(z.literal('')),
+  role: z
+    .enum(['buyer', 'seller'], {
+      errorMap: () => ({ message: 'Please select a role' })
+    }),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],

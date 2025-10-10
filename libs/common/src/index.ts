@@ -21,6 +21,9 @@ export * from './dto/user/create-user.dto';
 export * from './dto/user/update-user.dto';
 export * from './dto/user/get-users.dto';
 export * from './dto/user/paginated-users.response';
+
+// Validators
+export * from './dto/validators/password-strength.validator';
 export * from './dto/market/create-market.dto';
 export * from './dto/market/update-market.dto';
 export * from './dto/market/query-market.dto';
@@ -38,6 +41,7 @@ export * from './clients/s3.client';
 
 // Services
 export * from './services/location.service';
+export * from './services/email.service';
 
 // Location DTOs
 export * from './dto/location/location.dto';

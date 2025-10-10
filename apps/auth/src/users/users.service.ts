@@ -4,10 +4,11 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UsersRepository } from './users.repository';
-import { CreateUserDto, UserRole, GetUsersDto, PaginatedUsersResponse, GetUsersByIdsRequest, GetUsersResponse } from '@app/common';
+import { CreateUserDto, UserRole, GetUsersDto, PaginatedUsersResponse, GetUsersByIdsRequest, GetUsersResponse, EmailService } from '@app/common';
 import { User } from './schemas/user.schema';
 
 @Injectable()
@@ -15,18 +16,37 @@ export class UsersService {
   constructor(
     private readonly usersRepository: UsersRepository,
     @InjectModel(User.name) private readonly userModel: Model<User>,
+    private readonly emailService: EmailService,
   ) {}
 
   async createUser(request: CreateUserDto) {
     try {
       await this.validateCreateUserRequest(request);
 
+      // Generate verification token
+      const verificationToken = crypto.randomBytes(32).toString('hex');
+      const verificationTokenExpiry = new Date();
+      verificationTokenExpiry.setHours(verificationTokenExpiry.getHours() + 24); // Token expires in 24 hours
+
       const user = await this.usersRepository.create({
         ...request,
         password: await bcrypt.hash(request.password, 10),
         role: request.role || UserRole.BUYER, // Default to buyer
         isActive: true,
+        isVerified: false,
+        verificationToken,
+        verificationTokenExpiry,
         memberSince: new Date(),
+      });
+
+      // Send verification email (don't wait for it to complete)
+      this.emailService.sendVerificationEmail(
+        user.email,
+        user.name || user.displayName,
+        verificationToken
+      ).catch(err => {
+        console.error('Failed to send verification email:', err);
+        // Don't fail user creation if email fails
       });
 
       return user;
@@ -85,6 +105,7 @@ export class UsersService {
     // Return only public information
     return {
       _id: user._id,
+      name: user.name,
       displayName: user.displayName,
       avatar: user.avatar,
       bio: user.bio,
@@ -110,8 +131,7 @@ export class UsersService {
     
     if (search) {
       filter.$or = [
-        { firstName: { $regex: search, $options: 'i' } },
-        { lastName: { $regex: search, $options: 'i' } },
+        { name: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } },
         { displayName: { $regex: search, $options: 'i' } },
       ];
@@ -140,6 +160,7 @@ export class UsersService {
       .select({
         _id: 1,
         email: 1,
+        name: 1,
         displayName: 1,
         role: 1,
         isActive: 1,
@@ -160,6 +181,7 @@ export class UsersService {
     const transformedUsers = users.map((user: any) => ({
       _id: user._id?.toString() || '',
       email: user.email || '',
+      name: user.name || '',
       displayName: user.displayName || '',
       role: user.role || '',
       isActive: user.isActive ?? false,
@@ -207,6 +229,34 @@ export class UsersService {
     });
   }
 
+  async verifyEmail(token: string): Promise<{ success: boolean; message: string }> {
+    const user = await this.userModel.findOne({
+      verificationToken: token,
+      verificationTokenExpiry: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return {
+        success: false,
+        message: 'Invalid or expired verification token',
+      };
+    }
+
+    // Update user as verified
+    await this.userModel.updateOne(
+      { _id: user._id },
+      {
+        $set: { isVerified: true },
+        $unset: { verificationToken: '', verificationTokenExpiry: '' },
+      }
+    );
+
+    return {
+      success: true,
+      message: 'Email verified successfully',
+    };
+  }
+
   async getUsersByIds(request: GetUsersByIdsRequest): Promise<GetUsersResponse> {
     const { userIds, query } = request;
     const { page = 1, limit = 20, search, sortBy = 'displayName', sortOrder = 'asc', role, isActive } = query;
@@ -230,8 +280,7 @@ export class UsersService {
     
     if (search) {
       filter.$or = [
-        { firstName: { $regex: search, $options: 'i' } },
-        { lastName: { $regex: search, $options: 'i' } },
+        { name: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } },
         { displayName: { $regex: search, $options: 'i' } },
       ];
@@ -252,6 +301,7 @@ export class UsersService {
       .select({
         _id: 1,
         email: 1,
+        name: 1,
         displayName: 1,
         role: 1,
         isActive: 1,
@@ -273,6 +323,7 @@ export class UsersService {
     const transformedUsers = users.map((user: any) => ({
       _id: user._id?.toString() || '',
       email: user.email || '',
+      name: user.name || '',
       displayName: user.displayName || '',
       role: user.role || '',
       isActive: user.isActive ?? false,
