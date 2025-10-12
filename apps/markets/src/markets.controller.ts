@@ -320,7 +320,7 @@ export class MarketsController {
   @Roles('admin')
   @UseInterceptors(FileInterceptor('file'))
   async uploadImage(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: any,
     @Body() uploadData: UploadImageDto
   ) {
     if (!file) {

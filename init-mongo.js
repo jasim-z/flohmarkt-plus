@@ -1,16 +1,17 @@
-// Initialize the replica set
-rs.initiate({
-  _id: 'rs0',
-  members: [
-    { _id: 0, host: 'mongodb-primary:27017' },
-    { _id: 1, host: 'mongodb-secondary:27017' },
-    { _id: 2, host: 'mongodb-arbiter:27017', arbiterOnly: true },
-  ],
+// Initialize standalone MongoDB (no replica set needed for development)
+// Create the flohmarkt database
+db = db.getSiblingDB('flohmarkt');
+
+// Create a user for the application
+db.createUser({
+  user: 'flohmarkt_user',
+  pwd: 'flohmarkt_password',
+  roles: [
+    {
+      role: 'readWrite',
+      db: 'flohmarkt'
+    }
+  ]
 });
 
-// Wait for the replica set to be ready
-while (!rs.isMaster().ismaster) {
-  sleep(1000);
-}
-
-print('Replica set initialized successfully'); 
+print('Standalone MongoDB initialized successfully'); 

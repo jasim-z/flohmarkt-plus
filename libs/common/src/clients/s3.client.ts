@@ -12,11 +12,9 @@ export class S3ClientService {
     
     this.s3Client = new S3Client({
       region: process.env.AWS_REGION || 'us-east-1',
-      endpoint: process.env.S3_ENDPOINT || undefined, // For MinIO or other S3-compatible services
-      forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true' || false,
       credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'minioadmin',
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'minioadmin',
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
       },
     });
   }
@@ -35,22 +33,6 @@ export class S3ClientService {
       ContentType: contentType,
     });
 
-    // Always use the external endpoint for presigned URLs if available
-    const externalEndpoint = process.env.S3_EXTERNAL_ENDPOINT;
-    
-    if (externalEndpoint) {
-      const externalS3Client = new S3Client({
-        region: process.env.AWS_REGION || 'us-east-1',
-        endpoint: externalEndpoint,
-        forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true' || false,
-        credentials: {
-          accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'minioadmin',
-          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'minioadmin',
-        },
-      });
-      return await getSignedUrl(externalS3Client, command, { expiresIn });
-    }
-
     return await getSignedUrl(this.s3Client, command, { expiresIn });
   }
 
@@ -66,21 +48,6 @@ export class S3ClientService {
       Key: key,
     });
 
-    // Create a separate S3 client for presigned URLs that uses the external endpoint
-    const externalEndpoint = process.env.S3_EXTERNAL_ENDPOINT || process.env.S3_ENDPOINT;
-    if (externalEndpoint && externalEndpoint !== process.env.S3_ENDPOINT) {
-      const externalS3Client = new S3Client({
-        region: process.env.AWS_REGION || 'us-east-1',
-        endpoint: externalEndpoint,
-        forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true' || false,
-        credentials: {
-          accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'minioadmin',
-          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'minioadmin',
-        },
-      });
-      return await getSignedUrl(externalS3Client, command, { expiresIn });
-    }
-
     return await getSignedUrl(this.s3Client, command, { expiresIn });
   }
 
@@ -88,13 +55,6 @@ export class S3ClientService {
    * Get the public URL for a file (if bucket is public)
    */
   getPublicUrl(key: string): string {
-    if (process.env.S3_ENDPOINT) {
-      // For MinIO or other S3-compatible services, use external endpoint for public URLs
-      const externalEndpoint = process.env.S3_EXTERNAL_ENDPOINT || process.env.S3_ENDPOINT;
-      return `${externalEndpoint}/${this.bucketName}/${key}`;
-    }
-    
-    // For AWS S3
     return `https://${this.bucketName}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${key}`;
   }
 

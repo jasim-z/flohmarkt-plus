@@ -186,10 +186,12 @@ export class MarketsService {
       ]
     };
 
-    let markets = await this.marketsRepository.find(featuredFilter, {
-      sort: { createdAt: -1 },
-      limit,
-    });
+    let markets = await this.marketModel
+      .find(featuredFilter)
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean()
+      .exec();
 
     // Fallback: if none are explicitly featured, return most recent active markets
     if (!markets || markets.length === 0) {
@@ -228,10 +230,12 @@ export class MarketsService {
           }
         ]
       };
-      markets = await this.marketsRepository.find(fallbackFilter, {
-        sort: { createdAt: -1 },
-        limit,
-      });
+      markets = await this.marketModel
+        .find(fallbackFilter)
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .lean()
+        .exec();
     }
 
     return {

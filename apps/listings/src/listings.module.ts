@@ -21,10 +21,7 @@ import * as Joi from 'joi';
       validationSchema: Joi.object({
         MONGODB_URI: Joi.string().required(),
         PORT: Joi.number().required(),
-        // S3 Configuration
-        S3_ENDPOINT: Joi.string().allow('').optional(),
-        S3_EXTERNAL_ENDPOINT: Joi.string().allow('').optional(),
-        S3_FORCE_PATH_STYLE: Joi.string().default('true'),
+        // AWS S3 Configuration (optional - required only when using S3 features)
         AWS_REGION: Joi.string().default('us-east-1'),
         AWS_ACCESS_KEY_ID: Joi.string().optional(),
         AWS_SECRET_ACCESS_KEY: Joi.string().optional(),

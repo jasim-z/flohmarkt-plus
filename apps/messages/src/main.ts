@@ -6,7 +6,7 @@ import { IoAdapter } from '@nestjs/platform-socket.io';
 async function bootstrap() {
   const app = await NestFactory.create(MessagesModule);
   app.use(cookieParser());
-  const port = process.env.PORT || 3954;
+  const port = process.env.MESSAGES_SERVICE_PORT || 3954;
   app.enableCors({
     origin: 'http://localhost:3000',
     credentials: true,

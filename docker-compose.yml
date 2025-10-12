@@ -8,24 +8,19 @@ services:
     environment:
       - PORT=3949
       - NODE_ENV=development
-      - JWT_EXPIRATION=3600
     env_file:
-      - apps/orders/.env
+      - .env
     secrets:
       - jwt_secret
       - mongodb_uri
     depends_on:
-      mongodb-primary:
+      mongodb:
         condition: service_healthy
-      mongodb-secondary:
-        condition: service_started
-      mongodb-arbiter:
+      rabbitmq:
         condition: service_started
       billing:
         condition: service_started
       auth:
-        condition: service_started
-      rabbitmq:
         condition: service_started
     volumes:
       - .:/usr/src/app
@@ -42,20 +37,14 @@ services:
     environment:
       - PORT=3951
       - NODE_ENV=development
-      - JWT_EXPIRATION=3600
-      - RABBIT_MQ_URI=amqp://guest:guest@rabbitmq:5672/?heartbeat=30&connection_timeout=30000
     env_file:
-      - apps/billing/.env
+      - .env
     secrets:
       - jwt_secret
       - mongodb_uri
     depends_on:
-      mongodb-primary:
+      mongodb:
         condition: service_healthy
-      mongodb-secondary:
-        condition: service_started
-      mongodb-arbiter:
-        condition: service_started
       rabbitmq:
         condition: service_started
       auth:
@@ -75,25 +64,17 @@ services:
     environment:
       - PORT=3950
       - NODE_ENV=development
-      - JWT_EXPIRATION=3600
-      - RABBIT_MQ_URI=amqp://guest:guest@rabbitmq:5672/?heartbeat=30&connection_timeout=30000
     env_file:
+      - .env
       - .env.s3
-      - apps/auth/.env
     secrets:
       - jwt_secret
       - mongodb_uri
     depends_on:
-      mongodb-primary:
+      mongodb:
         condition: service_healthy
-      mongodb-secondary:
-        condition: service_started
-      mongodb-arbiter:
-        condition: service_started
       rabbitmq:
         condition: service_started
-      minio:
-        condition: service_healthy
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules
@@ -109,27 +90,17 @@ services:
     environment:
       - PORT=3952
       - NODE_ENV=development
-      - JWT_EXPIRATION=3600
-      - RABBIT_MQ_URI=amqp://guest:guest@rabbitmq:5672/?heartbeat=30&connection_timeout=30000
     env_file:
+      - .env
       - .env.s3
-      - apps/listings/.env
     secrets:
       - jwt_secret
       - mongodb_uri
     depends_on:
-      mongodb-primary:
+      mongodb:
         condition: service_healthy
-      mongodb-secondary:
-        condition: service_started
-      mongodb-arbiter:
-        condition: service_started
-      rabbitmq:
-        condition: service_started
       auth:
         condition: service_started
-      minio:
-        condition: service_healthy
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules
@@ -145,27 +116,17 @@ services:
     environment:
       - PORT=3953
       - NODE_ENV=development
-      - JWT_EXPIRATION=3600
-      - RABBIT_MQ_URI=amqp://guest:guest@rabbitmq:5672/?heartbeat=30&connection_timeout=30000
     env_file:
+      - .env
       - .env.s3
-      - apps/markets/.env
     secrets:
       - jwt_secret
       - mongodb_uri
     depends_on:
-      mongodb-primary:
+      mongodb:
         condition: service_healthy
-      mongodb-secondary:
-        condition: service_started
-      mongodb-arbiter:
-        condition: service_started
-      rabbitmq:
-        condition: service_started
       auth:
         condition: service_started
-      minio:
-        condition: service_healthy
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules
@@ -181,22 +142,14 @@ services:
     environment:
       - PORT=3954
       - NODE_ENV=development
-      - JWT_EXPIRATION=3600
-      - RABBIT_MQ_URI=amqp://guest:guest@rabbitmq:5672/?heartbeat=30&connection_timeout=30000
     env_file:
-      - apps/messages/.env
+      - .env
     secrets:
       - jwt_secret
       - mongodb_uri
     depends_on:
-      mongodb-primary:
+      mongodb:
         condition: service_healthy
-      mongodb-secondary:
-        condition: service_started
-      mongodb-arbiter:
-        condition: service_started
-      rabbitmq:
-        condition: service_started
       auth:
         condition: service_started
     volumes:
@@ -211,32 +164,9 @@ services:
       - "5673:5672"   # AMQP
       - "15672:15672" # HTTP UI
 
-  minio:
-    image: minio/minio:latest
-    command: server /data --console-address ":9001"
-    environment:
-      - MINIO_ROOT_USER=minioadmin
-      - MINIO_ROOT_PASSWORD=minioadmin
-    ports:
-      - "9000:9000"   # S3 API
-      - "9001:9001"   # Console UI
-    volumes:
-      - minio_data:/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
-
-  mongodb-primary:
+  mongodb:
     image: mongo:5.0
-    command:
-      [
-        "mongod",
-        "--replSet", "rs0",
-        "--bind_ip_all",
-        "--keyFile", "/data/keyfile"
-      ]
+    command: ["mongod", "--bind_ip_all"]
     secrets:
       - mongodb_root_username
       - mongodb_root_password
@@ -244,60 +174,16 @@ services:
       - MONGO_INITDB_ROOT_USERNAME_FILE=/run/secrets/mongodb_root_username
       - MONGO_INITDB_ROOT_PASSWORD_FILE=/run/secrets/mongodb_root_password
     volumes:
-      - 'mongodb_master_data:/data/db'
-      - ./mongo-keyfile:/data/keyfile
+      - 'mongodb_data:/data/db'
       - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
     ports:
       - '27017:27017'
     healthcheck:
-      # Use a simple ping to avoid failing before replica set initializes
       test: ["CMD-SHELL", "mongosh --username root --password password123 --authenticationDatabase admin --eval \"db.runCommand({ ping: 1 }).ok\" | grep 1"]
       interval: 10s
       timeout: 5s
-      retries: 12
-      start_period: 90s
-
-  mongodb-secondary:
-    image: mongo:5.0
-    command:
-      [
-        "mongod",
-        "--replSet", "rs0",
-        "--bind_ip_all",
-        "--keyFile", "/data/keyfile"
-      ]
-    depends_on:
-      - mongodb-primary
-    secrets:
-      - mongodb_uri
-      - mongodb_root_username
-      - mongodb_root_password
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME_FILE=/run/secrets/mongodb_root_username
-      - MONGO_INITDB_ROOT_PASSWORD_FILE=/run/secrets/mongodb_root_password
-    volumes:
-     - ./mongo-keyfile:/data/keyfile
-
-  mongodb-arbiter:
-    image: mongo:5.0
-    command:
-      [
-        "mongod",
-        "--replSet", "rs0",
-        "--bind_ip_all",
-        "--keyFile", "/data/keyfile"
-      ]
-    depends_on:
-      - mongodb-primary
-    secrets:
-      - mongodb_uri
-      - mongodb_root_username
-      - mongodb_root_password
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME_FILE=/run/secrets/mongodb_root_username
-      - MONGO_INITDB_ROOT_PASSWORD_FILE=/run/secrets/mongodb_root_password
-    volumes:
-      - ./mongo-keyfile:/data/keyfile
+      retries: 5
+      start_period: 30s
 
   frontend:
     build:
@@ -349,65 +235,66 @@ services:
     #   retries: 2
     #   start_period: 60s
 
+  # Monitoring services disabled for development
+  # Uncomment these for production monitoring:
+
   # Prometheus - Metrics collection and storage
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus-data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--storage.tsdb.retention.time=200h'
-      - '--web.enable-lifecycle'
-    restart: unless-stopped
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   container_name: prometheus
+  #   ports:
+  #     - "9090:9090"
+  #   volumes:
+  #     - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+  #     - prometheus-data:/prometheus
+  #   command:
+  #     - '--config.file=/etc/prometheus/prometheus.yml'
+  #     - '--storage.tsdb.path=/prometheus'
+  #     - '--web.console.libraries=/etc/prometheus/console_libraries'
+  #     - '--web.console.templates=/etc/prometheus/consoles'
+  #     - '--storage.tsdb.retention.time=200h'
+  #     - '--web.enable-lifecycle'
+  #   restart: unless-stopped
 
   # Grafana - Visualization and dashboards
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    ports:
-      - "3001:3000"
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin123
-      - GF_USERS_ALLOW_SIGN_UP=false
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
-    restart: unless-stopped
-    depends_on:
-      - prometheus
+  # grafana:
+  #   image: grafana/grafana:latest
+  #   container_name: grafana
+  #   ports:
+  #     - "3001:3000"
+  #   environment:
+  #     - GF_SECURITY_ADMIN_USER=admin
+  #     - GF_SECURITY_ADMIN_PASSWORD=admin123
+  #     - GF_USERS_ALLOW_SIGN_UP=false
+  #   volumes:
+  #     - grafana-data:/var/lib/grafana
+  #     - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - prometheus
 
   # Node Exporter - System metrics (optional)
-  node-exporter:
-    image: prom/node-exporter:latest
-    container_name: node-exporter
-    ports:
-      - "9100:9100"
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
-    command:
-      - '--path.procfs=/host/proc'
-      - '--path.rootfs=/rootfs'
-      - '--path.sysfs=/host/sys'
-      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
-    restart: unless-stopped
+  # node-exporter:
+  #   image: prom/node-exporter:latest
+  #   container_name: node-exporter
+  #   ports:
+  #     - "9100:9100"
+  #   volumes:
+  #     - /proc:/host/proc:ro
+  #     - /sys:/host/sys:ro
+  #     - /:/rootfs:ro
+  #   command:
+  #     - '--path.procfs=/host/proc'
+  #     - '--path.rootfs=/rootfs'
+  #     - '--path.sysfs=/host/sys'
+  #     - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+  #   restart: unless-stopped
 
 volumes:
-  mongodb_master_data:
+  mongodb_data:
     driver: local
-  minio_data:
-    driver: local
-  prometheus-data:
-  grafana-data:
+  # prometheus-data:
+  # grafana-data:
 
 secrets:
   jwt_secret:
