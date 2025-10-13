@@ -25,7 +25,7 @@ import {
   FaTimes
 } from 'react-icons/fa';
 import { getOrCreateConversation, listMessages, sendMessage } from '@/app/api/messages';
-import { getListingsBySellerAndMarket, GetListingsParams } from '@/app/api/listings';
+import { getListingsBySellerAndMarket, getListingById } from '@/app/api/listings';
 import { getMarketDetails } from '@/app/api/markets';
 import { Listing } from '@/app/api/listings';
 import { Market, Vendor } from '@/app/api/markets';
@@ -50,71 +50,80 @@ export default function ItemDetail() {
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Get seller information from URL query parameters
+  // Get seller information from URL query parameters (optional, best-effort)
   const getSellerFromURL = useCallback(() => {
     const vendorParam = searchParams.get('vendor');
-    if (vendorParam) {
-      try {
-        const vendorData = JSON.parse(decodeURIComponent(vendorParam));
-        setSeller(vendorData);
-      } catch (error) {
-        console.error('Error parsing vendor data from URL:', error);
-      }
-    }
+    if (!vendorParam) return;
+    try {
+      const vendorData = JSON.parse(decodeURIComponent(vendorParam));
+      setSeller(vendorData);
+    } catch {}
   }, [searchParams]);
 
-  // Fetch market details
-  const fetchMarket = useCallback(async () => {
-    if (!marketId) return;
-    
+  // Fetch market details by id and try to resolve seller from vendor list
+  const fetchMarket = useCallback(async (targetMarketId: string, sellerIdToFind?: string) => {
     try {
-      const marketResponse = await getMarketDetails(marketId as string);
+      const marketResponse = await getMarketDetails(targetMarketId as string);
       setMarket(marketResponse.market);
+      if (!seller && sellerIdToFind && Array.isArray(marketResponse.vendors)) {
+        const found = marketResponse.vendors.find((v) => v._id === sellerIdToFind);
+        if (found) setSeller(found);
+      }
     } catch (error) {
       console.error('Error fetching market:', error);
     }
-  }, [marketId]);
+  }, [seller]);
 
-  // Fetch item details
+  // Fetch item details (by ID) and fetch related items using item's own seller/market
   const fetchItem = useCallback(async () => {
-    if (!marketId || !sellerId) return;
-    
     try {
       setLoading(true);
-      const response = await getListingsBySellerAndMarket(sellerId as string, marketId as string, {
-        page: 1,
-        limit: 100, // Get more items to find the specific one
-        search: '', // We'll filter client-side
-      });
-      
-      const foundItem = response.data.find(item => item._id === itemId);
-      if (foundItem) {
-        setListing(foundItem);
-        
-        // Get related items (same seller, different items)
-        const related = response.data
-          .filter(item => item._id !== itemId)
-          .slice(0, 4);
-        setRelatedListings(related);
+      const item = await getListingById(itemId as string);
+      if (!item) {
+        setListing(null);
+        setRelatedListings([]);
+        return;
+      }
+
+      setListing(item);
+
+      // Resolve actual associations for this item without redirecting
+      const itemSellerId = (item as any).sellerId;
+      const itemMarketId = (item as any).marketId;
+
+      // Ensure market and seller details are loaded based on the item's own ids
+      if (itemMarketId) {
+        await fetchMarket(itemMarketId as string, itemSellerId as string);
+      }
+
+      // Load related items from the item's own seller and market
+      if (itemSellerId && itemMarketId) {
+        try {
+          const relatedRes = await getListingsBySellerAndMarket(itemSellerId as string, itemMarketId as string, { page: 1, limit: 20 });
+          const related = (relatedRes?.data || []).filter((li: any) => li._id !== item._id).slice(0, 4);
+          setRelatedListings(related);
+        } catch (e) {
+          setRelatedListings([]);
+        }
       } else {
-        // Item not found, redirect to seller page
-        router.push(`/${locale}/user-markets/${marketId}/seller/${sellerId}`);
+        setRelatedListings([]);
       }
     } catch (error) {
-      console.error('Error fetching item:', error);
+      console.error('Error fetching item by id:', error);
+      setListing(null);
+      setRelatedListings([]);
     } finally {
       setLoading(false);
     }
-  }, [marketId, sellerId, itemId, locale, router]);
+  }, [itemId, marketId, sellerId, locale, router, fetchMarket]);
 
   // Initial data fetch
   useEffect(() => {
-    if (marketId && sellerId && itemId) {
-      fetchMarket();
+    if (itemId) {
       getSellerFromURL();
       fetchItem();
     }
-  }, [marketId, sellerId, itemId, fetchMarket, getSellerFromURL, fetchItem]);
+  }, [itemId, getSellerFromURL, fetchItem]);
 
   // Auth check
   useEffect(() => {
@@ -183,23 +192,12 @@ export default function ItemDetail() {
   const handleMessageSeller = async () => {
     try {
       const convo = await getOrCreateConversation({ sellerId: sellerId as string, listingId: itemId as string });
-
-      // If this is a fresh conversation, send a default contextual first message
-      try {
-        const res = await listMessages(convo._id, 1, 1);
-        const total = res?.pagination?.total ?? (Array.isArray(res?.data) ? res.data.length : 0);
-        if (total === 0) {
-          const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-          const productUrl = `${baseUrl}/${locale}/user-markets/${marketId}/seller/${sellerId}/item/${itemId}`;
-          const title = listing?.title || 'your item';
-          const defaultText = `Hi, I am interested in "${title}". Link: ${productUrl}`;
-          await sendMessage(convo._id, defaultText);
-        }
-      } catch (err) {
-        // Non-blocking: proceed to conversation even if pre-message fails
-      }
-
-      router.push(`/${locale}/user-messages?conversationId=${convo._id}`);
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      const productUrl = `${baseUrl}/${locale}/user-markets/${marketId}/seller/${sellerId}/item/${itemId}`;
+      const title = listing?.title || 'your item';
+      const prefill = `Hi, I am interested in "${title}". Link: ${productUrl}`;
+      try { await navigator.clipboard.writeText(productUrl); } catch {}
+      router.push(`/${locale}/user-messages?conversationId=${convo._id}&prefill=${encodeURIComponent(prefill)}`);
     } catch (e) {
       console.error('failed to start conversation', e);
     }
@@ -730,7 +728,11 @@ export default function ItemDetail() {
               {relatedListings.map((relatedItem) => (
                 <div
                   key={relatedItem._id}
-                  onClick={() => router.push(`/${locale}/user-markets/${marketId}/seller/${sellerId}/item/${relatedItem._id}`)}
+                  onClick={() => {
+                    const relSellerId = (relatedItem as any).sellerId || sellerId;
+                    const relMarketId = (relatedItem as any).marketId || marketId;
+                    router.push(`/${locale}/user-markets/${relMarketId}/seller/${relSellerId}/item/${relatedItem._id}`);
+                  }}
                   className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all duration-300 cursor-pointer group"
                 >
                   <div className="aspect-square bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center">
@@ -750,7 +752,7 @@ export default function ItemDetail() {
                     </h3>
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-gray-900">
-                        {relatedItem.isFree ? 'Free' : `$${relatedItem.price.toFixed(2)}`}
+                        {relatedItem.isFree ? 'Free' : `€${relatedItem.price.toFixed(2)}`}
                       </span>
                       <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
                         {relatedItem.condition}

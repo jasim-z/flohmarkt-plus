@@ -553,7 +553,7 @@ export default function MarketDetail() {
             <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">Free</span>
           ) : (
             <span className="text-sm font-semibold text-gray-900">
-              ${Number(value || 0).toFixed(2)}
+              €{Number(value || 0).toFixed(2)}
             </span>
           )}
         </div>

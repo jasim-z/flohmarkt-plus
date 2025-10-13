@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { FaArrowLeft, FaBox, FaSearch, FaThLarge, FaListUl, FaStar, FaStore, FaFilter, FaTimes } from 'react-icons/fa';
-import { getOrCreateConversation, listMessages, sendMessage } from '@/app/api/messages';
+import { getOrCreateConversation } from '@/app/api/messages';
 import { getListingsBySellerAndMarket, GetListingsParams } from '@/app/api/listings';
 import { getMarketDetails } from '@/app/api/markets';
 import { Listing } from '@/app/api/listings';
@@ -220,23 +220,16 @@ export default function SellerItems() {
   const handleMessageSeller = useCallback(async (listing?: Listing) => {
     try {
       const convo = await getOrCreateConversation({ sellerId: String(sellerId), listingId: listing?._id });
-      // Seed a contextual first message if conversation has no messages yet
-      try {
-        const res = await listMessages(convo._id, 1, 1);
-        const total = res?.pagination?.total ?? (Array.isArray(res?.data) ? res.data.length : 0);
-        if (total === 0) {
-          const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-          const link = listing?._id
-            ? `${baseUrl}/${locale}/user-markets/${marketId}/seller/${sellerId}/item/${listing._id}`
-            : `${baseUrl}/${locale}/user-markets/${marketId}/seller/${sellerId}`;
-          const title = listing?.title || 'your items';
-          const text = listing
-            ? `Hi, I am interested in "${title}". Link: ${link}`
-            : `Hi, I'd like to talk about your items. Link: ${link}`;
-          await sendMessage(convo._id, text);
-        }
-      } catch {}
-      router.push(`/${locale}/user-messages?conversationId=${convo._id}`);
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      const link = listing?._id
+        ? `${baseUrl}/${locale}/user-markets/${marketId}/seller/${sellerId}/item/${listing._id}`
+        : `${baseUrl}/${locale}/user-markets/${marketId}/seller/${sellerId}`;
+      const title = listing?.title || 'your items';
+      const prefill = listing
+        ? `Hi, I am interested in "${title}". Link: ${link}`
+        : `Hi, I'd like to talk about your items. Link: ${link}`;
+      try { await navigator.clipboard.writeText(link); } catch {}
+      router.push(`/${locale}/user-messages?conversationId=${convo._id}&prefill=${encodeURIComponent(prefill)}`);
     } catch (e) {
       console.error('failed to start conversation', e);
     }
@@ -509,8 +502,7 @@ export default function SellerItems() {
                   <div
                     key={listing._id}
                     onClick={() => {
-                      const vendorData = encodeURIComponent(JSON.stringify(seller));
-                      router.push(`/${locale}/user-markets/${marketId}/seller/${sellerId}/item/${listing._id}?vendor=${vendorData}`);
+                      router.push(`/${locale}/user-markets/${marketId}/seller/${sellerId}/item/${listing._id}`);
                     }}
                     tabIndex={0}
                     role="button"
@@ -559,7 +551,7 @@ export default function SellerItems() {
                             <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">Free</span>
                           ) : (
                             <span className="text-lg font-bold text-gray-900">
-                              ${listing.price.toFixed(2)}
+                              €{listing.price.toFixed(2)}
                             </span>
                           )}
                           <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full font-medium">

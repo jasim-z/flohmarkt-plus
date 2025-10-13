@@ -7,7 +7,7 @@ import {
 } from 'react-icons/fa';
 import { getListingById, Listing, getListingsBySellerAndMarket } from '@/app/api/listings';
 import { getMarketDetails, Market, Vendor } from '@/app/api/markets';
-import { getOrCreateConversation, listMessages, sendMessage } from '@/app/api/messages';
+import { getOrCreateConversation } from '@/app/api/messages';
 import { useUser } from '@/contexts/UserContext';
 
 export default function BuyerListingDetail() {
@@ -89,19 +89,13 @@ export default function BuyerListingDetail() {
       const sellerId = (listing as any)?.sellerId as string | undefined;
       if (!sellerId) return;
       const convo = await getOrCreateConversation({ sellerId, listingId: String(itemId) });
-      // Seed first message if conversation empty
-      try {
-        const res = await listMessages(convo._id, 1, 1);
-        const total = res?.pagination?.total ?? (Array.isArray(res?.data) ? res.data.length : 0);
-        if (total === 0) {
-          const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-          const productUrl = `${baseUrl}/${locale}/listings/${itemId}`;
-          const title = listing?.title || 'your item';
-          const defaultText = `Hi, I am interested in "${title}". Link: ${productUrl}`;
-          await sendMessage(convo._id, defaultText);
-        }
-      } catch {}
-      router.push(`/${locale}/user-messages?conversationId=${convo._id}`);
+      // Build prefill text and copy link
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      const productUrl = `${baseUrl}/${locale}/listings/${itemId}`;
+      const title = listing?.title || 'your item';
+      const prefill = `Hi, I am interested in "${title}". Link: ${productUrl}`;
+      try { await navigator.clipboard.writeText(productUrl); } catch {}
+      router.push(`/${locale}/user-messages?conversationId=${convo._id}&prefill=${encodeURIComponent(prefill)}`);
     } catch (e) {
       console.error('failed to start conversation', e);
     }
@@ -283,7 +277,7 @@ export default function BuyerListingDetail() {
                   {listing.isFree ? (
                     <span className="text-4xl font-bold text-green-600">Free</span>
                   ) : (
-                    <span className="text-4xl font-bold text-gray-900">${listing.price.toFixed(2)}</span>
+                    <span className="text-4xl font-bold text-gray-900">€{listing.price.toFixed(2)}</span>
                   )}
                 </div>
                 <div className="flex items-center space-x-4 mb-6">
@@ -312,7 +306,7 @@ export default function BuyerListingDetail() {
                   {listing.model && (<div className="flex items-center space-x-3"><FaInfoCircle className="text-gray-400 w-4 h-4" /><span className="text-gray-600">Model:</span><span className="font-medium text-gray-900">{listing.model}</span></div>)}
                   <div className="flex items-center space-x-3"><FaMapMarkerAlt className="text-gray-400 w-4 h-4" /><span className="text-gray-600">Location:</span><span className="font-medium text-gray-900">{listing.city}{listing.neighborhood ? `, ${listing.neighborhood}` : ''}</span></div>
                   <div className="flex items-center space-x-3"><FaTruck className="text-gray-400 w-4 h-4" /><span className="text-gray-600">Delivery:</span><span className="font-medium text-gray-900">{listing.deliveryOption}</span></div>
-                  {typeof listing.shippingCost !== 'undefined' && (<div className="flex items-center space-x-3"><FaTruck className="text-gray-400 w-4 h-4" /><span className="text-gray-600">Shipping Cost:</span><span className="font-medium text-gray-900">${Number(listing.shippingCost).toFixed(2)}</span></div>)}
+                  {typeof listing.shippingCost !== 'undefined' && (<div className="flex items-center space-x-3"><FaTruck className="text-gray-400 w-4 h-4" /><span className="text-gray-600">Shipping Cost:</span><span className="font-medium text-gray-900">€{Number(listing.shippingCost).toFixed(2)}</span></div>)}
                   <div className="flex items-center space-x-3"><FaHandshake className="text-gray-400 w-4 h-4" /><span className="text-gray-600">Negotiable:</span><span className={`font-medium ${listing.isNegotiable ? 'text-green-600' : 'text-gray-900'}`}>{listing.isNegotiable ? 'Yes' : 'No'}</span></div>
                 </div>
               </div>
@@ -352,7 +346,7 @@ export default function BuyerListingDetail() {
                   <div className="p-4">
                     <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-2">{relatedItem.title}</h3>
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-gray-900">{relatedItem.isFree ? 'Free' : `$${relatedItem.price.toFixed(2)}`}</span>
+                      <span className="font-bold text-gray-900">{relatedItem.isFree ? 'Free' : `€${relatedItem.price.toFixed(2)}`}</span>
                       <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">{relatedItem.condition}</span>
                     </div>
                   </div>

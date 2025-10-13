@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@/contexts/UserContext';
 import { listConversations, listMessages, sendMessage, markRead } from '@/app/api/messages';
 import { useSocket } from '@/hooks/useSocket';
@@ -17,6 +17,7 @@ interface Msg {
 export default function BuyerChat() {
   const { user, isLoaded } = useUser();
   const { conversationId, locale } = useParams();
+  const search = useSearchParams();
   const router = useRouter();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [conversations, setConversations] = useState<Array<{
@@ -40,6 +41,7 @@ export default function BuyerChat() {
   } | null>(null);
   const topRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const scrollToBottom = () => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -127,7 +129,23 @@ export default function BuyerChat() {
         setLoading(false);
       }
     })();
-  }, [isLoaded, user, conversationId, router, locale]);
+    // Apply prefill if provided via query param
+    const prefill = search.get('prefill');
+    if (prefill) {
+      setText(prefill);
+      // Focus text box after render
+      setTimeout(() => {
+        inputRef.current?.focus();
+        // place cursor at end
+        const el = inputRef.current as HTMLInputElement | null;
+        if (el) {
+          const val = el.value;
+          el.value = '';
+          el.value = val;
+        }
+      }, 0);
+    }
+  }, [isLoaded, user, conversationId, router, locale, search]);
 
   const loadOlder = async () => {
     const nextPage = page + 1;
@@ -218,6 +236,7 @@ export default function BuyerChat() {
               onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }}
               placeholder="Type a message..."
               className="flex-1 border border-gray-300 rounded-lg px-3 py-3 sm:py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px]"
+              ref={inputRef}
             />
             <button 
               onClick={handleSend} 

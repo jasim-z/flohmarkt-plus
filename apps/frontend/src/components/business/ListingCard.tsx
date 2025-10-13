@@ -30,7 +30,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
       <h2 className="text-base sm:text-lg font-semibold mb-2 line-clamp-2">{listing.title}</h2>
       <div className="flex-1" />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-2 space-y-2 sm:space-y-0">
-        <span className="text-blue-600 font-bold text-lg sm:text-xl">${listing.price}</span>
+        <span className="text-blue-600 font-bold text-lg sm:text-xl">€{listing.price}</span>
         <div className="flex space-x-2">
           <button className="flex-1 sm:flex-none px-3 py-2 sm:py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium min-h-[44px] sm:min-h-[32px] transition-colors duration-200">
             Add to Cart

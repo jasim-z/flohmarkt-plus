@@ -123,7 +123,7 @@ export const createListingSchema = z.object({
   price: z
     .number()
     .min(0, 'Price cannot be negative')
-    .max(999999, 'Price must be less than $999,999'),
+    .max(999999, 'Price must be less than €999,999'),
   isFree: z.boolean(),
   category: z
     .string()

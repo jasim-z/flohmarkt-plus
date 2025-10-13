@@ -665,14 +665,12 @@ export default function MarketDetails() {
                   <div
                     key={vendor._id}
                     onClick={() => {
-                      const vendorData = encodeURIComponent(JSON.stringify(vendor));
-                      router.push(`/${params.locale}/user-markets/${params.marketId}/seller/${vendor._id}?vendor=${vendorData}`);
+                      router.push(`/${params.locale}/user-markets/${params.marketId}/seller/${vendor._id}`);
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        const vendorData = encodeURIComponent(JSON.stringify(vendor));
-                        router.push(`/${params.locale}/user-markets/${params.marketId}/seller/${vendor._id}?vendor=${vendorData}`);
+                        router.push(`/${params.locale}/user-markets/${params.marketId}/seller/${vendor._id}`);
                       }
                     }}
                     tabIndex={0}
@@ -867,7 +865,7 @@ export default function MarketDetails() {
                             <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">Free</span>
                           ) : (
                             <span className="text-lg font-bold text-gray-900">
-                              ${listing.price.toFixed(2)}
+                              €{listing.price.toFixed(2)}
                             </span>
                           )}
                           <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full font-medium">

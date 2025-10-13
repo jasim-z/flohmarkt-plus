@@ -286,10 +286,10 @@ export default function BuyerHome() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">
-              Discover Amazing Deals in Your Neighborhood
+              Explore All Items from Every Market
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-              Browse thousands of items from local sellers, find unique treasures, and support your community marketplace.
+              Discover thousands of unique items from sellers across all markets. Find exactly what you're looking for from our complete marketplace collection.
             </p>
             
             {/* Quick Stats */}

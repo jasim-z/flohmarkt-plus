@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import { FaSearch, FaFilter, FaTimes, FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
+import { FaSearch, FaTimes, FaSort, FaSortUp, FaSortDown, FaTag } from 'react-icons/fa';
 
 interface SearchFiltersProps {
   onSearch: (search: string) => void;
@@ -11,15 +11,24 @@ interface SearchFiltersProps {
   isLoading?: boolean;
 }
 
-const CATEGORIES = [
-  'Electronics', 'Clothing', 'Home & Garden', 'Sports', 'Books', 'Toys', 'Automotive',
-  'Health & Beauty', 'Jewelry', 'Art & Collectibles', 'Music', 'Movies', 'Tools',
-  'Furniture', 'Food & Beverages', 'Other'
+// Keep labels user-friendly, but send enum-safe values expected by backend
+const CATEGORY_OPTIONS: { value: string; label: string }[] = [
+  { value: 'electronics', label: 'Electronics' },
+  { value: 'furniture', label: 'Furniture' },
+  { value: 'clothing', label: 'Clothing' },
+  { value: 'books', label: 'Books' },
+  { value: 'sports', label: 'Sports' },
+  { value: 'toys', label: 'Toys' },
+  { value: 'home_garden', label: 'Home & Garden' },
+  { value: 'automotive', label: 'Automotive' },
+  { value: 'collectibles', label: 'Collectibles' },
+  { value: 'art', label: 'Art' },
+  { value: 'music', label: 'Music' },
+  { value: 'tools', label: 'Tools' },
+  { value: 'baby_kids', label: 'Baby & Kids' },
+  { value: 'pets', label: 'Pets' },
+  { value: 'other', label: 'Other' },
 ];
-
-const CONDITIONS = ['New', 'Like New', 'Good', 'Fair', 'Used'];
-
-const DELIVERY_OPTIONS = ['Pickup Only', 'Local Delivery', 'Shipping'];
 
 export default function BuyerSearchFilters({ 
   onSearch, 
@@ -29,18 +38,7 @@ export default function BuyerSearchFilters({
   isLoading = false 
 }: SearchFiltersProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({
-    category: '',
-    condition: '',
-    minPrice: '',
-    maxPrice: '',
-    city: '',
-    neighborhood: '',
-    isFree: false,
-    isNegotiable: false,
-    deliveryOption: ''
-  });
+  const [selectedCategory, setSelectedCategory] = useState('');
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   
@@ -59,11 +57,15 @@ export default function BuyerSearchFilters({
     }, 300);
   }, [onSearch]);
 
-  const handleFilterChange = useCallback((key: string, value: any) => {
-    const newFilters = { ...filters, [key]: value };
-    setFilters(newFilters);
-    onFiltersChange(newFilters);
-  }, [filters, onFiltersChange]);
+  const handleCategoryChange = useCallback((category: string) => {
+    setSelectedCategory(category);
+    // If empty, clear the filter entirely so it isn't sent to API
+    if (!category) {
+      onFiltersChange({});
+      return;
+    }
+    onFiltersChange({ category });
+  }, [onFiltersChange]);
 
   const handleSortChange = useCallback((newSortBy: string) => {
     let newSortOrder: 'asc' | 'desc' = 'desc';
@@ -78,19 +80,8 @@ export default function BuyerSearchFilters({
   }, [sortBy, sortOrder, onSortChange]);
 
   const handleClearFilters = useCallback(() => {
-    const clearedFilters = {
-      category: '',
-      condition: '',
-      minPrice: '',
-      maxPrice: '',
-      city: '',
-      neighborhood: '',
-      isFree: false,
-      isNegotiable: false,
-      deliveryOption: ''
-    };
-    
-    setFilters(clearedFilters);
+    setSelectedCategory('');
+    setSearchTerm('');
     onClearFilters();
   }, [onClearFilters]);
 
@@ -126,27 +117,29 @@ export default function BuyerSearchFilters({
         </div>
       </div>
 
-      {/* Filters and Sort Row */}
+      {/* Category, Sort, and Clear Row */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        {/* Filter Toggle */}
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-          >
-            <FaFilter className="w-4 h-4" />
-            <span>Filters</span>
-            {showFilters && (
-              <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                Active
-              </span>
-            )}
-          </button>
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-4 flex-1">
+          {/* Category Dropdown */}
+          <div className="flex items-center space-x-2">
+            <FaTag className="w-4 h-4 text-gray-500" />
+            <select
+              value={selectedCategory}
+              onChange={(e) => handleCategoryChange(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-700 font-medium"
+              disabled={isLoading}
+            >
+              <option value="">All Categories</option>
+              {CATEGORY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
 
           {/* Sort Options */}
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-600">Sort by:</span>
-            <div className="flex space-x-1">
+          <div className="flex items-center space-x-2 flex-wrap">
+            <span className="text-sm text-gray-600 font-medium">Sort by:</span>
+            <div className="flex flex-wrap gap-2">
               {[
                 { key: 'createdAt', label: 'Date' },
                 { key: 'price', label: 'Price' },
@@ -156,6 +149,7 @@ export default function BuyerSearchFilters({
                 <button
                   key={key}
                   onClick={() => handleSortChange(key)}
+                  disabled={isLoading}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                     sortBy === key
                       ? 'bg-blue-100 text-blue-800'
@@ -173,128 +167,15 @@ export default function BuyerSearchFilters({
         </div>
 
         {/* Clear Filters */}
-        {showFilters && (
+        {(selectedCategory || searchTerm) && (
           <button
             onClick={handleClearFilters}
-            className="px-4 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+            className="px-4 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors font-medium whitespace-nowrap"
           >
-            Clear All Filters
+            Clear All
           </button>
         )}
       </div>
-
-      {/* Filters Panel */}
-      {showFilters && (
-        <div className="mt-6 pt-6 border-t border-gray-200">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Category */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-              <select
-                value={filters.category}
-                onChange={(e) => handleFilterChange('category', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">All Categories</option>
-                {CATEGORIES.map((category) => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Condition */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Condition</label>
-              <select
-                value={filters.condition}
-                onChange={(e) => handleFilterChange('condition', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">All Conditions</option>
-                {CONDITIONS.map((condition) => (
-                  <option key={condition} value={condition}>{condition}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Price Range */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Price Range</label>
-              <div className="flex space-x-2">
-                <input
-                  type="number"
-                  placeholder="Min"
-                  value={filters.minPrice}
-                  onChange={(e) => handleFilterChange('minPrice', e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <span className="text-gray-500 self-center">-</span>
-                <input
-                  type="number"
-                  placeholder="Max"
-                  value={filters.maxPrice}
-                  onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            {/* Location */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
-              <input
-                type="text"
-                placeholder="Enter city"
-                value={filters.city}
-                onChange={(e) => handleFilterChange('city', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-
-          {/* Additional Filters */}
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Checkboxes */}
-            <div className="flex items-center space-x-4">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={filters.isFree}
-                  onChange={(e) => handleFilterChange('isFree', e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <span className="ml-2 text-sm text-gray-700">Free Items Only</span>
-              </label>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={filters.isNegotiable}
-                  onChange={(e) => handleFilterChange('isNegotiable', e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <span className="ml-2 text-sm text-gray-700">Negotiable Price</span>
-              </label>
-            </div>
-
-            {/* Delivery Option */}
-            <div>
-              <select
-                value={filters.deliveryOption}
-                onChange={(e) => handleFilterChange('deliveryOption', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">All Delivery Options</option>
-                {DELIVERY_OPTIONS.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
-} 
+}
