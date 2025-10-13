@@ -178,6 +178,7 @@ export class AuthController {
         name: updatedUser.name,
         displayName: updatedUser.displayName,
         role: updatedUser.role,
+        isVerified: updatedUser.isVerified,
         city: updatedUser.city,
         neighborhood: updatedUser.neighborhood,
         postalCode: updatedUser.postalCode,

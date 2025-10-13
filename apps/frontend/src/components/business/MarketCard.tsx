@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaStore } from 'react-icons/fa';
 import { Market } from '@/app/api/markets';
 
@@ -11,6 +11,12 @@ interface MarketCardProps {
 }
 
 const MarketCard: React.FC<MarketCardProps> = ({ market, variant = 'compact', onClick }) => {
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    // Reset error state when market image changes
+    setImgError(false);
+  }, [market.bannerImage]);
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -61,10 +67,11 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, variant = 'compact', on
       >
         {/* Banner Image */}
         <div className="relative h-32 bg-gradient-to-br from-amber-50 to-amber-100">
-          {market.bannerImage ? (
-            <img 
-              src={market.bannerImage} 
+          {market.bannerImage && !imgError ? (
+            <img
+              src={market.bannerImage}
               alt={market.name}
+              onError={() => setImgError(true)}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
           ) : (
@@ -127,10 +134,11 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, variant = 'compact', on
     >
       {/* Banner Image */}
       <div className="relative h-32 bg-gradient-to-br from-gray-100 to-gray-200">
-        {market.bannerImage ? (
-          <img 
-            src={market.bannerImage} 
+        {market.bannerImage && !imgError ? (
+          <img
+            src={market.bannerImage}
             alt={market.name}
+            onError={() => setImgError(true)}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (

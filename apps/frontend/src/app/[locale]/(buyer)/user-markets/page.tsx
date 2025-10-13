@@ -66,6 +66,8 @@ export default function BuyerMarkets() {
   const [locationMarkets, setLocationMarkets] = useState<Market[]>([]);
   const [locationHasMore, setLocationHasMore] = useState(true);
   const [locationCurrentPage, setLocationCurrentPage] = useState(1);
+  const [totalMarkets, setTotalMarkets] = useState(0);
+  const [showLocationInput, setShowLocationInput] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     search: '',
     category: 'All Markets',
@@ -82,6 +84,7 @@ export default function BuyerMarkets() {
     setSelectedLocation(location);
     setLocationSearchValue('');
     setShowLocationSuggestions(false);
+    setShowLocationInput(false); // Hide input after selection
     setCurrentPage(1);
     setHasMore(true);
     setLocationCurrentPage(1);
@@ -117,6 +120,7 @@ export default function BuyerMarkets() {
     } else {
       // No location selected, fetch all markets
       // Force bypass of selectedLocation guard inside fetchMarkets
+      setShowLocationInput(true); // Show input when clearing location
       fetchMarkets(1, false, true);
     }
   };
@@ -165,6 +169,9 @@ export default function BuyerMarkets() {
         setLocationMarkets(marketsWithDistance);
       }
       
+      // Update total count from backend pagination
+      setTotalMarkets(response.pagination.total || marketsWithDistance.length);
+
       setLocationHasMore(response.pagination.hasNext);
       setLocationCurrentPage(page);
       
@@ -243,9 +250,10 @@ export default function BuyerMarkets() {
         importance: 0,
       };
       
-      // Set the location and show it in the search input
+      // Set the location and hide the input (show compact view)
       setSelectedLocation(savedLocation);
       setLocationSearchValue(savedLocation.address);
+      setShowLocationInput(false); // Start with compact view
       
       // Clear regular markets and load location markets
       setMarkets([]);
@@ -258,7 +266,8 @@ export default function BuyerMarkets() {
         console.error('Error loading saved location markets:', err);
       });
     } else if (user && !user.latitude && !user.longitude) {
-      // No saved location, load regular markets
+      // No saved location, load regular markets and show input
+      setShowLocationInput(true);
       fetchMarkets(1, false);
     }
   }, [user]);
@@ -355,6 +364,13 @@ export default function BuyerMarkets() {
         console.log(`Setting markets: ${response.data?.length} markets`);
       }
       
+      // Update total count from backend pagination
+      if (response?.pagination?.total !== undefined) {
+        setTotalMarkets(response.pagination.total);
+      } else {
+        setTotalMarkets((response.data || []).length);
+      }
+
       // Check if there are more pages
       const hasMorePages = response.pagination && response.pagination.page < response.pagination.totalPages;
       console.log(`Pagination: page=${response.pagination?.page}, totalPages=${response.pagination?.totalPages}, hasMore=${hasMorePages}`);
@@ -573,79 +589,120 @@ export default function BuyerMarkets() {
         <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-purple-500/20"></div>
         <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent"></div>
         
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
-          <div className="text-center mb-10 md:mb-16">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent drop-shadow-lg">
-              Discover Local Markets
-            </h1>
-            <p className="text-xl md:text-2xl text-blue-50 max-w-3xl mx-auto leading-relaxed">
-              Find the best flea markets, craft fairs, and local events near you
-            </p>
-          </div>
+        <div className={`relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 transition-all duration-300 ${selectedLocation && !showLocationInput ? 'py-6' : 'py-16 md:py-24'}`}>
           
-          {/* Location Search */}
-          <div className="max-w-2xl mx-auto mb-8 location-search-container">
-            <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-6 border border-white/20">
-              <div className="text-center mb-6">
-                <h3 className="text-xl font-semibold text-white mb-2">
-                  {selectedLocation ? 'Your Location' : 'Choose Your Location'}
-                </h3>
-                <p className="text-blue-100 text-sm">
-                  {selectedLocation 
-                    ? `Markets near ${selectedLocation.address}` 
-                    : 'Search for your location or use current location'
-                  }
+          {/* Full Hero - No Location Selected */}
+          {(!selectedLocation || showLocationInput) && (
+            <>
+              <div className="text-center mb-10 md:mb-16">
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent drop-shadow-lg">
+                  Discover Local Markets
+                </h1>
+                <p className="text-xl md:text-2xl text-blue-50 max-w-3xl mx-auto leading-relaxed">
+                  Find the best flea markets, craft fairs, and local events near you
                 </p>
               </div>
               
-              <div className="relative group">
-                <FaMapMarkerAlt className="absolute left-5 top-1/2 transform -translate-y-1/2 text-blue-400 w-5 h-5 transition-colors group-focus-within:text-blue-500" />
-                <input
-                  type="text"
-                  placeholder={selectedLocation ? "Change location..." : "Search for your location..."}
-                  value={locationSearchValue}
-                  onChange={(e) => handleLocationSearch(e.target.value)}
-                  className="w-full pl-14 pr-20 py-4 text-gray-900 rounded-2xl border-0 shadow-lg focus:ring-4 focus:ring-blue-300/50 focus:outline-none text-lg bg-white/95 backdrop-blur-sm transition-all duration-300 hover:bg-white"
-                />
-                
-                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
-                  {selectedLocation && (
-                    <button
-                      onClick={() => handleLocationChange(null)}
-                      className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100"
-                      title="Clear location"
-                    >
-                      <FaTimes className="w-4 h-4" />
-                    </button>
+              {/* Location Search */}
+              <div className="max-w-2xl mx-auto mb-8 location-search-container">
+                <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-6 border border-white/20">
+                  <div className="text-center mb-6">
+                    <h3 className="text-xl font-semibold text-white mb-2">
+                      {selectedLocation ? 'Your Location' : 'Choose Your Location'}
+                    </h3>
+                    <p className="text-blue-100 text-sm">
+                      {selectedLocation 
+                        ? `Markets near ${selectedLocation.address}` 
+                        : 'Search for your location or use current location'
+                      }
+                    </p>
+                  </div>
+                  
+                  <div className="relative group">
+                    <FaMapMarkerAlt className="absolute left-5 top-1/2 transform -translate-y-1/2 text-blue-400 w-5 h-5 transition-colors group-focus-within:text-blue-500" />
+                    <input
+                      type="text"
+                      placeholder={selectedLocation ? "Change location..." : "Search for your location..."}
+                      value={locationSearchValue}
+                      onChange={(e) => handleLocationSearch(e.target.value)}
+                      className="w-full pl-14 pr-20 py-4 text-gray-900 rounded-2xl border-0 shadow-lg focus:ring-4 focus:ring-blue-300/50 focus:outline-none text-lg bg-white/95 backdrop-blur-sm transition-all duration-300 hover:bg-white"
+                    />
+                    
+                    <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
+                      {selectedLocation && (
+                        <button
+                          onClick={() => handleLocationChange(null)}
+                          className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100"
+                          title="Clear location"
+                        >
+                          <FaTimes className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button
+                        onClick={handleGetCurrentLocation}
+                        disabled={locationLoading}
+                        className="p-2 text-blue-500 hover:text-blue-600 transition-colors rounded-full hover:bg-blue-50 disabled:opacity-50"
+                        title="Use current location"
+                      >
+                        <FaLocationArrow className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Location Suggestions */}
+                  {showLocationSuggestions && locationSuggestions.length > 0 && (
+                    <div className="absolute z-50 w-full mt-2 bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-60 overflow-y-auto">
+                      {locationSuggestions.map((location, index) => (
+                        <button
+                          key={index}
+                          onClick={() => handleLocationChange(location)}
+                          className="w-full px-6 py-4 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+                        >
+                          <div className="font-medium text-gray-900">{location.displayName}</div>
+                          <div className="text-sm text-gray-500">{location.address}</div>
+                        </button>
+                      ))}
+                    </div>
                   )}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Compact Hero - Location Selected */}
+          {selectedLocation && !showLocationInput && (
+            <div className="max-w-7xl mx-auto">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <h2 className="text-2xl md:text-3xl font-bold">Markets Near You</h2>
+                  <button
+                    onClick={() => setShowLocationInput(true)}
+                    className="flex items-center space-x-2 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full border border-white/30 transition-all duration-200 hover:scale-105"
+                  >
+                    <FaMapMarkerAlt className="w-4 h-4" />
+                    <span className="font-medium">{selectedLocation.address}</span>
+                  </button>
+                </div>
+                <div className="flex items-center space-x-2">
                   <button
                     onClick={handleGetCurrentLocation}
                     disabled={locationLoading}
-                    className="p-2 text-blue-500 hover:text-blue-600 transition-colors rounded-full hover:bg-blue-50 disabled:opacity-50"
+                    className="p-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full border border-white/30 transition-colors disabled:opacity-50"
                     title="Use current location"
                   >
                     <FaLocationArrow className="w-4 h-4" />
                   </button>
+                  <button
+                    onClick={() => handleLocationChange(null)}
+                    className="p-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full border border-white/30 transition-colors"
+                    title="Clear location"
+                  >
+                    <FaTimes className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
-              
-              {/* Location Suggestions */}
-              {showLocationSuggestions && locationSuggestions.length > 0 && (
-                <div className="absolute z-50 w-full mt-2 bg-white rounded-2xl shadow-2xl border border-gray-200 max-h-60 overflow-y-auto">
-                  {locationSuggestions.map((location, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handleLocationChange(location)}
-                      className="w-full px-6 py-4 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
-                    >
-                      <div className="font-medium text-gray-900">{location.displayName}</div>
-                      <div className="text-sm text-gray-500">{location.address}</div>
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
-          </div>
+          )}
 
         </div>
       </div>
@@ -661,7 +718,7 @@ export default function BuyerMarkets() {
                 {selectedLocation ? `Markets near ${selectedLocation.address}` : 'All Markets'}
               </span>
               <span className="text-lg text-gray-500">
-                ({filteredMarkets.length} {filteredMarkets.length === 1 ? 'market' : 'markets'})
+                ({totalMarkets} {totalMarkets === 1 ? 'market' : 'markets'})
               </span>
             </div>
             
