@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { 
   FaArrowLeft, 
-  FaHeart, 
   FaShare, 
   FaMapMarkerAlt, 
   FaClock, 
@@ -44,11 +43,12 @@ export default function ItemDetail() {
   const [seller, setSeller] = useState<Vendor | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isFavorite, setIsFavorite] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [showContactModal, setShowContactModal] = useState(false);
   const [relatedListings, setRelatedListings] = useState<Listing[]>([]);
   const [relatedLoading, setRelatedLoading] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Get seller information from URL query parameters
   const getSellerFromURL = useCallback(() => {
@@ -146,23 +146,38 @@ export default function ItemDetail() {
     }
   };
 
-  const toggleFavorite = () => {
-    setIsFavorite(!isFavorite);
-    // TODO: Implement favorite functionality
+  const getCurrentUrl = () => {
+    if (typeof window === 'undefined') return '';
+    return window.location.href;
   };
 
   const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: listing?.title,
-        text: listing?.description,
-        url: window.location.href,
-      });
-    } else {
-      // Fallback: copy to clipboard
-      navigator.clipboard.writeText(window.location.href);
-      // TODO: Show toast notification
-    }
+    // Open custom share menu; also support native share inside menu
+    setShowShareMenu((prev) => !prev);
+  };
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(getCurrentUrl());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {}
+  };
+
+  const shareToTwitter = () => {
+    const text = encodeURIComponent(`Check this out: ${listing?.title || 'Item'}`);
+    const url = encodeURIComponent(getCurrentUrl());
+    window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const shareToFacebook = () => {
+    const url = encodeURIComponent(getCurrentUrl());
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const shareToWhatsApp = () => {
+    const text = encodeURIComponent(`${listing?.title || 'Item'} - ${getCurrentUrl()}`);
+    window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener,noreferrer');
   };
 
   const handleMessageSeller = async () => {
@@ -305,24 +320,60 @@ export default function ItemDetail() {
                 )}
               </div>
               
-              {/* Action Buttons Overlay */}
-              <div className="absolute top-4 right-4 flex space-x-2">
-                <button
-                  onClick={toggleFavorite}
-                  className={`p-3 rounded-full shadow-lg transition-all duration-200 ${
-                    isFavorite 
-                      ? 'bg-red-500 text-white' 
-                      : 'bg-white/80 hover:bg-white text-gray-800'
-                  }`}
-                >
-                  <FaHeart className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={handleShare}
-                  className="p-3 bg-white/80 hover:bg-white text-gray-800 rounded-full shadow-lg transition-all duration-200"
-                >
-                  <FaShare className="w-4 h-4" />
-                </button>
+              {/* Action Button Overlay */}
+              <div className="absolute top-4 right-4">
+                <div className="relative">
+                  <button
+                    onClick={handleShare}
+                    className="p-3 bg-white/80 hover:bg-white text-gray-800 rounded-full shadow-lg transition-all duration-200"
+                  >
+                    <FaShare className="w-4 h-4" />
+                  </button>
+                  {showShareMenu && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                      <div className="p-2">
+                        <button
+                          onClick={copyLink}
+                          className="w-full text-left px-3 py-2 rounded hover:bg-gray-50 text-gray-700 text-sm"
+                        >
+                          {copied ? 'Copied!' : 'Copy link'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (navigator.share) {
+                              navigator.share({ title: listing?.title, text: listing?.description, url: getCurrentUrl() }).catch(() => {});
+                            } else {
+                              copyLink();
+                            }
+                            setShowShareMenu(false);
+                          }}
+                          className="w-full text-left px-3 py-2 rounded hover:bg-gray-50 text-gray-700 text-sm"
+                        >
+                          Share via device...
+                        </button>
+                        <div className="h-px bg-gray-200 my-2"></div>
+                        <button
+                          onClick={() => { shareToTwitter(); setShowShareMenu(false); }}
+                          className="w-full text-left px-3 py-2 rounded hover:bg-gray-50 text-gray-700 text-sm"
+                        >
+                          Share on Twitter/X
+                        </button>
+                        <button
+                          onClick={() => { shareToFacebook(); setShowShareMenu(false); }}
+                          className="w-full text-left px-3 py-2 rounded hover:bg-gray-50 text-gray-700 text-sm"
+                        >
+                          Share on Facebook
+                        </button>
+                        <button
+                          onClick={() => { shareToWhatsApp(); setShowShareMenu(false); }}
+                          className="w-full text-left px-3 py-2 rounded hover:bg-gray-50 text-gray-700 text-sm"
+                        >
+                          Share on WhatsApp
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -395,12 +446,7 @@ export default function ItemDetail() {
                 </div>
               </div>
               
-              <button
-                onClick={() => router.push(`/${locale}/user-markets/${marketId}/seller/${sellerId}`)}
-                className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
-              >
-                View All Items from This Seller
-              </button>
+              {/* Removed "View All Items from This Seller" button as requested */}
             </div>
 
             {/* Market Information - Hidden on Mobile */}
@@ -468,11 +514,11 @@ export default function ItemDetail() {
                 ) : (
                   <>
                     <span className="text-4xl font-bold text-gray-900">
-                      ${listing.price.toFixed(2)}
+                      €{listing.price.toFixed(2)}
                     </span>
                     {listing.originalPrice && listing.originalPrice > listing.price && (
                       <span className="text-xl text-gray-500 line-through">
-                        ${listing.originalPrice.toFixed(2)}
+                        €{listing.originalPrice.toFixed(2)}
                       </span>
                     )}
                   </>
@@ -555,7 +601,7 @@ export default function ItemDetail() {
                   <div className="flex items-center space-x-3">
                     <FaTruck className="text-gray-400 w-4 h-4" />
                     <span className="text-gray-600">Shipping Cost:</span>
-                    <span className="font-medium text-gray-900">${listing.shippingCost.toFixed(2)}</span>
+                    <span className="font-medium text-gray-900">€{listing.shippingCost.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex items-center space-x-3">
@@ -635,12 +681,7 @@ export default function ItemDetail() {
                 </div>
               </div>
               
-              <button
-                onClick={() => router.push(`/${locale}/user-markets/${marketId}/seller/${sellerId}`)}
-                className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
-              >
-                View All Items from This Seller
-              </button>
+              {/* Removed mobile "View All Items from This Seller" button */}
             </div>
 
             {/* Market Information - Mobile Only */}

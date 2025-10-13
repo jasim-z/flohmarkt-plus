@@ -26,6 +26,11 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, variant = 'compact', on
     });
   };
 
+  const formatDateRange = (startDate: string, endDate?: string) => {
+    const end = endDate || startDate;
+    return `${formatDate(startDate)} - ${formatDate(end)}`;
+  };
+
   const getMarketStatus = (market: Market) => {
     const now = new Date();
     const marketDate = new Date(market.date);
@@ -110,7 +115,7 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, variant = 'compact', on
             
             <div className="flex items-center">
               <FaCalendar className="w-3 h-3 mr-1 text-blue-500" />
-              <span>{formatDate(market.date)}</span>
+              <span>{formatDateRange(market.date, market.endDate)}</span>
             </div>
             
             <div className="flex items-center">
@@ -173,7 +178,7 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, variant = 'compact', on
           
           <div className="flex items-center">
             <FaCalendar className="w-3 h-3 mr-1 text-blue-500" />
-            <span>{formatDate(market.date)}</span>
+            <span>{formatDateRange(market.date, market.endDate)}</span>
           </div>
           
           <div className="flex items-center">

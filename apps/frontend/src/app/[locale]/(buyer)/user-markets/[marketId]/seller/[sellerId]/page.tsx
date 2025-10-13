@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { FaArrowLeft, FaBox, FaSearch, FaThLarge, FaListUl, FaStar, FaStore, FaFilter, FaTimes } from 'react-icons/fa';
+import { getOrCreateConversation, listMessages, sendMessage } from '@/app/api/messages';
 import { getListingsBySellerAndMarket, GetListingsParams } from '@/app/api/listings';
 import { getMarketDetails } from '@/app/api/markets';
 import { Listing } from '@/app/api/listings';
@@ -215,6 +216,31 @@ export default function SellerItems() {
       (listing.tags && listing.tags.some(tag => tag.toLowerCase().includes(searchLower)))
     );
   });
+
+  const handleMessageSeller = useCallback(async (listing?: Listing) => {
+    try {
+      const convo = await getOrCreateConversation({ sellerId: String(sellerId), listingId: listing?._id });
+      // Seed a contextual first message if conversation has no messages yet
+      try {
+        const res = await listMessages(convo._id, 1, 1);
+        const total = res?.pagination?.total ?? (Array.isArray(res?.data) ? res.data.length : 0);
+        if (total === 0) {
+          const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+          const link = listing?._id
+            ? `${baseUrl}/${locale}/user-markets/${marketId}/seller/${sellerId}/item/${listing._id}`
+            : `${baseUrl}/${locale}/user-markets/${marketId}/seller/${sellerId}`;
+          const title = listing?.title || 'your items';
+          const text = listing
+            ? `Hi, I am interested in "${title}". Link: ${link}`
+            : `Hi, I'd like to talk about your items. Link: ${link}`;
+          await sendMessage(convo._id, text);
+        }
+      } catch {}
+      router.push(`/${locale}/user-messages?conversationId=${convo._id}`);
+    } catch (e) {
+      console.error('failed to start conversation', e);
+    }
+  }, [sellerId, marketId, locale, router]);
 
 
 
@@ -526,7 +552,7 @@ export default function SellerItems() {
                         {listing.description}
                       </p>
 
-                      {/* Price & Condition */}
+                      {/* Price & Condition (with inline Message for list view) */}
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-3">
                           {listing.isFree ? (
@@ -540,14 +566,27 @@ export default function SellerItems() {
                             {listing.condition}
                           </span>
                         </div>
+                        {viewMode === 'list' && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleMessageSeller(listing); }}
+                            className="ml-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                          >
+                            Message Seller
+                          </button>
+                        )}
                       </div>
                       
-                      {/* Action Buttons */}
-                      <div className="flex items-center space-x-2">
-                        <button className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors duration-200">
-                          Message Seller
-                        </button>
-                      </div>
+                      {/* Action Buttons (grid view full-width) */}
+                      {viewMode !== 'list' && (
+                        <div className="flex items-center space-x-2 w-full">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleMessageSeller(listing); }}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                          >
+                            Message Seller
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
