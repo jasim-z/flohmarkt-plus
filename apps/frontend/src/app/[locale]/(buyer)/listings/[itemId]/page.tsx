@@ -94,8 +94,13 @@ export default function BuyerListingDetail() {
       const productUrl = `${baseUrl}/${locale}/listings/${itemId}`;
       const title = listing?.title || 'your item';
       const prefill = `Hi, I am interested in "${title}". Link: ${productUrl}`;
-      try { await navigator.clipboard.writeText(productUrl); } catch {}
-      router.push(`/${locale}/user-messages?conversationId=${convo._id}&prefill=${encodeURIComponent(prefill)}`);
+      try { await navigator.clipboard.writeText(prefill); } catch {}
+      const conversationId = (convo as any)?._id || (convo as any)?.id;
+      if (!conversationId) {
+        console.error('Conversation id missing from response', convo);
+        return;
+      }
+      router.push(`/${locale}/user-messages/${conversationId}?prefill=${encodeURIComponent(prefill)}`);
     } catch (e) {
       console.error('failed to start conversation', e);
     }

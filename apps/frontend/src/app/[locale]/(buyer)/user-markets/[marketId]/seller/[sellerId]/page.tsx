@@ -228,8 +228,13 @@ export default function SellerItems() {
       const prefill = listing
         ? `Hi, I am interested in "${title}". Link: ${link}`
         : `Hi, I'd like to talk about your items. Link: ${link}`;
-      try { await navigator.clipboard.writeText(link); } catch {}
-      router.push(`/${locale}/user-messages?conversationId=${convo._id}&prefill=${encodeURIComponent(prefill)}`);
+      try { await navigator.clipboard.writeText(prefill); } catch {}
+      const conversationId = (convo as any)?._id || (convo as any)?.id;
+      if (!conversationId) {
+        console.error('Conversation id missing from response', convo);
+        return;
+      }
+      router.push(`/${locale}/user-messages/${conversationId}?prefill=${encodeURIComponent(prefill)}`);
     } catch (e) {
       console.error('failed to start conversation', e);
     }
