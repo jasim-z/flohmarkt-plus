@@ -6,6 +6,7 @@ import UnAuthourized from "@/components/UnAuthourized";
 import { useUser } from "@/contexts/UserContext";
 import { useEffect, useState } from "react";
 import { getMarkets, Market } from "@/app/api/markets";
+import type { User as AppUser } from "@/app/api/users";
 import { useParams } from "next/navigation";
 
 export default function SellerOverview() {
@@ -19,48 +20,38 @@ export default function SellerOverview() {
   const [upcomingMarkets, setUpcomingMarkets] = useState<Market[]>([]);
 
   useEffect(() => {
-    if (!isLoaded || !user?._id) return;
+    if (!isLoaded || !user) return;
+    const u = user as unknown as AppUser & { id?: string };
+    const userId = u._id || u.id || '';
+    if (!userId) return;
 
     // Active markets count from backend pagination total
     (async () => {
       try {
-        const res = await getMarkets({ page: 1, limit: 1, userId: user._id });
+        const res = await getMarkets({ page: 1, limit: 1, userId });
         setActiveMarkets(res.pagination.total || 0);
       } catch {
         setActiveMarkets(0);
       }
     })();
 
-    // Upcoming joined markets (next 3)
+    // Upcoming joined markets (next 4)
     (async () => {
       try {
-        const res = await getMarkets({ page: 1, limit: 3, userId: user._id, status: 'upcoming', sortBy: 'date', sortOrder: 'asc' });
+        const res = await getMarkets({ page: 1, limit: 4, userId, status: 'upcoming', sortBy: 'date', sortOrder: 'asc' });
         setUpcomingMarkets(res.data || []);
       } catch {
         setUpcomingMarkets([]);
       }
     })();
 
-    // Orders count for seller as total sales
-    (async () => {
-      try {
-        const token = localStorage.getItem('auth_token');
-        const url = `${process.env.NEXT_PUBLIC_ORDERS_API_URL || 'http://localhost:3949'}/orders`;
-        const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-        if (!resp.ok) throw new Error('orders failed');
-        const orders = await resp.json();
-        // Count non-cancelled orders as sales
-        const salesCount = Array.isArray(orders) ? orders.filter((o: { status?: string }) => o?.status !== 'cancelled').length : 0;
-        setTotalSales(salesCount);
-      } catch {
-        setTotalSales(0);
-      }
-    })();
+    // Total sales, rating, verified from user record
+    const u2 = user as unknown as AppUser & { id?: string };
+    setTotalSales(Number(u2.totalSales || 0));
 
-    // Rating & Verified from user profile
     setRating(Number(user?.rating || 0));
     setVerified(Boolean(user?.isVerified));
-  }, [isLoaded, user?._id, user]);
+  }, [isLoaded, user]);
 
   if (role !== 'seller' && isLoaded) return <UnAuthourized />;
 
@@ -139,7 +130,7 @@ export default function SellerOverview() {
         </div>
 
         {/* Navigation Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 mb-8">
           <Link href={`/${params.locale}/explore-markets`} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200 cursor-pointer">
             <div className="flex items-center space-x-4">
               <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-teal-600 rounded-lg flex items-center justify-center">
@@ -148,18 +139,6 @@ export default function SellerOverview() {
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Explore Markets</h3>
                 <p className="text-gray-600 text-sm">Find and join flea markets</p>
-              </div>
-            </div>
-          </Link>
-
-          <Link href={`/${params.locale}/orders`} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200 cursor-pointer">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <FaUsers size={24} className="text-white" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Orders</h3>
-                <p className="text-gray-600 text-sm">Manage your orders</p>
               </div>
             </div>
           </Link>

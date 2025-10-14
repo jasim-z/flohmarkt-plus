@@ -55,6 +55,7 @@ export class AuthController {
         isVerified: user.isVerified,
         rating: user.rating,
         isActive: user.isActive,
+        totalSales: user.totalSales,
       };
   }
 
