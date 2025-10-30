@@ -184,15 +184,6 @@ services:
       - /app/coverage
     ports:
       - '3000:3000'
-    # Performance and stability improvements
-    deploy:
-      resources:
-        limits:
-          memory: 4G
-          cpus: '2.0'
-        reservations:
-          memory: 2G
-          cpus: '1.0'
     restart: unless-stopped
     # Disable health check in development to reduce load
     # healthcheck:
