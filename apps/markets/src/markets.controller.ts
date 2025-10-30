@@ -149,6 +149,13 @@ export class MarketsController {
     return this.marketsService.joinMarket(marketId, req.user.userId, body);
   }
 
+  @Delete(':marketId/leave')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('seller')
+  async leaveMarket(@Param('marketId') marketId: string, @Request() req) {
+    return this.marketsService.leaveMarket(marketId, req.user.userId);
+  }
+
   @Put(':marketId/registered-vendors')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')

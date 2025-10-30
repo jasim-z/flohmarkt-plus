@@ -80,7 +80,7 @@ export class ApiErrorHandler {
         return {
           type: 'permission',
           status,
-          message: ERROR_MESSAGES.permission,
+          message: data.message || ERROR_MESSAGES.permission,
           originalError: error,
           retryable: false
         };

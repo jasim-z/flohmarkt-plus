@@ -154,7 +154,10 @@ export class ApiClient {
         }
 
         if (lastError.type === 'permission') {
-          apiErrorHandler.handlePermissionError();
+          // Allow callers to skip permission redirect using skipAuthRedirect as a general skip flag
+          if (!(options as any).skipAuthRedirect) {
+            apiErrorHandler.handlePermissionError();
+          }
           throw lastError;
         }
 

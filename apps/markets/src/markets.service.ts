@@ -5,6 +5,7 @@ import { MarketsRepository } from './markets.repository';
 import { CreateMarketDto, UpdateMarketDto, UsersServiceClient, GetUsersByIdsRequest } from '@app/common';
 import { MarketDocument } from './schemas/market.schema';
 import { SanitizationUtils } from './middleware/sanitization.middleware';
+import { ListingsService } from '../../listings/src/listings.service';
 
 @Injectable()
 export class MarketsService {
@@ -13,6 +14,7 @@ export class MarketsService {
     @InjectModel('Market') private readonly marketModel: Model<MarketDocument>,
     @Inject('USERS_SERVICE_CLIENT') private readonly usersServiceClient: UsersServiceClient,
     @InjectConnection() private readonly connection: Connection,
+    private readonly listingsService: ListingsService
   ) {}
 
   async create(createMarketDto: CreateMarketDto, user: any) {
@@ -976,6 +978,19 @@ export class MarketsService {
       console.error('Migration failed:', error);
       throw error;
     }
+  }
+
+  async leaveMarket(marketId: string, userId: string) {
+    const listingsResult = await this.listingsService.findBySellerAndMarket(userId, marketId, 1, 1);
+    if (listingsResult.data && listingsResult.data.length > 0) {
+      throw new ForbiddenException('You have listings in this market, please delete them first or contact admin.');
+    }
+    const updated = await this.marketsRepository.findOneAndUpdate(
+      { _id: new Types.ObjectId(marketId) },
+      { $pull: { registeredVendors: new Types.ObjectId(userId) } }
+    );
+    if (!updated) throw new NotFoundException('Market not found or already left.');
+    return { success: true, message: 'You have left this market.' };
   }
 
   // Utility method to check if a market is deleted

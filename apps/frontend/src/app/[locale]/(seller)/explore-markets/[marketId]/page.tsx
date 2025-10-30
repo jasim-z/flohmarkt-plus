@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaArrowLeft, FaCheck, FaTimes, FaDollarSign, FaInfoCircle, FaBox, FaEdit, FaTrash, FaImage, FaChevronLeft, FaChevronRight } from "react-icons/fa";
-import { Market, getMarketDetails, joinMarket } from "../../../../api/markets";
+import { Market, getMarketDetails, joinMarket, leaveMarket } from "../../../../api/markets";
 import { Listing, getListingsBySellerAndMarket, deleteListing, GetListingsParams } from "../../../../api/listings";
 import { UnAuthourized } from "@/components";
 import { useUser } from "@/contexts/UserContext";
@@ -88,6 +88,8 @@ export default function MarketDetail() {
   // Debouncing ref for search
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Leave confirmation modal state
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
 
   // Fetch listings for the seller in this market
@@ -649,7 +651,7 @@ export default function MarketDetail() {
                         <span>Joined</span>
                       </span>
                       <button
-                        onClick={handleLeaveMarket}
+                        onClick={() => setShowLeaveConfirm(true)}
                         disabled={joinLoading}
                         className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 font-medium disabled:opacity-60 disabled:cursor-not-allowed text-sm"
                       >
@@ -929,6 +931,55 @@ export default function MarketDetail() {
               {currentPhotoIndex + 1} / {allPhotos.length}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Leave Confirmation Modal */}
+      {showLeaveConfirm && (
+        <div className="fixed z-50 inset-0 bg-black bg-opacity-30 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 max-w-sm mx-auto shadow-lg">
+            <h2 className="text-lg font-semibold mb-2">Leave this market?</h2>
+            <p className="mb-4 text-gray-700">Are you sure you want to leave this market?</p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setShowLeaveConfirm(false)}
+                className="px-4 py-2 rounded bg-gray-200 text-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setShowLeaveConfirm(false);
+                  setJoinLoading(true);
+                  try {
+                    const res = await leaveMarket(market._id);
+                    setIsJoined(false);
+                    setToast({ message: res.message, type: 'success', isVisible: true });
+                    setListings([]);
+                  } catch (e: any) {
+                    const isForbidden = e?.status === 403;
+                    const isListingBlock =
+                      isForbidden ||
+                      (typeof e?.message === 'string' &&
+                        e.message.toLowerCase().includes('delete them first'));
+                    setToast({
+                      message: isListingBlock
+                        ? 'You have listings in this market, please delete them first or contact admin.'
+                        : e.message || 'Something went wrong. Please try again.',
+                      type: 'error',
+                      isVisible: true,
+                    });
+                  } finally {
+                    setJoinLoading(false);
+                  }
+                }}
+                className="px-4 py-2 rounded bg-red-600 text-white"
+                disabled={joinLoading}
+              >
+                Yes, Leave
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

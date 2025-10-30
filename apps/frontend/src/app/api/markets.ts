@@ -309,3 +309,13 @@ export async function presignUpload(request: PresignUploadRequest): Promise<Pres
     throw apiError;
   }
 } 
+
+export async function leaveMarket(marketId: string): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await marketsApiClient.delete(`/markets/${marketId}/leave`, { skipAuthRedirect: true } as any);
+    return response.data;
+  } catch (error) {
+    const apiError = apiErrorHandler.handleError(error);
+    throw apiError;
+  }
+} 

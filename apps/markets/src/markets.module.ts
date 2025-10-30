@@ -12,6 +12,8 @@ import { PassportModule } from '@nestjs/passport';
 import { RateLimitMiddleware, RATE_LIMITS } from './middleware/rate-limit.middleware';
 import { SanitizationMiddleware } from './middleware/sanitization.middleware';
 import * as Joi from 'joi';
+import { ListingsService } from '../../listings/src/listings.service';
+import { Listing, ListingSchema } from '../../listings/src/schemas/listing.schema';
 
 @Module({
   imports: [
@@ -26,13 +28,17 @@ import * as Joi from 'joi';
     DatabaseModule,
     PassportModule,
     HttpModule,
-    MongooseModule.forFeature([{ name: Market.name, schema: MarketSchema }]),
+    MongooseModule.forFeature([
+      { name: Market.name, schema: MarketSchema },
+      { name: Listing.name, schema: ListingSchema },
+    ]),
   ],
   controllers: [MarketsController, HealthController],
   providers: [
-    MarketsService, 
-    MarketsRepository, 
-    JwtStrategy, 
+    MarketsService,
+    ListingsService,
+    MarketsRepository,
+    JwtStrategy,
     RolesGuard,
     HttpUsersServiceClient,
     MarketPriceMigrationService,
