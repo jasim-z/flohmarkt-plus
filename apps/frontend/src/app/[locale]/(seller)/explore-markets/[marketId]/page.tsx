@@ -9,11 +9,8 @@ import { Listing, getListingsBySellerAndMarket, deleteListing, GetListingsParams
 import { UnAuthourized } from "@/components";
 import { useUser } from "@/contexts/UserContext";
 import { formatPrice } from "@/lib/utils";
-import { PaymentModal } from "@/components/modals";
 import { Toast, ToastType } from "@/components";
 import { DataTable, Column } from "@/components/ui/data-table";
-import { AddListingModal } from "@/components/modals";
-import { ListingDetailsModal, EditListingModal, DeleteConfirmationModal } from "@/components/modals";
 
 // Utility function to calculate market status based on current date/time
 const calculateMarketStatus = (market: Market): 'upcoming' | 'ongoing' | 'past' => {
@@ -82,6 +79,7 @@ export default function MarketDetail() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+  const [rawSearchInput, setRawSearchInput] = useState('');
   const [sortConfig, setSortConfig] = useState<{
     key: keyof Listing | null;
     direction: 'asc' | 'desc';
@@ -125,29 +123,7 @@ export default function MarketDetail() {
   }, [fetchListings, searchTerm, sortConfig]);
 
   // Handle search
-  const handleSearch = useCallback((term: string) => {
-    setSearchTerm(term);
-    
-    // Clear previous timeout
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-    
-    // Set new timeout for debounced search
-    searchTimeoutRef.current = setTimeout(() => {
-      setSearchLoading(true);
-      const params: GetListingsParams = {
-        page: 1,
-        limit: 10,
-        search: term || undefined,
-        sortBy: sortConfig.key as string || 'createdAt',
-        sortOrder: sortConfig.direction || 'desc',
-      };
-      fetchListings(params).finally(() => {
-        setSearchLoading(false);
-      });
-    }, 500); // 500ms delay
-  }, [fetchListings, sortConfig]);
+  const handleSearch = useCallback((term: string) => { setRawSearchInput(term); }, []);
 
   // Handle sort
   const handleSort = useCallback((key: string, direction: 'asc' | 'desc') => {
@@ -289,6 +265,13 @@ export default function MarketDetail() {
     };
   }, []);
 
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSearchTerm(rawSearchInput);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [rawSearchInput]);
+
   const fetchMarketData = useCallback(async () => {
     try {
       setLoading(true);
@@ -318,44 +301,6 @@ export default function MarketDetail() {
   const handleJoinMarket = () => {
     if (!market || !user) return;
     setShowPaymentModal(true);
-  };
-
-  const handlePaymentSuccess = async () => {
-    if (!market || !user) return;
-    
-    try {
-      setJoinLoading(true);
-      
-      // The actual join market API call is handled in the PaymentModal
-      // This function is called after successful payment and API call
-      
-      // Refetch market data to get updated registeredVendors list
-      await fetchMarketData();
-      
-      // Update local state
-      setIsJoined(true);
-      setJoinLoading(false);
-      
-      setToast({
-        message: `Successfully joined ${market.name}!`,
-        type: 'success',
-        isVisible: true
-      });
-      
-      // Fetch listings after joining
-      setTimeout(() => {
-        fetchListings();
-      }, 1000); // Small delay to ensure market data is updated
-      
-    } catch (err) {
-      console.error('Failed to join market:', err);
-      setJoinLoading(false);
-      setToast({
-        message: 'Failed to join market. Please try again.',
-        type: 'error',
-        isVisible: true
-      });
-    }
   };
 
   const handleLeaveMarket = async () => {
@@ -478,16 +423,21 @@ export default function MarketDetail() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
   const formatTime = (timeString: string) => {
     return timeString;
+  };
+
+  const formatDateRange = (startDate: string, endDate?: string) => {
+    const start = new Date(startDate).toLocaleDateString('en-GB', {
+      year: 'numeric', month: 'short', day: 'numeric',
+    });
+    let end = start;
+    if (endDate) {
+      end = new Date(endDate).toLocaleDateString('en-GB', {
+        year: 'numeric', month: 'short', day: 'numeric',
+      });
+    }
+    return `${start} - ${end}`;
   };
 
   const getVendorAvailability = () => {
@@ -728,9 +678,7 @@ export default function MarketDetail() {
                   </div>
                   <div className="flex items-center space-x-3">
                     <FaCalendar className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                    <span className="text-gray-700">
-                      {formatDate(market.date)}
-                    </span>
+                    <span className="text-gray-700">{formatDateRange(market.date, market.endDate)}</span>
                   </div>
                   <div className="flex items-center space-x-3">
                     <FaClock className="h-4 w-4 text-gray-400 flex-shrink-0" />
@@ -887,7 +835,7 @@ export default function MarketDetail() {
                 onSort={handleSort}
                 sortConfig={sortConfig}
                 loading={listingsLoading || searchLoading}
-                searchTerm={searchTerm}
+                searchValue={rawSearchInput}
               />
               
               {/* Add Your First Listing button - only show when no listings and no search term */}
@@ -924,216 +872,7 @@ export default function MarketDetail() {
           </div>
         )}
 
-        {/* Market Rules & Information - Only show when not joined */}
-        {!isJoined && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">Market Information</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">What to Expect</h3>
-                <ul className="space-y-2 text-gray-600">
-                  <li className="flex items-start space-x-2">
-                    <FaCheck className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Professional market environment</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <FaCheck className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Organized vendor spaces</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <FaCheck className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Customer traffic and exposure</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <FaCheck className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Marketing and promotion support</span>
-                  </li>
-                </ul>
-              </div>
-              
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Requirements</h3>
-                <ul className="space-y-2 text-gray-600">
-                  <li className="flex items-start space-x-2">
-                    <FaInfoCircle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <span>Valid business license (if required)</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <FaInfoCircle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <span>Professional presentation</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <FaInfoCircle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <span>Quality products and services</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <FaInfoCircle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <span>Timely setup and teardown</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Payment Modal */}
-      <PaymentModal
-        isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
-        onPaymentSuccess={handlePaymentSuccess}
-        marketName={market?.name || ''}
-        price={market?.price || '0'}
-        marketId={market?._id || ''}
-      />
-
-      {/* Add Listing Modal */}
-      <AddListingModal
-        isOpen={showAddListingModal}
-        onClose={() => setShowAddListingModal(false)}
-        onSuccess={(message) => {
-          // Refresh listings after successful creation with current pagination
-          const params: GetListingsParams = {
-            page: currentPage,
-            limit: 10,
-            search: searchTerm || undefined,
-            sortBy: sortConfig.key as string || 'createdAt',
-            sortOrder: sortConfig.direction || 'desc',
-          };
-          fetchListings(params);
-          
-          // Show success toast if message provided
-          if (message) {
-            setToast({
-              message,
-              type: 'success',
-              isVisible: true,
-            });
-            
-            // Auto-hide toast after 3 seconds
-            setTimeout(() => {
-              setToast(null);
-            }, 3000);
-          }
-        }}
-        marketId={market?._id || ''}
-        marketName={market?.name || ''}
-        marketLocation={market?.location || ''}
-      />
-
-      {/* Listing Details Modal */}
-      <ListingDetailsModal
-        isOpen={showListingDetailsModal}
-        onClose={() => setShowListingDetailsModal(false)}
-        listing={selectedListing}
-      />
-
-      {/* Edit Listing Modal */}
-      <EditListingModal
-        isOpen={showEditListingModal}
-        onClose={() => setShowEditListingModal(false)}
-        onSuccess={(message) => {
-          // Refresh listings after successful update with current pagination
-          const params: GetListingsParams = {
-            page: currentPage,
-            limit: 10,
-            search: searchTerm || undefined,
-            sortBy: sortConfig.key as string || 'createdAt',
-            sortOrder: sortConfig.direction || 'desc',
-          };
-          fetchListings(params);
-          
-          // Show success toast if message provided
-          if (message) {
-            setToast({
-              message,
-              type: 'success',
-              isVisible: true,
-            });
-            
-            // Auto-hide toast after 3 seconds
-            setTimeout(() => {
-              setToast(null);
-            }, 3000);
-          }
-        }}
-        listing={editingListing}
-        marketId={market?._id || ''}
-        marketName={market?.name || ''}
-        marketLocation={market?.location || ''}
-      />
-
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        isOpen={showDeleteConfirmationModal}
-        onClose={() => {
-          setShowDeleteConfirmationModal(false);
-          setDeletingListing(null);
-        }}
-        onConfirm={confirmDeleteListing}
-        title="Delete Listing"
-        message="You are about to permanently delete this listing. This action will remove the listing from the market and cannot be undone."
-        itemName={deletingListing?.title || ''}
-      />
-
-      {/* Additional Images Modal */}
-      {showAdditionalImagesModal && market.additionalImages && market.additionalImages.length > 0 && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {market.name} - Additional Images
-                </h3>
-                <p className="text-sm text-gray-500">
-                  {market.additionalImages.length} additional images for this market
-                </p>
-              </div>
-              <button
-                onClick={() => setShowAdditionalImagesModal(false)}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
-              >
-                <FaTimes className="h-5 w-5" />
-              </button>
-            </div>
-            
-            {/* Modal Content */}
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {market.additionalImages.map((image, index) => (
-                  <div key={index} className="relative">
-                    <img
-                      src={image}
-                      alt={`Additional image ${index + 1}`}
-                      className="w-full h-48 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity duration-200"
-                      onClick={() => openPhotoViewer(index + (market.bannerImage ? 1 : 0))}
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/placeholder-image.png';
-                      }}
-                    />
-                    <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
-                      {index + 1}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            {/* Modal Footer */}
-            <div className="flex justify-end p-6 border-t border-gray-200">
-              <button
-                onClick={() => setShowAdditionalImagesModal(false)}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors duration-200"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Toast Notifications */}
+        {/* Toast Notifications */}
       {toast && (
         <Toast
           message={toast.message}
@@ -1193,5 +932,6 @@ export default function MarketDetail() {
         </div>
       )}
     </div>
+  </div>
   );
-} 
+}

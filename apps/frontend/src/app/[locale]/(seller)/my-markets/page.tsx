@@ -17,8 +17,9 @@ export default function MyMarkets() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-  const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: keyof Market | null; direction: 'asc' | 'desc' }>({ key: null, direction: 'asc' });
+  const [rawSearchInput, setRawSearchInput] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const params = useParams();
   const router = useRouter();
@@ -118,6 +119,29 @@ export default function MyMarkets() {
     }
   }, [isLoaded, role, fetchMarkets]);
 
+  // Debounced effect:
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSearchTerm(rawSearchInput);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [rawSearchInput]);
+
+  // On DataTable:
+  // onSearch={(term) => {
+  //   setRawSearchInput(term);
+  //   setPage(1);
+  // }}
+  //
+  // Debounce effect ONLY sets searchTerm:
+  // useEffect(() => {
+  //   if (debounceRef.current) clearTimeout(debounceRef.current);
+  //   debounceRef.current = setTimeout(() => {
+  //     setSearchTerm(rawSearchInput);
+  //   }, 400);
+  //   return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  // }, [rawSearchInput]);
+
   if (isLoaded && role !== 'seller') {
     return <UnAuthourized />;
   }
@@ -143,7 +167,11 @@ export default function MyMarkets() {
           currentPage={page}
           totalPages={totalPages}
           onPageChange={(p) => setPage(p)}
-          onSearch={(term) => { setSearchTerm(term); setPage(1); }}
+          onSearch={(term) => {
+            setRawSearchInput(term);
+            setPage(1);
+          }}
+          searchValue={rawSearchInput}
           onSort={(key, direction) => setSortConfig({ key: key as keyof Market, direction })}
           sortConfig={sortConfig}
           emptyStateMessage="No markets found"

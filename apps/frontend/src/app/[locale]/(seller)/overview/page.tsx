@@ -18,6 +18,7 @@ export default function SellerOverview() {
   const [rating, setRating] = useState<number>(0);
   const [verified, setVerified] = useState<boolean>(false);
   const [upcomingMarkets, setUpcomingMarkets] = useState<Market[]>([]);
+  const [exploreMarketsTotal, setExploreMarketsTotal] = useState<number>(0);
 
   useEffect(() => {
     if (!isLoaded || !user) return;
@@ -32,6 +33,22 @@ export default function SellerOverview() {
         setActiveMarkets(res.pagination.total || 0);
       } catch {
         setActiveMarkets(0);
+      }
+    })();
+
+    // Explore markets total = total upcoming/ongoing active markets minus joined markets
+    (async () => {
+      try {
+        const [allRes, joinedRes] = await Promise.all([
+          getMarkets({ page: 1, limit: 1 }), // no userId -> all eligible (active + not past)
+          getMarkets({ page: 1, limit: 1, userId }), // joined count
+        ]);
+        const totalAll = allRes.pagination.total || 0;
+        const totalJoined = joinedRes.pagination.total || 0;
+        const available = Math.max(0, totalAll - totalJoined);
+        setExploreMarketsTotal(available);
+      } catch {
+        setExploreMarketsTotal(0);
       }
     })();
 
@@ -137,7 +154,7 @@ export default function SellerOverview() {
                 <FaStore size={24} className="text-white" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Explore Markets</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Explore Markets {exploreMarketsTotal > 0 ? `(${exploreMarketsTotal})` : ''}</h3>
                 <p className="text-gray-600 text-sm">Find and join flea markets</p>
               </div>
             </div>

@@ -517,7 +517,7 @@ export class ListingsService {
         { isDeleted: false },
         { isDeleted: { $exists: false } }
       ],
-      $text: { $search: searchTerm },
+      $text: { $search: searchTerm ? searchTerm : '""' },
     };
 
     if (category) filter.category = category;
