@@ -36,7 +36,7 @@ export function ConversationsList({
       }
       const mapped = await Promise.all(
         conversations.map(async (c) => {
-          const otherId = c.participantIds.find((id) => id !== user._id);
+          const otherId = c.participantIds.find((id) => id !== user.id);
           let counterpart: any = null;
           try { counterpart = otherId ? await getUserById(otherId) : null; } catch {}
           // unread badge heuristic: if lastMessage exists and last message not sent by me
@@ -47,7 +47,7 @@ export function ConversationsList({
       if (mounted) setEnriched(mapped);
     })();
     return () => { mounted = false; };
-  }, [conversations, user?._id]);
+  }, [conversations, user?.id]);
 
   if (loading) return <div className="p-4 text-sm text-gray-500">Loading...</div>;
   if (!enriched || enriched.length === 0) return <div className="p-4 text-sm text-gray-500">No conversations yet.</div>;
@@ -63,9 +63,32 @@ export function ConversationsList({
           className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left border-b border-gray-100 last:border-b-0 ${c._id === active ? 'bg-gray-50' : ''}`}
         >
           <div className="relative">
-            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600">
-              {(c.counterpart?.displayName || 'U').charAt(0)}
-            </div>
+            {c.counterpart?.avatar ? (
+              <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-200">
+                <img
+                  src={c.counterpart.avatar}
+                  alt={c.counterpart.displayName}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Fallback to initial if image fails to load
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const fallback = target.nextElementSibling as HTMLElement;
+                    if (fallback) fallback.style.display = 'flex';
+                  }}
+                />
+                {/* Fallback Initial */}
+                <div className="w-full h-full bg-gray-200 items-center justify-center hidden">
+                  <span className="text-gray-600 text-sm font-medium">
+                    {(c.counterpart?.displayName || 'U').charAt(0)}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600">
+                {(c.counterpart?.displayName || 'U').charAt(0)}
+              </div>
+            )}
             {!!c.unreadCount && c.unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-blue-600 text-white text-[10px] rounded-full flex items-center justify-center">
                 {c.unreadCount}

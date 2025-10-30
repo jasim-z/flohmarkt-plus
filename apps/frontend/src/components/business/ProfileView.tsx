@@ -1,8 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getUserById, User } from '@/app/api/users';
 import { useUser } from '@/contexts/UserContext';
+import { FaCamera, FaEdit } from 'react-icons/fa';
+import { validateFile } from '@/app/lib/uploadUtils';
+import { presignProfileUpload, updateUserProfile } from '@/app/api/users';
+import { Toast } from '@/components';
+import LocationPicker from '@/components/LocationPicker';
+import { LocationResult, updateUserLocation } from '@/app/api/location';
 
 interface ProfileViewProps {
   userId: string;
@@ -11,13 +17,41 @@ interface ProfileViewProps {
 }
 
 export function ProfileView({ userId, isOwnProfile = false, viewerRole }: ProfileViewProps) {
-  const { user: currentUser } = useUser();
+  const { user: currentUser, setUser } = useUser();
   const [profile, setProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error'; isVisible: boolean } | null>(null);
+  const [editingLocation, setEditingLocation] = useState(false);
+  const [updatingLocation, setUpdatingLocation] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Prevent redirects during upload
+  useEffect(() => {
+    if (uploading) {
+      // Set a flag to prevent UserContext redirects
+      window.__preventRedirect = true;
+    } else {
+      window.__preventRedirect = false;
+    }
+    
+    return () => {
+      window.__preventRedirect = false;
+    };
+  }, [uploading]);
 
   useEffect(() => {
     let mounted = true;
+    
+    // For own profile, use current user data instead of making API call
+    if (isOwnProfile && currentUser) {
+      setProfile(currentUser);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    
     (async () => {
       try {
         setLoading(true);
@@ -33,7 +67,166 @@ export function ProfileView({ userId, isOwnProfile = false, viewerRole }: Profil
     })();
     
     return () => { mounted = false; };
-  }, [userId]);
+  }, [userId, isOwnProfile, currentUser]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validationResult = validateFile(file);
+    if (!validationResult.isValid) {
+      setToast({ message: validationResult.error || 'Invalid file', type: 'error', isVisible: true });
+      return;
+    }
+
+    setUploading(true);
+    setToast(null);
+
+    try {
+      console.log('Starting profile photo upload...');
+      
+      // Check if we have a valid token
+      const token = localStorage.getItem('auth_token');
+      console.log('JWT Token exists:', !!token);
+      if (token) {
+        console.log('Token preview:', token.substring(0, 50) + '...');
+        // Try to decode the token to check expiration
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          console.log('Token payload:', payload);
+          console.log('Token expires at:', new Date(payload.exp * 1000));
+          console.log('Token is expired:', payload.exp * 1000 < Date.now());
+        } catch (e) {
+          console.log('Could not decode token:', e);
+        }
+      }
+      
+      console.log('Getting presigned URL...');
+      
+      // Try to get presigned URL with error handling
+      let presignResponse;
+      try {
+        presignResponse = await presignProfileUpload();
+        console.log('Presign response:', presignResponse);
+      } catch (presignError: any) {
+        console.error('Presign upload failed:', presignError);
+        console.error('Error type:', presignError.type);
+        console.error('Error status:', presignError.status);
+        
+        if (presignError.type === 'auth') {
+          setToast({ 
+            message: 'Your session has expired. Please log out and log back in to upload your profile photo.', 
+            type: 'error', 
+            isVisible: true 
+          });
+          return; // Don't proceed with upload
+        }
+        
+        // Re-throw other errors
+        throw presignError;
+      }
+      
+      if (!presignResponse.success) {
+        throw new Error('Failed to get upload URL');
+      }
+
+      console.log('Uploading file to S3...');
+      
+      // Upload directly to S3 using the presigned URL
+      const uploadResponse = await fetch(presignResponse.presignedUrl, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type,
+        },
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`S3 upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`);
+      }
+      
+      console.log('File uploaded successfully');
+      
+        const newAvatarUrl = presignResponse.publicUrl;
+      console.log('Updating user profile with new avatar URL:', newAvatarUrl);
+      await updateUserProfile({ avatar: newAvatarUrl });
+      console.log('Profile updated successfully');
+
+      // Update profile state
+      setProfile(prev => prev ? { ...prev, avatar: newAvatarUrl } : null);
+      
+      // Update user context
+      if (currentUser && setUser) {
+        setUser({ ...currentUser, avatar: newAvatarUrl });
+      }
+
+      setToast({ message: 'Profile photo updated successfully!', type: 'success', isVisible: true });
+    } catch (err: any) {
+      console.error('Profile photo upload failed:', err);
+      console.error('Error details:', {
+        message: err.message,
+        status: err.status,
+        type: err.type,
+        originalError: err.originalError
+      });
+      setToast({ message: err.message || 'Failed to upload photo', type: 'error', isVisible: true });
+    } finally {
+      setUploading(false);
+      // Clear the input value
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Location change handler
+  const handleLocationChange = async (location: LocationResult | null) => {
+    if (!location || !isOwnProfile) return;
+
+    setUpdatingLocation(true);
+    try {
+      await updateUserLocation({
+        address: location.address,
+        city: location.displayName.split(',')[0]?.trim() || '',
+        postalCode: location.displayName.match(/\d{5}/)?.[0] || '',
+        country: location.displayName.split(',').pop()?.trim() || '',
+        latitude: location.lat,
+        longitude: location.lon,
+      });
+
+      // Update profile state
+      setProfile(prev => prev ? {
+        ...prev,
+        address: location.address,
+        city: location.displayName.split(',')[0]?.trim() || '',
+        postalCode: location.displayName.match(/\d{5}/)?.[0] || '',
+        country: location.displayName.split(',').pop()?.trim() || '',
+        latitude: location.lat,
+        longitude: location.lon,
+      } : null);
+
+      // Update user context
+      if (currentUser && setUser) {
+        setUser({
+          ...currentUser,
+          address: location.address,
+          city: location.displayName.split(',')[0]?.trim() || '',
+          postalCode: location.displayName.match(/\d{5}/)?.[0] || '',
+          country: location.displayName.split(',').pop()?.trim() || '',
+          latitude: location.lat,
+          longitude: location.lon,
+        });
+      }
+
+      setToast({ message: 'Location updated successfully!', type: 'success', isVisible: true });
+      setEditingLocation(false);
+    } catch (err: any) {
+      console.error('Location update failed:', err);
+      setToast({ message: err.message || 'Failed to update location', type: 'error', isVisible: true });
+    } finally {
+      setUpdatingLocation(false);
+    }
+  };
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -130,7 +323,19 @@ export function ProfileView({ userId, isOwnProfile = false, viewerRole }: Profil
       {/* Header Section */}
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-8">
         <div className="flex items-center space-x-6">
-          <div className="relative">
+          <div className="relative group">
+            {/* Hidden file input */}
+            {isOwnProfile && (
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                className="hidden"
+                disabled={uploading}
+              />
+            )}
+            
             {profile.avatar ? (
               <img
                 src={profile.avatar}
@@ -142,7 +347,28 @@ export function ProfileView({ userId, isOwnProfile = false, viewerRole }: Profil
                 {profile.displayName.charAt(0).toUpperCase()}
               </div>
             )}
-            {profile.isVerified && (
+            
+            {/* Upload overlay for Own Profile */}
+            {isOwnProfile && (
+              <div 
+                className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer"
+                onClick={() => !uploading && fileInputRef.current?.click()}
+              >
+                {uploading ? (
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                ) : (
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    {profile.avatar ? (
+                      <FaEdit className="h-6 w-6 text-white" />
+                    ) : (
+                      <FaCamera className="h-6 w-6 text-white" />
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {profile.isVerified && !isOwnProfile && (
               <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center border-2 border-white">
                 <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -230,19 +456,50 @@ export function ProfileView({ userId, isOwnProfile = false, viewerRole }: Profil
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Location & Activity</h3>
             
-            {shouldShowField('city') && profile.city && (
-              <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="text-gray-600">City</span>
-                <span className="font-medium text-gray-900">{profile.city}</span>
+            {/* Location Section */}
+            <div className="py-2 border-b border-gray-100">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-gray-600">Location</span>
+                {isOwnProfile && (
+                  <button
+                    onClick={() => setEditingLocation(!editingLocation)}
+                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    disabled={updatingLocation}
+                  >
+                    {editingLocation ? 'Cancel' : 'Edit'}
+                  </button>
+                )}
               </div>
-            )}
-
-            {shouldShowField('neighborhood') && profile.neighborhood && (
-              <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="text-gray-600">Neighborhood</span>
-                <span className="font-medium text-gray-900">{profile.neighborhood}</span>
-              </div>
-            )}
+              
+              {editingLocation && isOwnProfile ? (
+                <div className="mt-2">
+                  <LocationPicker
+                    onLocationChange={handleLocationChange}
+                    placeholder="Search for your location..."
+                    showCurrentLocation={true}
+                    disabled={updatingLocation}
+                  />
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {profile.address && (
+                    <div className="text-sm text-gray-900">{profile.address}</div>
+                  )}
+                  {profile.city && (
+                    <div className="text-sm text-gray-600">{profile.city}</div>
+                  )}
+                  {profile.postalCode && (
+                    <div className="text-sm text-gray-600">{profile.postalCode}</div>
+                  )}
+                  {profile.country && (
+                    <div className="text-sm text-gray-600">{profile.country}</div>
+                  )}
+                  {!profile.address && !profile.city && !profile.postalCode && !profile.country && (
+                    <div className="text-sm text-gray-500 italic">No location set</div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {shouldShowRating() && (
               <div className="flex justify-between py-2 border-b border-gray-100">
@@ -350,6 +607,16 @@ export function ProfileView({ userId, isOwnProfile = false, viewerRole }: Profil
           </div>
         )}
       </div>
+      
+      {/* Toast for upload feedback */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          isVisible={toast.isVisible}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

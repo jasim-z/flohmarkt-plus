@@ -11,13 +11,15 @@ export interface Market {
   name: string;
   description: string;
   location: string;
-  date: string;
+  date: string; // start date
+  endDate?: string; // new: end date
   startTime: string;
   endTime: string;
   isActive: boolean;
   isFeatured?: boolean;
   createdBy: string;
   bannerImage: string;
+  additionalImages?: string[];
   vendorLimit?: number;
   boothsAvailable?: number;
   price: string | MongoDecimal128; // Decimal128 from MongoDB, can be string or object
@@ -27,6 +29,7 @@ export interface Market {
   isDeleted: boolean;
   createdAt: string;
   updatedAt: string;
+  distance?: number; // Distance in km when location-based search is used
 }
 
 export interface GetMarketsParams {
@@ -45,11 +48,19 @@ export interface CreateMarketRequest {
   name: string;
   description: string;
   location: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
+  state?: string;
+  latitude?: number;
+  longitude?: number;
   date: string;
   startTime: string;
   endTime: string;
   isActive: boolean;
-  bannerImage: string;
+  bannerImage?: string;
+  additionalImages?: string[];
   vendorLimit?: number;
   boothsAvailable?: number;
   price: number; // Will be converted to Decimal128 in the backend
@@ -147,6 +158,19 @@ export async function getMarkets(params: GetMarketsParams = {}): Promise<Paginat
     if (params.sortOrder) searchParams.append('sortOrder', params.sortOrder);
 
     const url = `/markets?${searchParams.toString()}`;
+    const response = await marketsApiClient.get(url);
+    return response.data;
+  } catch (error) {
+    const apiError = apiErrorHandler.handleError(error);
+    throw apiError;
+  }
+}
+
+export async function getFeaturedMarkets(limit: number = 4): Promise<PaginatedMarketsResponse> {
+  try {
+    const searchParams = new URLSearchParams();
+    if (limit) searchParams.append('limit', limit.toString());
+    const url = `/markets/featured?${searchParams.toString()}`;
     const response = await marketsApiClient.get(url);
     return response.data;
   } catch (error) {
@@ -254,6 +278,41 @@ export async function getMarketDetails(marketId: string, params: GetVendorsParam
     
     const url = `/markets/${marketId}/details?${searchParams.toString()}`;
     const response = await marketsApiClient.get(url);
+    return response.data;
+  } catch (error) {
+    const apiError = apiErrorHandler.handleError(error);
+    throw apiError;
+  }
+}
+
+export interface PresignUploadRequest {
+  fileName: string;
+  contentType: string;
+  uploadType: 'market_banner' | 'market_additional';
+  marketId?: string;
+}
+
+export interface PresignUploadResponse {
+  success: boolean;
+  presignedUrl: string;
+  key: string;
+  publicUrl: string;
+  expiresIn: number;
+}
+
+export async function presignUpload(request: PresignUploadRequest): Promise<PresignUploadResponse> {
+  try {
+    const response = await marketsApiClient.post('/markets/presign-upload', request);
+    return response.data;
+  } catch (error) {
+    const apiError = apiErrorHandler.handleError(error);
+    throw apiError;
+  }
+} 
+
+export async function leaveMarket(marketId: string): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await marketsApiClient.delete(`/markets/${marketId}/leave`, { skipAuthRedirect: true } as any);
     return response.data;
   } catch (error) {
     const apiError = apiErrorHandler.handleError(error);

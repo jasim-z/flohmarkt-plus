@@ -15,7 +15,10 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import type { Express } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MarketsService } from './markets.service';
@@ -30,6 +33,12 @@ import {
   UpdateRegisteredVendorsDto,
   UploadImageDto,
   FileUploadValidation,
+  PresignUploadDto,
+  S3ClientService,
+  LocationService,
+  LocationSearchDto,
+  ReverseGeocodeDto,
+  MarketSearchByLocationDto,
 } from '@app/common';
 import { RateLimitMiddleware, RATE_LIMITS } from './middleware/rate-limit.middleware';
 import { SanitizationMiddleware } from './middleware/sanitization.middleware';
@@ -47,6 +56,9 @@ export class MarketsController {
   constructor(
     private readonly marketsService: MarketsService,
     private readonly marketPriceMigrationService: MarketPriceMigrationService,
+    private readonly s3ClientService: S3ClientService,
+    private readonly locationService: LocationService,
+    @InjectModel('Market') private readonly marketModel: Model<any>,
   ) {}
 
   @Post()
@@ -68,8 +80,9 @@ export class MarketsController {
   @Get('featured')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'seller', 'buyer')
-  getFeaturedMarkets() {
-    return this.marketsService.getFeaturedMarkets();
+  getFeaturedMarkets(@Query('limit') limit?: number) {
+    const parsedLimit = limit ? Number(limit) : 4;
+    return this.marketsService.getFeaturedMarkets(parsedLimit);
   }
 
   @Get('user/:userId')
@@ -134,6 +147,13 @@ export class MarketsController {
       throw new BadRequestException('Invalid market ID format');
     }
     return this.marketsService.joinMarket(marketId, req.user.userId, body);
+  }
+
+  @Delete(':marketId/leave')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('seller')
+  async leaveMarket(@Param('marketId') marketId: string, @Request() req) {
+    return this.marketsService.leaveMarket(marketId, req.user.userId);
   }
 
   @Put(':marketId/registered-vendors')
@@ -252,12 +272,62 @@ export class MarketsController {
     return this.marketPriceMigrationService.updatePriceFieldToDecimal128();
   }
 
+  @Post('presign-upload')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  async presignUpload(
+    @Body() presignData: PresignUploadDto,
+    @Request() req
+  ) {
+    const { fileName, contentType, uploadType, marketId } = presignData;
+    const userId = req.user.userId;
+
+    console.log('Presign upload request:', { fileName, contentType, uploadType, marketId, userId });
+
+    // Validate file type and size
+    const errorMessage = FileUploadValidation.getErrorMessage(contentType, 0);
+    if (errorMessage) {
+      throw new BadRequestException(errorMessage);
+    }
+
+    // Generate unique key based on upload type
+    let key: string;
+    let usedMarketId: string;
+    
+    if (uploadType === 'market_banner') {
+      // For banner uploads, we might not have marketId yet (during creation)
+      usedMarketId = marketId || `temp_${userId}_${Date.now()}`;
+      key = this.s3ClientService.generateMarketImageKey(usedMarketId, userId, fileName, 'banner');
+    } else if (uploadType === 'market_additional') {
+      // For additional images, use marketId if provided, otherwise use temporary ID
+      usedMarketId = marketId || `temp_${userId}_${Date.now()}`;
+      key = this.s3ClientService.generateMarketImageKey(usedMarketId, userId, fileName, 'additional');
+    } else {
+      throw new BadRequestException(`Invalid upload type: ${uploadType}. Must be 'market_banner' or 'market_additional'.`);
+    }
+
+    // Generate presigned URL
+    const presignedUrl = await this.s3ClientService.getPresignedUploadUrl(key, contentType);
+    
+    // Get public URL for the uploaded file
+    const publicUrl = this.s3ClientService.getPublicUrl(key);
+
+    return {
+      success: true,
+      presignedUrl,
+      key,
+      publicUrl,
+      marketId: usedMarketId, // The market ID that was used (temporary or real)
+      expiresIn: 3600, // 1 hour
+    };
+  }
+
   @Post('upload-image')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @UseInterceptors(FileInterceptor('file'))
   async uploadImage(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: any,
     @Body() uploadData: UploadImageDto
   ) {
     if (!file) {
@@ -285,4 +355,100 @@ export class MarketsController {
       }
     };
   }
+
+  @Post('location/search')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'seller', 'buyer')
+  async searchLocations(@Body() searchDto: LocationSearchDto) {
+    const result = await this.locationService.searchLocations(searchDto.query, searchDto.limit);
+    
+    if (!result.success) {
+      throw new BadRequestException(result.error || 'Location search failed');
+    }
+
+    return {
+      results: result.results.map(location => ({
+        displayName: location.displayName,
+        address: this.locationService.formatAddress(location),
+        lat: parseFloat(location.lat),
+        lon: parseFloat(location.lon),
+        placeId: location.placeId,
+        type: location.type,
+        importance: location.importance,
+      })),
+    };
+  }
+
+  @Post('location/reverse-geocode')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'seller', 'buyer')
+  async reverseGeocode(@Body() reverseGeocodeDto: ReverseGeocodeDto) {
+    const result = await this.locationService.reverseGeocode(reverseGeocodeDto.lat, reverseGeocodeDto.lon);
+    
+    if (!result.success) {
+      throw new BadRequestException(result.error || 'Reverse geocoding failed');
+    }
+
+    if (!result.result) {
+      throw new BadRequestException('No location found for the given coordinates');
+    }
+
+    return {
+      result: {
+        displayName: result.result.displayName,
+        address: this.locationService.formatAddress(result.result),
+        lat: parseFloat(result.result.lat),
+        lon: parseFloat(result.result.lon),
+        placeId: result.result.placeId,
+        type: result.result.type,
+        importance: result.result.importance,
+      },
+    };
+  }
+
+  @Post('search-by-location')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'seller', 'buyer')
+  async searchMarketsByLocation(@Body() searchDto: MarketSearchByLocationDto) {
+    // Directly query markets with coordinates, bypassing findAll filters
+    const marketsWithLocation = await this.marketModel.find({
+      latitude: { $exists: true, $ne: null },
+      longitude: { $exists: true, $ne: null },
+      isDeleted: { $ne: true },
+      isActive: true
+    }).exec();
+    
+    const nearbyMarkets = this.locationService.findMarketsWithinRadius(
+      searchDto.latitude,
+      searchDto.longitude,
+      marketsWithLocation,
+      searchDto.radiusKm
+    );
+
+    // Apply pagination
+    const page = searchDto.page || 1;
+    const limit = searchDto.limit || 10;
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    
+    const paginatedMarkets = nearbyMarkets.slice(startIndex, endIndex);
+    const totalPages = Math.ceil(nearbyMarkets.length / limit);
+
+    return {
+      markets: paginatedMarkets.map(item => ({
+        ...item.market.toObject(),
+        distance: Math.round(item.distance * 100) / 100, // Round to 2 decimal places
+      })),
+      pagination: {
+        page,
+        limit,
+        total: nearbyMarkets.length,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      },
+      searchRadius: searchDto.radiusKm,
+    };
+  }
+
 } 

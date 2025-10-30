@@ -10,7 +10,7 @@ import { useUser } from "@/contexts/UserContext";
 export default function Dashboard() {
   const t = useTranslations();
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
-  const { role, isLoaded } = useUser();
+  const { user, role, isLoaded } = useUser();
 
   const toggleProject = (projectId: string) => {
     const newExpanded = new Set(expandedProjects);
@@ -186,7 +186,7 @@ export default function Dashboard() {
                       <div>
                         <h4 className="font-medium text-gray-900">Web Development Project</h4>
                         <div className="flex items-center space-x-2">
-                          <span className="text-green-600 font-medium">$10/hour</span>
+                          <span className="text-green-600 font-medium">€10/hour</span>
                           <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Paid</span>
                         </div>
                       </div>
@@ -224,7 +224,7 @@ export default function Dashboard() {
                       <div>
                         <h4 className="font-medium text-gray-900">Copyright Project</h4>
                         <div className="flex items-center space-x-2">
-                          <span className="text-green-600 font-medium">$10/hour</span>
+                          <span className="text-green-600 font-medium">€10/hour</span>
                           <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">Not Paid</span>
                         </div>
                       </div>
@@ -262,7 +262,7 @@ export default function Dashboard() {
                       <div>
                         <h4 className="font-medium text-gray-900">Web Design Project</h4>
                         <div className="flex items-center space-x-2">
-                          <span className="text-green-600 font-medium">$10/hour</span>
+                          <span className="text-green-600 font-medium">€10/hour</span>
                           <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Paid</span>
                         </div>
                       </div>

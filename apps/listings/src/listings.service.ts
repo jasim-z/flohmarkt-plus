@@ -137,6 +137,18 @@ export class ListingsService {
       if (maxPrice !== undefined) filter.price.$lte = Number(maxPrice);
     }
 
+    // Apply text-like search across several fields when provided
+    if (query.search && query.search.trim()) {
+      const search = query.search.trim();
+      const searchConditions = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { category: { $regex: search, $options: 'i' } },
+        { tags: { $in: [new RegExp(search, 'i')] } },
+      ];
+      filter.$and = [ ...(filter.$and || []), { $or: searchConditions } ];
+    }
+
     const sort: any = {};
     sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
@@ -505,7 +517,7 @@ export class ListingsService {
         { isDeleted: false },
         { isDeleted: { $exists: false } }
       ],
-      $text: { $search: searchTerm },
+      $text: { $search: searchTerm ? searchTerm : '""' },
     };
 
     if (category) filter.category = category;

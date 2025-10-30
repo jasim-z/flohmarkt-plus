@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { 
   FaArrowLeft, 
-  FaHeart, 
   FaShare, 
   FaMapMarkerAlt, 
   FaClock, 
@@ -26,7 +25,7 @@ import {
   FaTimes
 } from 'react-icons/fa';
 import { getOrCreateConversation, listMessages, sendMessage } from '@/app/api/messages';
-import { getListingsBySellerAndMarket, GetListingsParams } from '@/app/api/listings';
+import { getListingsBySellerAndMarket, getListingById } from '@/app/api/listings';
 import { getMarketDetails } from '@/app/api/markets';
 import { Listing } from '@/app/api/listings';
 import { Market, Vendor } from '@/app/api/markets';
@@ -44,77 +43,87 @@ export default function ItemDetail() {
   const [seller, setSeller] = useState<Vendor | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isFavorite, setIsFavorite] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [showContactModal, setShowContactModal] = useState(false);
   const [relatedListings, setRelatedListings] = useState<Listing[]>([]);
   const [relatedLoading, setRelatedLoading] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  // Get seller information from URL query parameters
+  // Get seller information from URL query parameters (optional, best-effort)
   const getSellerFromURL = useCallback(() => {
     const vendorParam = searchParams.get('vendor');
-    if (vendorParam) {
-      try {
-        const vendorData = JSON.parse(decodeURIComponent(vendorParam));
-        setSeller(vendorData);
-      } catch (error) {
-        console.error('Error parsing vendor data from URL:', error);
-      }
-    }
+    if (!vendorParam) return;
+    try {
+      const vendorData = JSON.parse(decodeURIComponent(vendorParam));
+      setSeller(vendorData);
+    } catch {}
   }, [searchParams]);
 
-  // Fetch market details
-  const fetchMarket = useCallback(async () => {
-    if (!marketId) return;
-    
+  // Fetch market details by id and try to resolve seller from vendor list
+  const fetchMarket = useCallback(async (targetMarketId: string, sellerIdToFind?: string) => {
     try {
-      const marketResponse = await getMarketDetails(marketId as string);
+      const marketResponse = await getMarketDetails(targetMarketId as string);
       setMarket(marketResponse.market);
+      if (!seller && sellerIdToFind && Array.isArray(marketResponse.vendors)) {
+        const found = marketResponse.vendors.find((v) => v._id === sellerIdToFind);
+        if (found) setSeller(found);
+      }
     } catch (error) {
       console.error('Error fetching market:', error);
     }
-  }, [marketId]);
+  }, [seller]);
 
-  // Fetch item details
+  // Fetch item details (by ID) and fetch related items using item's own seller/market
   const fetchItem = useCallback(async () => {
-    if (!marketId || !sellerId) return;
-    
     try {
       setLoading(true);
-      const response = await getListingsBySellerAndMarket(sellerId as string, marketId as string, {
-        page: 1,
-        limit: 100, // Get more items to find the specific one
-        search: '', // We'll filter client-side
-      });
-      
-      const foundItem = response.data.find(item => item._id === itemId);
-      if (foundItem) {
-        setListing(foundItem);
-        
-        // Get related items (same seller, different items)
-        const related = response.data
-          .filter(item => item._id !== itemId)
-          .slice(0, 4);
-        setRelatedListings(related);
+      const item = await getListingById(itemId as string);
+      if (!item) {
+        setListing(null);
+        setRelatedListings([]);
+        return;
+      }
+
+      setListing(item);
+
+      // Resolve actual associations for this item without redirecting
+      const itemSellerId = (item as any).sellerId;
+      const itemMarketId = (item as any).marketId;
+
+      // Ensure market and seller details are loaded based on the item's own ids
+      if (itemMarketId) {
+        await fetchMarket(itemMarketId as string, itemSellerId as string);
+      }
+
+      // Load related items from the item's own seller and market
+      if (itemSellerId && itemMarketId) {
+        try {
+          const relatedRes = await getListingsBySellerAndMarket(itemSellerId as string, itemMarketId as string, { page: 1, limit: 20 });
+          const related = (relatedRes?.data || []).filter((li: any) => li._id !== item._id).slice(0, 4);
+          setRelatedListings(related);
+        } catch (e) {
+          setRelatedListings([]);
+        }
       } else {
-        // Item not found, redirect to seller page
-        router.push(`/${locale}/user-markets/${marketId}/seller/${sellerId}`);
+        setRelatedListings([]);
       }
     } catch (error) {
-      console.error('Error fetching item:', error);
+      console.error('Error fetching item by id:', error);
+      setListing(null);
+      setRelatedListings([]);
     } finally {
       setLoading(false);
     }
-  }, [marketId, sellerId, itemId, locale, router]);
+  }, [itemId, marketId, sellerId, locale, router, fetchMarket]);
 
   // Initial data fetch
   useEffect(() => {
-    if (marketId && sellerId && itemId) {
-      fetchMarket();
+    if (itemId) {
       getSellerFromURL();
       fetchItem();
     }
-  }, [marketId, sellerId, itemId, fetchMarket, getSellerFromURL, fetchItem]);
+  }, [itemId, getSellerFromURL, fetchItem]);
 
   // Auth check
   useEffect(() => {
@@ -146,54 +155,59 @@ export default function ItemDetail() {
     }
   };
 
-  const toggleFavorite = () => {
-    setIsFavorite(!isFavorite);
-    // TODO: Implement favorite functionality
+  const getCurrentUrl = () => {
+    if (typeof window === 'undefined') return '';
+    return window.location.href;
   };
 
   const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: listing?.title,
-        text: listing?.description,
-        url: window.location.href,
-      });
-    } else {
-      // Fallback: copy to clipboard
-      navigator.clipboard.writeText(window.location.href);
-      // TODO: Show toast notification
-    }
+    // Open custom share menu; also support native share inside menu
+    setShowShareMenu((prev) => !prev);
+  };
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(getCurrentUrl());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {}
+  };
+
+  const shareToTwitter = () => {
+    const text = encodeURIComponent(`Check this out: ${listing?.title || 'Item'}`);
+    const url = encodeURIComponent(getCurrentUrl());
+    window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const shareToFacebook = () => {
+    const url = encodeURIComponent(getCurrentUrl());
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const shareToWhatsApp = () => {
+    const text = encodeURIComponent(`${listing?.title || 'Item'} - ${getCurrentUrl()}`);
+    window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener,noreferrer');
   };
 
   const handleMessageSeller = async () => {
     try {
       const convo = await getOrCreateConversation({ sellerId: sellerId as string, listingId: itemId as string });
-
-      // If this is a fresh conversation, send a default contextual first message
-      try {
-        const res = await listMessages(convo._id, 1, 1);
-        const total = res?.pagination?.total ?? (Array.isArray(res?.data) ? res.data.length : 0);
-        if (total === 0) {
-          const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-          const productUrl = `${baseUrl}/${locale}/user-markets/${marketId}/seller/${sellerId}/item/${itemId}`;
-          const title = listing?.title || 'your item';
-          const defaultText = `Hi, I am interested in "${title}". Link: ${productUrl}`;
-          await sendMessage(convo._id, defaultText);
-        }
-      } catch (err) {
-        // Non-blocking: proceed to conversation even if pre-message fails
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      const productUrl = `${baseUrl}/${locale}/user-markets/${marketId}/seller/${sellerId}/item/${itemId}`;
+      const title = listing?.title || 'your item';
+      const prefill = `Hi, I am interested in "${title}". Link: ${productUrl}`;
+      try { await navigator.clipboard.writeText(prefill); } catch {}
+      const conversationId = (convo as any)?._id || (convo as any)?.id;
+      if (!conversationId) {
+        console.error('Conversation id missing from response', convo);
+        return;
       }
-
-      router.push(`/${locale}/user-messages?conversationId=${convo._id}`);
+      router.push(`/${locale}/user-messages/${conversationId}?prefill=${encodeURIComponent(prefill)}`);
     } catch (e) {
       console.error('failed to start conversation', e);
     }
   };
 
-  const handleBuyNow = () => {
-    // TODO: Implement purchase flow
-    console.log('Buy now clicked');
-  };
 
   if (authLoading || !isLoaded) {
     return (
@@ -309,24 +323,60 @@ export default function ItemDetail() {
                 )}
               </div>
               
-              {/* Action Buttons Overlay */}
-              <div className="absolute top-4 right-4 flex space-x-2">
-                <button
-                  onClick={toggleFavorite}
-                  className={`p-3 rounded-full shadow-lg transition-all duration-200 ${
-                    isFavorite 
-                      ? 'bg-red-500 text-white' 
-                      : 'bg-white/80 hover:bg-white text-gray-800'
-                  }`}
-                >
-                  <FaHeart className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={handleShare}
-                  className="p-3 bg-white/80 hover:bg-white text-gray-800 rounded-full shadow-lg transition-all duration-200"
-                >
-                  <FaShare className="w-4 h-4" />
-                </button>
+              {/* Action Button Overlay */}
+              <div className="absolute top-4 right-4">
+                <div className="relative">
+                  <button
+                    onClick={handleShare}
+                    className="p-3 bg-white/80 hover:bg-white text-gray-800 rounded-full shadow-lg transition-all duration-200"
+                  >
+                    <FaShare className="w-4 h-4" />
+                  </button>
+                  {showShareMenu && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                      <div className="p-2">
+                        <button
+                          onClick={copyLink}
+                          className="w-full text-left px-3 py-2 rounded hover:bg-gray-50 text-gray-700 text-sm"
+                        >
+                          {copied ? 'Copied!' : 'Copy link'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (navigator.share) {
+                              navigator.share({ title: listing?.title, text: listing?.description, url: getCurrentUrl() }).catch(() => {});
+                            } else {
+                              copyLink();
+                            }
+                            setShowShareMenu(false);
+                          }}
+                          className="w-full text-left px-3 py-2 rounded hover:bg-gray-50 text-gray-700 text-sm"
+                        >
+                          Share via device...
+                        </button>
+                        <div className="h-px bg-gray-200 my-2"></div>
+                        <button
+                          onClick={() => { shareToTwitter(); setShowShareMenu(false); }}
+                          className="w-full text-left px-3 py-2 rounded hover:bg-gray-50 text-gray-700 text-sm"
+                        >
+                          Share on Twitter/X
+                        </button>
+                        <button
+                          onClick={() => { shareToFacebook(); setShowShareMenu(false); }}
+                          className="w-full text-left px-3 py-2 rounded hover:bg-gray-50 text-gray-700 text-sm"
+                        >
+                          Share on Facebook
+                        </button>
+                        <button
+                          onClick={() => { shareToWhatsApp(); setShowShareMenu(false); }}
+                          className="w-full text-left px-3 py-2 rounded hover:bg-gray-50 text-gray-700 text-sm"
+                        >
+                          Share on WhatsApp
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -399,12 +449,7 @@ export default function ItemDetail() {
                 </div>
               </div>
               
-              <button
-                onClick={() => router.push(`/${locale}/user-markets/${marketId}/seller/${sellerId}`)}
-                className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
-              >
-                View All Items from This Seller
-              </button>
+              {/* Removed "View All Items from This Seller" button as requested */}
             </div>
 
             {/* Market Information - Hidden on Mobile */}
@@ -472,11 +517,11 @@ export default function ItemDetail() {
                 ) : (
                   <>
                     <span className="text-4xl font-bold text-gray-900">
-                      ${listing.price.toFixed(2)}
+                      €{listing.price.toFixed(2)}
                     </span>
                     {listing.originalPrice && listing.originalPrice > listing.price && (
                       <span className="text-xl text-gray-500 line-through">
-                        ${listing.originalPrice.toFixed(2)}
+                        €{listing.originalPrice.toFixed(2)}
                       </span>
                     )}
                   </>
@@ -508,15 +553,8 @@ export default function ItemDetail() {
               {/* Action Buttons */}
               <div className="space-y-3">
                 <button
-                  onClick={handleBuyNow}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2"
-                >
-                  <FaBox className="w-5 h-5" />
-                  <span>Buy Now</span>
-                </button>
-                <button
                   onClick={handleMessageSeller}
-                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2"
                 >
                   <FaHandshake className="w-5 h-5" />
                   <span>Message Seller</span>
@@ -566,7 +604,7 @@ export default function ItemDetail() {
                   <div className="flex items-center space-x-3">
                     <FaTruck className="text-gray-400 w-4 h-4" />
                     <span className="text-gray-600">Shipping Cost:</span>
-                    <span className="font-medium text-gray-900">${listing.shippingCost.toFixed(2)}</span>
+                    <span className="font-medium text-gray-900">€{listing.shippingCost.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex items-center space-x-3">
@@ -646,12 +684,7 @@ export default function ItemDetail() {
                 </div>
               </div>
               
-              <button
-                onClick={() => router.push(`/${locale}/user-markets/${marketId}/seller/${sellerId}`)}
-                className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
-              >
-                View All Items from This Seller
-              </button>
+              {/* Removed mobile "View All Items from This Seller" button */}
             </div>
 
             {/* Market Information - Mobile Only */}
@@ -700,7 +733,11 @@ export default function ItemDetail() {
               {relatedListings.map((relatedItem) => (
                 <div
                   key={relatedItem._id}
-                  onClick={() => router.push(`/${locale}/user-markets/${marketId}/seller/${sellerId}/item/${relatedItem._id}`)}
+                  onClick={() => {
+                    const relSellerId = (relatedItem as any).sellerId || sellerId;
+                    const relMarketId = (relatedItem as any).marketId || marketId;
+                    router.push(`/${locale}/user-markets/${relMarketId}/seller/${relSellerId}/item/${relatedItem._id}`);
+                  }}
                   className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all duration-300 cursor-pointer group"
                 >
                   <div className="aspect-square bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center">
@@ -720,7 +757,7 @@ export default function ItemDetail() {
                     </h3>
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-gray-900">
-                        {relatedItem.isFree ? 'Free' : `$${relatedItem.price.toFixed(2)}`}
+                        {relatedItem.isFree ? 'Free' : `€${relatedItem.price.toFixed(2)}`}
                       </span>
                       <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
                         {relatedItem.condition}

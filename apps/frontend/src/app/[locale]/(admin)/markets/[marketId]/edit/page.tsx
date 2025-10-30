@@ -3,18 +3,27 @@
 import { useTranslations } from "next-intl";
 import { useState, useCallback, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaImage, FaUsers, FaTags, FaArrowLeft, FaSave, FaTimes } from "react-icons/fa";
+import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaImage, FaUsers, FaTags, FaArrowLeft, FaSave, FaTimes, FaPlus, FaUpload, FaTrash } from "react-icons/fa";
 import { getMarketDetails, updateMarket, Market, CreateMarketRequest } from "../../../../../api/markets";
+import { uploadFile, validateFile, createPreviewUrl, revokePreviewUrl, UploadedImage } from "@/app/lib/uploadUtils";
 
 interface EditMarketForm {
   name: string;
   description: string;
   location: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
+  state?: string;
+  latitude?: number;
+  longitude?: number;
   date: string;
   startTime: string;
   endTime: string;
   isActive: boolean;
   bannerImage: string;
+  additionalImages: string[];
   vendorLimit?: number;
   boothsAvailable?: number;
   categories: string[];
@@ -32,6 +41,11 @@ export default function EditMarket() {
   const [success, setSuccess] = useState<string | null>(null);
   const [newCategory, setNewCategory] = useState('');
   const [market, setMarket] = useState<Market | null>(null);
+  
+  // Image upload state
+  const [bannerImage, setBannerImage] = useState<UploadedImage | null>(null);
+  const [additionalImages, setAdditionalImages] = useState<UploadedImage[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<any[]>([]);
 
   // Predefined category suggestions
   const categorySuggestions = [
@@ -43,11 +57,19 @@ export default function EditMarket() {
     name: '',
     description: '',
     location: '',
+    address: '',
+    city: '',
+    postalCode: '',
+    country: '',
+    state: '',
+    latitude: undefined,
+    longitude: undefined,
     date: '',
     startTime: '',
     endTime: '',
     isActive: true,
     bannerImage: '',
+    additionalImages: [],
     vendorLimit: undefined,
     boothsAvailable: undefined,
     categories: [],
@@ -76,15 +98,47 @@ export default function EditMarket() {
           name: foundMarket.name,
           description: foundMarket.description,
           location: foundMarket.location,
+          address: foundMarket.address || '',
+          city: foundMarket.city || '',
+          postalCode: foundMarket.postalCode || '',
+          country: foundMarket.country || '',
+          state: foundMarket.state || '',
+          latitude: foundMarket.latitude,
+          longitude: foundMarket.longitude,
           date: formattedDate,
           startTime: foundMarket.startTime,
           endTime: foundMarket.endTime,
           isActive: foundMarket.isActive,
           bannerImage: foundMarket.bannerImage,
+          additionalImages: Array.isArray(foundMarket.additionalImages) ? foundMarket.additionalImages : [],
           vendorLimit: foundMarket.vendorLimit,
           boothsAvailable: foundMarket.boothsAvailable,
           categories: Array.isArray(foundMarket.categories) ? foundMarket.categories : [],
         });
+
+        // Pre-fill existing images
+        if (foundMarket.bannerImage) {
+          const bannerPreviewUrl = createPreviewUrl(new File([], 'banner.jpg', { type: 'image/jpeg' }));
+          setBannerImage({
+            file: new File([], 'banner.jpg', { type: 'image/jpeg' }),
+            url: foundMarket.bannerImage,
+            key: foundMarket.bannerImage,
+            previewUrl: bannerPreviewUrl
+          });
+        }
+
+        if (foundMarket.additionalImages && foundMarket.additionalImages.length > 0) {
+          const additionalImagesData = foundMarket.additionalImages.map((url, index) => {
+            const previewUrl = createPreviewUrl(new File([], `additional-${index}.jpg`, { type: 'image/jpeg' }));
+            return {
+              file: new File([], `additional-${index}.jpg`, { type: 'image/jpeg' }),
+              url: url,
+              key: url,
+              previewUrl: previewUrl
+            };
+          });
+          setAdditionalImages(additionalImagesData);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch market');
       } finally {
@@ -96,6 +150,18 @@ export default function EditMarket() {
       fetchMarket();
     }
   }, [marketId]);
+
+  // Cleanup preview URLs on unmount
+  useEffect(() => {
+    return () => {
+      if (bannerImage) {
+        revokePreviewUrl(bannerImage.previewUrl);
+      }
+      additionalImages.forEach(image => {
+        revokePreviewUrl(image.previewUrl);
+      });
+    };
+  }, [bannerImage, additionalImages]);
 
   const handleInputChange = (field: keyof EditMarketForm, value: string | number | boolean | undefined) => {
     setFormData(prev => {
@@ -130,6 +196,117 @@ export default function EditMarket() {
     }));
   };
 
+  const handleBannerImageUpload = async (files: File[]) => {
+    if (files.length === 0) return;
+    
+    const file = files[0]; // Only take the first file for banner
+    const validation = validateFile(file);
+    if (!validation.isValid) {
+      setError(validation.error || 'Invalid file');
+      return;
+    }
+
+    try {
+      const result = await uploadFile(file, 'market_banner', marketId, {
+        onProgress: (progress) => {
+          setUploadProgress(prev => [...prev.filter(p => p.file.name !== file.name), progress]);
+        }
+      });
+
+      const previewUrl = createPreviewUrl(file);
+      const uploadedImage: UploadedImage = {
+        file,
+        url: result.url,
+        key: result.key,
+        previewUrl
+      };
+
+      // Clean up old banner image preview
+      if (bannerImage) {
+        revokePreviewUrl(bannerImage.previewUrl);
+      }
+
+      setBannerImage(uploadedImage);
+      setFormData(prev => ({ 
+        ...prev, 
+        bannerImage: result.url 
+      }));
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to upload banner image');
+    }
+  };
+
+  const handleAdditionalImagesUpload = async (files: File[]) => {
+    if (files.length === 0) return;
+
+    // Check if adding these files would exceed the limit
+    if (additionalImages.length + files.length > 3) {
+      setError('Maximum 3 additional images allowed');
+      return;
+    }
+
+    const validFiles = files.filter(file => {
+      const validation = validateFile(file);
+      if (!validation.isValid) {
+        setError(validation.error || 'Invalid file');
+        return false;
+      }
+      return true;
+    });
+
+    // If no valid files after filtering, show a clear error
+    if (validFiles.length === 0) {
+      setError('No valid files to upload. Please check file size (max 10MB) and format (JPEG, PNG, GIF, WebP).');
+      return;
+    }
+
+    for (const file of validFiles) {
+      try {
+        const result = await uploadFile(file, 'market_additional', marketId, {
+          onProgress: (progress) => {
+            setUploadProgress(prev => [...prev.filter(p => p.file.name !== file.name), progress]);
+          }
+        });
+
+        const previewUrl = createPreviewUrl(file);
+        const uploadedImage: UploadedImage = {
+          file,
+          url: result.url,
+          key: result.key,
+          previewUrl
+        };
+
+        setAdditionalImages(prev => [...prev, uploadedImage]);
+        setFormData(prev => ({ 
+          ...prev, 
+          additionalImages: [...prev.additionalImages, result.url]
+        }));
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Failed to upload image');
+      }
+    }
+  };
+
+  const removeBannerImage = () => {
+    if (bannerImage) {
+      revokePreviewUrl(bannerImage.previewUrl);
+      setBannerImage(null);
+      setFormData(prev => ({ ...prev, bannerImage: '' }));
+    }
+  };
+
+  const removeAdditionalImage = (index: number) => {
+    const imageToRemove = additionalImages[index];
+    if (imageToRemove) {
+      revokePreviewUrl(imageToRemove.previewUrl);
+      setAdditionalImages(prev => prev.filter((_, i) => i !== index));
+      setFormData(prev => ({
+        ...prev,
+        additionalImages: prev.additionalImages.filter((_, i) => i !== index)
+      }));
+    }
+  };
+
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -138,7 +315,7 @@ export default function EditMarket() {
 
     try {
       // Validate required fields
-      if (!formData.name || !formData.description || !formData.location || !formData.date || !formData.startTime || !formData.endTime) {
+      if (!formData.name || !formData.description || !formData.location || !formData.date || !formData.endDate || !formData.startTime || !formData.endTime) {
         throw new Error('Please fill in all required fields');
       }
 
@@ -150,6 +327,10 @@ export default function EditMarket() {
       // Validate date - market date should not be in the past
       const selectedDate = new Date(formData.date);
       const today = new Date();
+      const endDate = new Date(formData.endDate as string);
+      if (endDate < selectedDate) {
+        throw new Error('End date cannot be earlier than start date');
+      }
       today.setHours(0, 0, 0, 0);
       
       if (selectedDate < today) {
@@ -171,15 +352,25 @@ export default function EditMarket() {
       // Ensure 1:1 logic - booths available equals vendor limit
       const finalBoothsAvailable = formData.vendorLimit || formData.boothsAvailable;
       
+      const normalize = (v: any) => (v === '' ? undefined : v);
       const marketData: Partial<CreateMarketRequest> = {
         name: formData.name,
         description: formData.description,
         location: formData.location,
+        address: normalize(formData.address),
+        city: normalize(formData.city),
+        postalCode: normalize(formData.postalCode),
+        country: normalize(formData.country),
+        state: normalize(formData.state),
+        latitude: formData.latitude,
+        longitude: formData.longitude,
         date: formData.date,
+        endDate: formData.endDate,
         startTime: formData.startTime,
         endTime: formData.endTime,
         isActive: formData.isActive,
         bannerImage: formData.bannerImage,
+        additionalImages: formData.additionalImages,
         vendorLimit: formData.vendorLimit,
         boothsAvailable: finalBoothsAvailable,
         categories: formData.categories,
@@ -533,19 +724,113 @@ export default function EditMarket() {
                 <span>Banner Image</span>
               </h3>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Image URL *
-                </label>
-                <input
-                  type="url"
-                  value={formData.bannerImage}
-                  onChange={(e) => handleInputChange('bannerImage', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="https://example.com/image.jpg"
-                  required
-                />
+              {bannerImage ? (
+                <div className="space-y-4">
+                  <div className="relative">
+                    <img
+                      src={bannerImage.url}
+                      alt="Banner preview"
+                      className="w-full h-48 object-cover rounded-lg border border-gray-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={removeBannerImage}
+                      className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors duration-200"
+                    >
+                      <FaTrash className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <FaUpload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                  <p className="text-sm text-gray-600 mb-2">Upload banner image</p>
+                  <p className="text-xs text-gray-500 mb-4">PNG, JPG, GIF, WebP up to 10MB</p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      handleBannerImageUpload(files);
+                      // Clear the input value so the same file can be selected again
+                      e.target.value = '';
+                    }}
+                    className="hidden"
+                    id="banner-upload"
+                  />
+                  <label
+                    htmlFor="banner-upload"
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 cursor-pointer"
+                  >
+                    <FaPlus className="h-4 w-4 mr-2" />
+                    Choose Banner Image
+                  </label>
+                </div>
+              )}
+            </div>
+
+            {/* Additional Images */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+                <FaImage className="h-5 w-5 text-indigo-600" />
+                <span>Additional Images</span>
+              </h3>
+              
+              <div className="space-y-4">
+                {/* Display existing additional images */}
+                {additionalImages.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {additionalImages.map((image, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={image.url}
+                          alt={`Additional ${index + 1}`}
+                          className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeAdditionalImage(index)}
+                          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors duration-200"
+                        >
+                          <FaTrash className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Add more images button */}
+                {additionalImages.length < 3 && (
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                    <FaUpload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                    <p className="text-xs text-gray-500 mb-2">Add more images</p>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        handleAdditionalImagesUpload(files);
+                        // Clear the input value so the same file can be selected again
+                        e.target.value = '';
+                      }}
+                      className="hidden"
+                      id="additional-upload"
+                    />
+                    <label
+                      htmlFor="additional-upload"
+                      className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 cursor-pointer"
+                    >
+                      <FaPlus className="h-3 w-3 mr-1" />
+                      Add Image
+                    </label>
+                  </div>
+                )}
               </div>
+              
+              <p className="text-xs text-gray-500">
+                Maximum 3 additional images allowed. Each image should be under 10MB.
+              </p>
             </div>
 
             {/* Active Status */}

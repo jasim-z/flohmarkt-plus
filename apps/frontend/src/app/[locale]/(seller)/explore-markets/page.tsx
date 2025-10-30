@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaSearch, FaCheck, FaDollarSign, FaSync } from "react-icons/fa";
 import { getMarkets, Market } from "@/app/api/markets";
+import { searchMarketsByLocation, searchLocations } from "@/app/api/location";
 import UnAuthourized from "@/components/UnAuthourized";
 import { useUser } from "@/contexts/UserContext";
 import { formatPrice } from "@/lib/utils";
@@ -20,8 +21,18 @@ export default function SellerExploreMarkets() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [totalAvailable, setTotalAvailable] = useState<number>(0);
+  const [useLocation, setUseLocation] = useState<boolean>(false);
+  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [locationLabel, setLocationLabel] = useState<string>("");
+  const [showLocationInput, setShowLocationInput] = useState<boolean>(false);
+  const [locationQuery, setLocationQuery] = useState<string>("");
+  const [locationOptions, setLocationOptions] = useState<Array<{ label: string; lat: number; lon: number }>>([]);
+  const locationDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const observer = useRef<IntersectionObserver>();
   const lastMarketElementRef = useRef<HTMLDivElement>(null);
+  const [rawSearchInput, setRawSearchInput] = useState("");
+  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // Early return after all hooks
   if (role !== 'seller' && isLoaded) return <UnAuthourized />;
@@ -37,27 +48,26 @@ export default function SellerExploreMarkets() {
         isDeleted: false,
       };
 
-      if (searchTerm) {
-        params.search = searchTerm;
+      // Choose source: location search if enabled and we have coords; otherwise generic list
+      let response: any;
+      if (useLocation && coords) {
+        response = await searchMarketsByLocation({ latitude: coords.lat, longitude: coords.lon, radiusKm: 50, page: pageNum, limit: 12 });
+      } else {
+        if (searchTerm) params.search = searchTerm;
+        response = await getMarkets(params);
       }
-
-      // Don't send status filter to backend since we calculate it dynamically
-      // const response = await getMarkets(params);
       
-      // For now, we'll fetch all markets and filter by status on the frontend
-      // This ensures we get the most up-to-date status based on current time
-      const response = await getMarkets(params);
-      
-      let filteredData = response.data;
+      let filteredData = useLocation && coords ? response.markets : response.data;
 
       // Exclude markets the seller already joined
-      if (user?._id) {
-        filteredData = filteredData.filter(m => !(m.registeredVendors || []).includes(user._id));
+      const userId = (user as any)?.id || (user as any)?._id;
+      if (userId) {
+        filteredData = filteredData.filter((m: any) => !(m.registeredVendors || []).includes(userId));
       }
       
       // Apply status filter on the frontend using calculated status
       if (statusFilter) {
-        filteredData = response.data.filter(market => 
+        filteredData = filteredData.filter(market => 
           calculateMarketStatus(market) === statusFilter
         );
       }
@@ -77,13 +87,33 @@ export default function SellerExploreMarkets() {
       setLoading(false);
       setIsInitialLoad(false);
     }
-  }, [searchTerm, statusFilter, user?._id]);
+  }, [searchTerm, statusFilter, user, useLocation, coords]);
 
+  // 2. Trigger fetchMarkets ONLY when [coords, useLocation, searchTerm, statusFilter] change:
   useEffect(() => {
-    if (isLoaded) {
-      fetchMarkets(1, true);
-    }
-  }, [isLoaded, fetchMarkets]);
+    if (!isLoaded) return;
+    fetchMarkets(1, true);
+  }, [coords, useLocation, searchTerm, statusFilter, isLoaded]);
+
+  // Compute total available markets (upcoming/ongoing active) excluding markets already joined
+  useEffect(() => {
+    if (!isLoaded) return;
+    (async () => {
+      try {
+        const allRes = await getMarkets({ page: 1, limit: 1 });
+        const userId = (user as any)?.id || (user as any)?._id;
+        let joinedTotal = 0;
+        if (userId) {
+          const joinedRes = await getMarkets({ page: 1, limit: 1, userId });
+          joinedTotal = joinedRes.pagination.total || 0;
+        }
+        const totalAll = allRes.pagination.total || 0;
+        setTotalAvailable(Math.max(0, totalAll - joinedTotal));
+      } catch {
+        setTotalAvailable(0);
+      }
+    })();
+  }, [isLoaded, user]);
 
   // Intersection Observer for infinite scroll
   useEffect(() => {
@@ -101,6 +131,15 @@ export default function SellerExploreMarkets() {
       observer.current.observe(lastMarketElementRef.current);
     }
   }, [loading, hasMore, page, fetchMarkets]);
+
+  useEffect(() => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      setSearchTerm(rawSearchInput);
+    }, 400);
+    // cleanup
+    return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
+  }, [rawSearchInput]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -165,9 +204,26 @@ export default function SellerExploreMarkets() {
     });
   };
 
+  const formatDateRange = (startDate: string, endDate?: string) => {
+    const start = new Date(startDate).toLocaleDateString('en-GB', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+    let end = start;
+    if (endDate) {
+      end = new Date(endDate).toLocaleDateString('en-GB', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    }
+    return `${start} - ${end}`;
+  };
+
   const isSellerJoined = (market: Market) => {
-    if (!user || !user._id || !market.registeredVendors) return false;
-    return market.registeredVendors.includes(user._id);
+    if (!user || !user.id || !market.registeredVendors) return false;
+    return market.registeredVendors.includes(user.id);
   };
 
   const getVendorAvailability = (market: Market) => {
@@ -206,9 +262,116 @@ export default function SellerExploreMarkets() {
       <div className="max-w-7xl mx-auto">
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Explore Markets
-          </h1>
+          <div className="flex items-center justify-between gap-4">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Explore Markets {totalAvailable > 0 ? `(${totalAvailable})` : ''}
+            </h1>
+            <div className="text-sm text-gray-600 relative">
+              {!showLocationInput ? (
+                <div className="flex items-center gap-3">
+                  {useLocation && locationLabel ? (
+                    <button
+                      onClick={() => setShowLocationInput(true)}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 shadow-sm hover:bg-blue-100 transition"
+                    >
+                      <FaMapMarkerAlt className="text-blue-600" />
+                      <span className="font-medium">{locationLabel}</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setShowLocationInput(true)}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 shadow-sm hover:bg-blue-100 transition"
+                    >
+                      <FaMapMarkerAlt className="text-blue-600" />
+                      <span className="font-medium">Set location</span>
+                    </button>
+                  )}
+                  {useLocation && locationLabel && (
+                    <button
+                      onClick={() => { setUseLocation(false); setCoords(null); setLocationLabel(''); }}
+                      className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="w-80">
+                  <div className="relative">
+                    <input
+                      value={locationQuery}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setLocationQuery(val);
+                        if (locationDebounceRef.current) clearTimeout(locationDebounceRef.current);
+                        locationDebounceRef.current = setTimeout(async () => {
+                          if (!val.trim()) { setLocationOptions([]); return; }
+                          try {
+                            const res = await searchLocations({ query: val, limit: 5 });
+                            setLocationOptions((res.results || []).map(r => ({ label: r.displayName || r.address, lat: r.lat, lon: r.lon })));
+                          } catch { setLocationOptions([]); }
+                        }, 300);
+                      }}
+                      placeholder="Search a city or place..."
+                      className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm relative"
+                    />
+                    <FaMapMarkerAlt className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-auto">
+                      {locationOptions.length === 0 && locationQuery ? (
+                        <div className="px-3 py-2 text-sm text-gray-500">No results</div>
+                      ) : (
+                        locationOptions.map((opt, idx) => (
+                          <button
+                            key={`${opt.label}-${idx}`}
+                            onClick={() => {
+                              setCoords({ lat: opt.lat, lon: opt.lon });
+                              setLocationLabel(opt.label.length > 22 ? opt.label.slice(0,19)+'...' : opt.label);
+                              setUseLocation(true);
+                              setShowLocationInput(false);
+                              setLocationQuery('');
+                              setLocationOptions([]);
+                            }}
+                            className="block w-full text-left px-3 py-2 text-sm hover:bg-blue-50"
+                          >
+                            {opt.label}
+                          </button>
+                        ))
+                      )}
+                      {navigator.geolocation && (
+                        <div className="border-t border-gray-100">
+                          <button
+                            onClick={() => {
+                              navigator.geolocation.getCurrentPosition(async (pos) => {
+                                setCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+                                try {
+                                  const res = await searchLocations({ query: '', limit: 1 }); // Assuming reverse geocoding for current location
+                                  const label = res?.results?.[0]?.displayName || 'Current location';
+                                  setLocationLabel(label.length > 22 ? label.slice(0, 19) + '...' : label);
+                                } catch {
+                                  setLocationLabel('Current location');
+                                }
+                                setUseLocation(true);
+                                setShowLocationInput(false);
+                                setLocationQuery('');
+                                setLocationOptions([]);
+                              });
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50"
+                          >
+                            Use current location
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <button onClick={() => setShowLocationInput(false)} className="text-sm px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">Cancel</button>
+                      <button onClick={() => { setUseLocation(false); setCoords(null); setLocationLabel(''); setShowLocationInput(false); }} className="text-sm px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200">Clear</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
           <p className="text-gray-600">Find and join flea markets in your area</p>
         </div>
 
@@ -219,9 +382,9 @@ export default function SellerExploreMarkets() {
               <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search markets by name, location, or category..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search markets by name or category..."
+                value={rawSearchInput}
+                onChange={(e) => setRawSearchInput(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -367,7 +530,7 @@ export default function SellerExploreMarkets() {
                       
                       <div className="flex items-center space-x-2 text-sm text-gray-600">
                         <FaCalendar size={14} />
-                        <span>{formatDate(market.date)}</span>
+                        <span>{formatDateRange(market.date, market.endDate)}</span>
                       </div>
                       
                       <div className="flex items-center space-x-2 text-sm text-gray-600">
@@ -402,22 +565,6 @@ export default function SellerExploreMarkets() {
                       </div>
                     )}
                     
-                    {/* Action Button */}
-                    {isJoined ? (
-                      <button 
-                        disabled
-                        className="w-full py-2 px-4 bg-green-100 text-green-700 rounded-lg font-medium cursor-not-allowed flex items-center justify-center space-x-2"
-                      >
-                        <FaCheck size={14} />
-                        <span>Already Joined</span>
-                      </button>
-                    ) : (
-                      <button 
-                        className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-medium"
-                      >
-                        Join Market
-                      </button>
-                    )}
                   </div>
                 </div>
               );

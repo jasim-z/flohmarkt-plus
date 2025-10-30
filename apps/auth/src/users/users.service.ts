@@ -4,10 +4,11 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UsersRepository } from './users.repository';
-import { CreateUserDto, UserRole, GetUsersDto, PaginatedUsersResponse, GetUsersByIdsRequest, GetUsersResponse } from '@app/common';
+import { CreateUserDto, UserRole, GetUsersDto, PaginatedUsersResponse, GetUsersByIdsRequest, GetUsersResponse, EmailService } from '@app/common';
 import { User } from './schemas/user.schema';
 
 @Injectable()
@@ -15,18 +16,37 @@ export class UsersService {
   constructor(
     private readonly usersRepository: UsersRepository,
     @InjectModel(User.name) private readonly userModel: Model<User>,
+    private readonly emailService: EmailService,
   ) {}
 
   async createUser(request: CreateUserDto) {
     try {
       await this.validateCreateUserRequest(request);
 
+      // Generate verification token
+      const verificationToken = crypto.randomBytes(32).toString('hex');
+      const verificationTokenExpiry = new Date();
+      verificationTokenExpiry.setHours(verificationTokenExpiry.getHours() + 24); // Token expires in 24 hours
+
       const user = await this.usersRepository.create({
         ...request,
         password: await bcrypt.hash(request.password, 10),
         role: request.role || UserRole.BUYER, // Default to buyer
         isActive: true,
+        isVerified: false,
+        verificationToken,
+        verificationTokenExpiry,
         memberSince: new Date(),
+      });
+
+      // Send verification email (don't wait for it to complete)
+      this.emailService.sendVerificationEmail(
+        user.email,
+        user.name || user.displayName,
+        verificationToken
+      ).catch(err => {
+        console.error('Failed to send verification email:', err);
+        // Don't fail user creation if email fails
       });
 
       return user;
@@ -85,6 +105,7 @@ export class UsersService {
     // Return only public information
     return {
       _id: user._id,
+      name: user.name,
       displayName: user.displayName,
       avatar: user.avatar,
       bio: user.bio,
@@ -110,8 +131,7 @@ export class UsersService {
     
     if (search) {
       filter.$or = [
-        { firstName: { $regex: search, $options: 'i' } },
-        { lastName: { $regex: search, $options: 'i' } },
+        { name: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } },
         { displayName: { $regex: search, $options: 'i' } },
       ];
@@ -140,6 +160,7 @@ export class UsersService {
       .select({
         _id: 1,
         email: 1,
+        name: 1,
         displayName: 1,
         role: 1,
         isActive: 1,
@@ -154,16 +175,24 @@ export class UsersService {
         createdAt: 1,
         updatedAt: 1,
       })
-      .lean()
       .exec();
 
     // Transform the data to match the expected interface
     const transformedUsers = users.map((user: any) => ({
       _id: user._id?.toString() || '',
       email: user.email || '',
+      name: user.name || '',
       displayName: user.displayName || '',
       role: user.role || '',
       isActive: user.isActive ?? false,
+      avatar: user.avatar || undefined,
+      city: user.city || undefined,
+      neighborhood: user.neighborhood || undefined,
+      rating: user.rating || undefined,
+      totalSales: user.totalSales || undefined,
+      totalReviews: user.totalReviews || undefined,
+      isVerified: user.isVerified || undefined,
+      badges: user.badges || undefined,
       createdAt: user.createdAt?.toISOString() || new Date().toISOString(),
       updatedAt: user.updatedAt?.toISOString() || new Date().toISOString(),
     }));
@@ -200,6 +229,117 @@ export class UsersService {
     });
   }
 
+  async verifyEmail(token: string): Promise<{ success: boolean; message: string }> {
+    const user = await this.userModel.findOne({
+      verificationToken: token,
+      verificationTokenExpiry: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return {
+        success: false,
+        message: 'Invalid or expired verification token',
+      };
+    }
+
+    // Update user as verified
+    await this.userModel.updateOne(
+      { _id: user._id },
+      {
+        $set: { isVerified: true },
+        $unset: { verificationToken: '', verificationTokenExpiry: '' },
+      }
+    );
+
+    return {
+      success: true,
+      message: 'Email verified successfully',
+    };
+  }
+
+  async requestPasswordReset(email: string): Promise<{ success: boolean; message: string }> {
+    const user = await this.userModel.findOne({ email: email.toLowerCase().trim() });
+
+    // For security reasons, always return success even if user not found
+    // This prevents email enumeration attacks
+    if (!user) {
+      return {
+        success: true,
+        message: 'If an account with that email exists, a password reset link has been sent.',
+      };
+    }
+
+    // Generate password reset token
+    const resetPasswordToken = crypto.randomBytes(32).toString('hex');
+    const resetPasswordTokenExpiry = new Date();
+    resetPasswordTokenExpiry.setHours(resetPasswordTokenExpiry.getHours() + 1); // Token expires in 1 hour
+
+    // Update user with reset token
+    await this.userModel.updateOne(
+      { _id: user._id },
+      {
+        $set: {
+          resetPasswordToken,
+          resetPasswordTokenExpiry,
+        },
+      }
+    );
+
+    // Send password reset email
+    this.emailService.sendPasswordResetEmail(
+      user.email,
+      user.name || user.displayName,
+      resetPasswordToken
+    ).catch(err => {
+      console.error('Failed to send password reset email:', err);
+    });
+
+    return {
+      success: true,
+      message: 'If an account with that email exists, a password reset link has been sent.',
+    };
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+    // Find user with valid reset token
+    const user = await this.userModel.findOne({
+      resetPasswordToken: token,
+      resetPasswordTokenExpiry: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return {
+        success: false,
+        message: 'Invalid or expired password reset token',
+      };
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password and remove reset token
+    await this.userModel.updateOne(
+      { _id: user._id },
+      {
+        $set: { password: hashedPassword },
+        $unset: { resetPasswordToken: '', resetPasswordTokenExpiry: '' },
+      }
+    );
+
+    // Send confirmation email
+    this.emailService.sendPasswordResetConfirmationEmail(
+      user.email,
+      user.name || user.displayName
+    ).catch(err => {
+      console.error('Failed to send password reset confirmation email:', err);
+    });
+
+    return {
+      success: true,
+      message: 'Password has been reset successfully',
+    };
+  }
+
   async getUsersByIds(request: GetUsersByIdsRequest): Promise<GetUsersResponse> {
     const { userIds, query } = request;
     const { page = 1, limit = 20, search, sortBy = 'displayName', sortOrder = 'asc', role, isActive } = query;
@@ -223,8 +363,7 @@ export class UsersService {
     
     if (search) {
       filter.$or = [
-        { firstName: { $regex: search, $options: 'i' } },
-        { lastName: { $regex: search, $options: 'i' } },
+        { name: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } },
         { displayName: { $regex: search, $options: 'i' } },
       ];
@@ -245,6 +384,7 @@ export class UsersService {
       .select({
         _id: 1,
         email: 1,
+        name: 1,
         displayName: 1,
         role: 1,
         isActive: 1,
@@ -266,6 +406,7 @@ export class UsersService {
     const transformedUsers = users.map((user: any) => ({
       _id: user._id?.toString() || '',
       email: user.email || '',
+      name: user.name || '',
       displayName: user.displayName || '',
       role: user.role || '',
       isActive: user.isActive ?? false,

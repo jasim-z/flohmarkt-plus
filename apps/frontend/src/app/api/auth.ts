@@ -20,14 +20,18 @@ export async function loginUser(email: string, password: string) {
 export async function signupUser({
   email,
   password,
+  name,
   displayName,
+  role,
 }: {
   email: string;
   password: string;
-  displayName: string;
+  name: string;
+  displayName?: string;
+  role: 'buyer' | 'seller';
 }) {
   try {
-    const response = await authApiClient.post('/users', { email, password, displayName });
+    const response = await authApiClient.post('/users', { email, password, name, displayName, role });
     return response;
   } catch (error) {
     const apiError = apiErrorHandler.handleError(error);

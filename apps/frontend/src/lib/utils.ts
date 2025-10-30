@@ -52,5 +52,5 @@ export function formatPrice(price: string | number | { $numberDecimal: string } 
     return fallback;
   }
   
-  return `$${priceNum.toFixed(2)}`;
+  return `€${priceNum.toFixed(2)}`;
 }

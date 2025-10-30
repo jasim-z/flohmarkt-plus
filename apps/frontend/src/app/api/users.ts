@@ -79,4 +79,45 @@ export async function getUserById(userId: string): Promise<User> {
     const apiError = apiErrorHandler.handleError(error);
     throw apiError;
   }
+}
+
+export interface UpdateUserProfileRequest {
+  displayName?: string;
+  bio?: string;
+  avatar?: string;
+  city?: string;
+  neighborhood?: string;
+  latitude?: number;
+  longitude?: number;
+  phoneNumber?: string;
+}
+
+export interface PresignUploadResponse {
+  success: boolean;
+  presignedUrl: string;
+  key: string;
+  publicUrl: string;
+  expiresIn: number;
+}
+
+export async function updateUserProfile(updateData: UpdateUserProfileRequest): Promise<User> {
+  try {
+    const response = await usersApiClient.put('/auth/profile', updateData);
+    return response.data;
+  } catch (error) {
+    const apiError = apiErrorHandler.handleError(error);
+    throw apiError;
+  }
+}
+
+export async function presignProfileUpload(): Promise<PresignUploadResponse> {
+  try {
+    const response = await usersApiClient.post('/auth/profile/presign-upload', undefined, {
+      skipAuthRedirect: true // Don't auto-redirect on auth errors
+    });
+    return response.data;
+  } catch (error) {
+    const apiError = apiErrorHandler.handleError(error);
+    throw apiError;
+  }
 } 

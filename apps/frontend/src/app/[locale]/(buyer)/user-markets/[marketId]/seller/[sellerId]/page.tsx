@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { FaArrowLeft, FaBox, FaSearch, FaThLarge, FaListUl, FaStar, FaStore, FaFilter, FaTimes } from 'react-icons/fa';
+import { getOrCreateConversation } from '@/app/api/messages';
 import { getListingsBySellerAndMarket, GetListingsParams } from '@/app/api/listings';
 import { getMarketDetails } from '@/app/api/markets';
 import { Listing } from '@/app/api/listings';
@@ -215,6 +216,29 @@ export default function SellerItems() {
       (listing.tags && listing.tags.some(tag => tag.toLowerCase().includes(searchLower)))
     );
   });
+
+  const handleMessageSeller = useCallback(async (listing?: Listing) => {
+    try {
+      const convo = await getOrCreateConversation({ sellerId: String(sellerId), listingId: listing?._id });
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      const link = listing?._id
+        ? `${baseUrl}/${locale}/user-markets/${marketId}/seller/${sellerId}/item/${listing._id}`
+        : `${baseUrl}/${locale}/user-markets/${marketId}/seller/${sellerId}`;
+      const title = listing?.title || 'your items';
+      const prefill = listing
+        ? `Hi, I am interested in "${title}". Link: ${link}`
+        : `Hi, I'd like to talk about your items. Link: ${link}`;
+      try { await navigator.clipboard.writeText(prefill); } catch {}
+      const conversationId = (convo as any)?._id || (convo as any)?.id;
+      if (!conversationId) {
+        console.error('Conversation id missing from response', convo);
+        return;
+      }
+      router.push(`/${locale}/user-messages/${conversationId}?prefill=${encodeURIComponent(prefill)}`);
+    } catch (e) {
+      console.error('failed to start conversation', e);
+    }
+  }, [sellerId, marketId, locale, router]);
 
 
 
@@ -483,8 +507,7 @@ export default function SellerItems() {
                   <div
                     key={listing._id}
                     onClick={() => {
-                      const vendorData = encodeURIComponent(JSON.stringify(seller));
-                      router.push(`/${locale}/user-markets/${marketId}/seller/${sellerId}/item/${listing._id}?vendor=${vendorData}`);
+                      router.push(`/${locale}/user-markets/${marketId}/seller/${sellerId}/item/${listing._id}`);
                     }}
                     tabIndex={0}
                     role="button"
@@ -526,31 +549,41 @@ export default function SellerItems() {
                         {listing.description}
                       </p>
 
-                      {/* Price & Condition */}
+                      {/* Price & Condition (with inline Message for list view) */}
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-3">
                           {listing.isFree ? (
                             <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">Free</span>
                           ) : (
                             <span className="text-lg font-bold text-gray-900">
-                              ${listing.price.toFixed(2)}
+                              €{listing.price.toFixed(2)}
                             </span>
                           )}
                           <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full font-medium">
                             {listing.condition}
                           </span>
                         </div>
+                        {viewMode === 'list' && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleMessageSeller(listing); }}
+                            className="ml-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                          >
+                            Message Seller
+                          </button>
+                        )}
                       </div>
                       
-                      {/* Action Buttons */}
-                      <div className="flex items-center space-x-2">
-                        <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors duration-200">
-                          Buy Now
-                        </button>
-                        <button className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium py-2 px-3 rounded-lg transition-colors duration-200">
-                          Message Seller
-                        </button>
-                      </div>
+                      {/* Action Buttons (grid view full-width) */}
+                      {viewMode !== 'list' && (
+                        <div className="flex items-center space-x-2 w-full">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleMessageSeller(listing); }}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                          >
+                            Message Seller
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

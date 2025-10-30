@@ -20,7 +20,7 @@ export function ChatHeader({ participantIds }: ChatHeaderProps) {
       
       try {
         setLoading(true);
-        const otherId = participantIds.find((id) => id !== user._id);
+        const otherId = participantIds.find((id) => id !== user.id);
         if (otherId) {
           const userData = await getUserById(otherId);
           if (mounted) setCounterpart(userData);
@@ -33,7 +33,7 @@ export function ChatHeader({ participantIds }: ChatHeaderProps) {
     })();
     
     return () => { mounted = false; };
-  }, [user?._id, participantIds]);
+  }, [user?.id, participantIds]);
 
   if (loading) {
     return (

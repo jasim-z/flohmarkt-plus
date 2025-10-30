@@ -3,22 +3,41 @@
 import { useTranslations } from "next-intl";
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaImage, FaUsers, FaTags, FaArrowLeft, FaSave, FaTimes } from "react-icons/fa";
+import { FaStore, FaMapMarkerAlt, FaImage, FaUsers, FaTags, FaArrowLeft, FaSave, FaTimes, FaTrash, FaPlus, FaUpload } from "react-icons/fa";
 import { createMarket, CreateMarketRequest } from "../../../../api/markets";
+import { uploadFile, validateFile, createPreviewUrl, revokePreviewUrl, UploadProgress } from "@/app/lib/uploadUtils";
+import LocationPicker from "@/components/LocationPicker";
+import { LocationResult } from "@/app/api/location";
 
 interface CreateMarketForm {
   name: string;
   description: string;
   location: string;
-  date: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
+  state?: string;
+  latitude?: number;
+  longitude?: number;
+  date: string; // start date
+  endDate?: string; // end date
   startTime: string;
   endTime: string;
   isActive: boolean;
-  bannerImage: string;
+  bannerImage?: string;
+  additionalImages: string[];
   vendorLimit?: number;
   boothsAvailable?: number;
   price: number;
   categories: string[];
+}
+
+interface UploadedImage {
+  file: File;
+  url: string;
+  key: string;
+  previewUrl: string;
 }
 
 export default function CreateMarket() {
@@ -39,23 +58,96 @@ export default function CreateMarket() {
     name: '',
     description: '',
     location: '',
+    address: '',
+    city: '',
+    postalCode: '',
+    country: '',
+    state: '',
+    latitude: undefined,
+    longitude: undefined,
     date: '',
+    endDate: '',
     startTime: '',
     endTime: '',
     isActive: true,
-    bannerImage: '',
+    bannerImage: undefined,
+    additionalImages: [],
     vendorLimit: undefined,
     boothsAvailable: undefined,
     price: 0,
     categories: [],
   });
 
+  const [bannerImage, setBannerImage] = useState<UploadedImage | null>(null);
+  const [additionalImages, setAdditionalImages] = useState<UploadedImage[]>([]);
+  const [, setUploadProgress] = useState<UploadProgress[]>([]);
+
+  // Location change handler
+  const handleLocationChange = (location: LocationResult | null) => {
+    if (location) {
+      const display = location.displayName || location.address || '';
+      const parts = display.split(',').map(p => p.trim());
+
+      // Try robust regex: ", <postal> <city>, <state>, <country>" at the end
+      const match = display.match(/,\s*(\d{4,5})\s+([^,]+),\s*([^,]+),\s*([^,]+)\s*$/);
+      let postalCode = '';
+      let city = '';
+      let state = '';
+      let country = '';
+
+      if (match) {
+        postalCode = match[1] || '';
+        city = (match[2] || '').trim();
+        state = (match[3] || '').trim();
+        country = (match[4] || '').trim();
+      } else {
+        // Fallback heuristics
+        const postalCodeMatch = display.match(/\b\d{4,5}\b/);
+        postalCode = postalCodeMatch ? postalCodeMatch[0] : '';
+
+        // City: segment that contains postal, with postal removed
+        const cityPart = postalCode ? parts.find(p => p.includes(postalCode)) : undefined;
+        city = cityPart ? cityPart.replace(postalCode, '').trim() : '';
+
+        // State and country from trailing segments
+        if (parts.length >= 2) {
+          country = parts[parts.length - 1] || '';
+          state = parts[parts.length - 2] || '';
+        }
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        location: location.address,
+        address: location.address,
+        city,
+        postalCode,
+        country,
+        state,
+        latitude: location.lat,
+        longitude: location.lon,
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        location: '',
+        address: '',
+        city: '',
+        postalCode: '',
+        country: '',
+        state: '',
+        latitude: undefined,
+        longitude: undefined,
+      }));
+    }
+  };
+
   const handleInputChange = (field: keyof CreateMarketForm, value: string | number | boolean | undefined) => {
     setFormData(prev => {
       const updated = {
         ...prev,
         [field]: value
-      };
+      } as CreateMarketForm;
       
       // Auto-fill booths available when vendor limit changes (1:1 logic)
       if (field === 'vendorLimit' && typeof value === 'number') {
@@ -83,6 +175,109 @@ export default function CreateMarket() {
     }));
   };
 
+  const handleBannerImageUpload = async (files: File[]) => {
+    if (files.length === 0) return;
+    
+    const file = files[0]; // Only take the first file for banner
+    const validation = validateFile(file);
+    if (!validation.isValid) {
+      setError(validation.error || 'Invalid file');
+      return;
+    }
+
+    try {
+      const result = await uploadFile(file, 'market_banner', undefined, {
+        onProgress: (progress) => {
+          setUploadProgress(prev => [...prev.filter(p => p.file.name !== file.name), progress]);
+        }
+      });
+
+      const previewUrl = createPreviewUrl(file);
+      const uploadedImage: UploadedImage = {
+        file,
+        url: result.url,
+        key: result.key,
+        previewUrl
+      };
+
+      setBannerImage(uploadedImage);
+      setFormData(prev => ({ ...prev, bannerImage: result.url }));
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to upload banner image');
+    }
+  };
+
+  const handleAdditionalImagesUpload = async (files: File[]) => {
+    if (files.length === 0) return;
+
+    // Check if adding these files would exceed the limit
+    if (additionalImages.length + files.length > 3) {
+      setError('Maximum 3 additional images allowed');
+      return;
+    }
+
+    const validFiles = files.filter(file => {
+      const validation = validateFile(file);
+      if (!validation.isValid) {
+        setError(validation.error || 'Invalid file');
+        return false;
+      }
+      return true;
+    });
+
+    // If no valid files after filtering, show a clear error
+    if (validFiles.length === 0) {
+      setError('No valid files to upload. Please check file size (max 10MB) and format (JPEG, PNG, GIF, WebP).');
+      return;
+    }
+
+    for (const file of validFiles) {
+      try {
+        const result = await uploadFile(file, 'market_additional', undefined, {
+          onProgress: (progress) => {
+            setUploadProgress(prev => [...prev.filter(p => p.file.name !== file.name), progress]);
+          }
+        });
+
+        const previewUrl = createPreviewUrl(file);
+        const uploadedImage: UploadedImage = {
+          file,
+          url: result.url,
+          key: result.key,
+          previewUrl
+        };
+
+        setAdditionalImages(prev => [...prev, uploadedImage]);
+        setFormData(prev => ({ 
+          ...prev, 
+          additionalImages: [...prev.additionalImages, result.url]
+        }));
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Failed to upload image');
+      }
+    }
+  };
+
+  const removeBannerImage = () => {
+    if (bannerImage) {
+      revokePreviewUrl(bannerImage.previewUrl);
+      setBannerImage(null);
+      setFormData(prev => ({ ...prev, bannerImage: undefined }));
+    }
+  };
+
+  const removeAdditionalImage = (index: number) => {
+    const imageToRemove = additionalImages[index];
+    if (imageToRemove) {
+      revokePreviewUrl(imageToRemove.previewUrl);
+      setAdditionalImages(prev => prev.filter((_, i) => i !== index));
+      setFormData(prev => ({
+        ...prev,
+        additionalImages: prev.additionalImages.filter((_, i) => i !== index)
+      }));
+    }
+  };
+
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -90,45 +285,41 @@ export default function CreateMarket() {
     setSuccess(null);
 
     try {
-      // Validate required fields
-      if (!formData.name || !formData.description || !formData.location || !formData.date || !formData.startTime || !formData.endTime) {
-        throw new Error('Please fill in all required fields');
+      const missingFields = [] as string[];
+      if (!formData.name) missingFields.push('Market name');
+      if (!formData.description) missingFields.push('Market description');
+      if (!formData.location) missingFields.push('Market location');
+      if (!formData.date) missingFields.push('Start date');
+      if (!formData.endDate) missingFields.push('End date');
+      if (!formData.startTime) missingFields.push('Start time');
+      if (!formData.endTime) missingFields.push('End time');
+      if (missingFields.length > 0) throw new Error(`Please fill in: ${missingFields.join(', ')}`);
+
+      if (formData.startTime >= formData.endTime && formData.date === formData.endDate) {
+        throw new Error('End time must be after start time when start and end dates are the same');
       }
 
-      // Validate time logic
-      if (formData.startTime >= formData.endTime) {
-        throw new Error('End time must be after start time');
-      }
+      const start = new Date(formData.date);
+      const end = new Date(formData.endDate as string);
+      const today = new Date(); today.setHours(0,0,0,0);
+      if (start < today) throw new Error('Start date cannot be in the past');
+      if (end < start) throw new Error('End date cannot be earlier than start date');
 
-      // Validate date - market date should not be in the past
-      const selectedDate = new Date(formData.date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      if (selectedDate < today) {
-        throw new Error('Market date cannot be in the past');
-      }
-
-      // Validate if market is happening today, ensure start time is in the future
-      if (selectedDate.getTime() === today.getTime()) {
-        const now = new Date();
-        const currentTime = now.getHours() * 60 + now.getMinutes();
-        const [startHours, startMinutes] = formData.startTime.split(':').map(Number);
-        const startTimeInMinutes = startHours * 60 + startMinutes;
-        
-        if (startTimeInMinutes <= currentTime) {
-          throw new Error('If creating a market for today, start time must be in the future');
-        }
-      }
-
-      // Ensure 1:1 logic - booths available equals vendor limit
+      const normalize = (v: any) => (v === '' ? undefined : v);
       const finalBoothsAvailable = formData.vendorLimit || formData.boothsAvailable;
-      
       const marketData: CreateMarketRequest = {
         name: formData.name,
         description: formData.description,
         location: formData.location,
+        address: normalize(formData.address),
+        city: normalize(formData.city),
+        postalCode: normalize(formData.postalCode),
+        country: normalize(formData.country),
+        state: normalize(formData.state),
+        latitude: formData.latitude,
+        longitude: formData.longitude,
         date: formData.date,
+        endDate: formData.endDate,
         startTime: formData.startTime,
         endTime: formData.endTime,
         isActive: formData.isActive,
@@ -140,9 +331,7 @@ export default function CreateMarket() {
       };
 
       await createMarket(marketData);
-      
-      setSuccess('Market created successfully! The status will be automatically determined based on the date and time.');
-      // Redirect to markets list on success
+      setSuccess('Market created successfully');
       router.push('/en/markets');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create market');
@@ -244,58 +433,33 @@ export default function CreateMarket() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Location *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.location}
-                    onChange={(e) => handleInputChange('location', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter market location"
-                    required
+                  <LocationPicker
+                    onLocationChange={handleLocationChange}
+                    placeholder="Search for market location..."
+                    label="Location"
+                    required={true}
+                    showCurrentLocation={true}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Date *
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) => handleInputChange('date', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Date *</label>
+                  <input type="date" value={formData.date} onChange={(e) => handleInputChange('date', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">End Date *</label>
+                  <input type="date" value={formData.endDate || ''} onChange={(e) => handleInputChange('endDate', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Start Time *
-                  </label>
-                  <input
-                    type="time"
-                    value={formData.startTime}
-                    onChange={(e) => handleInputChange('startTime', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Time *</label>
+                  <input type="time" value={formData.startTime} onChange={(e) => handleInputChange('startTime', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    End Time *
-                  </label>
-                  <input
-                    type="time"
-                    value={formData.endTime}
-                    onChange={(e) => handleInputChange('endTime', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">End Time *</label>
+                  <input type="time" value={formData.endTime} onChange={(e) => handleInputChange('endTime', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required />
                 </div>
               </div>
             </div>
@@ -467,22 +631,108 @@ export default function CreateMarket() {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
                 <FaImage className="h-5 w-5 text-indigo-600" />
-                <span>Banner Image</span>
+                <span>Banner Image *</span>
               </h3>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Image URL *
-                </label>
-                <input
-                  type="url"
-                  value={formData.bannerImage}
-                  onChange={(e) => handleInputChange('bannerImage', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="https://example.com/image.jpg"
-                  required
-                />
+              {!bannerImage ? (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <FaUpload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                  <p className="text-sm text-gray-600 mb-2">Upload banner image</p>
+                  <p className="text-xs text-gray-500 mb-4">PNG, JPG, GIF, WebP up to 10MB</p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      handleBannerImageUpload(files);
+                      // Clear the input value so the same file can be selected again
+                      e.target.value = '';
+                    }}
+                    className="hidden"
+                    id="banner-upload"
+                  />
+                  <label
+                    htmlFor="banner-upload"
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 cursor-pointer"
+                  >
+                    <FaPlus className="h-4 w-4 mr-2" />
+                    Choose Banner Image
+                  </label>
+                </div>
+              ) : (
+                <div className="relative">
+                  <img
+                    src={bannerImage.previewUrl}
+                    alt="Banner preview"
+                    className="w-full h-48 object-cover rounded-lg"
+                  />
+                  <button
+                    type="button"
+                    onClick={removeBannerImage}
+                    className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600"
+                  >
+                    <FaTrash className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Additional Images */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+                <FaImage className="h-5 w-5 text-indigo-600" />
+                <span>Additional Images (Optional)</span>
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {additionalImages.map((image, index) => (
+                  <div key={index} className="relative">
+                    <img
+                      src={image.previewUrl}
+                      alt={`Additional image ${index + 1}`}
+                      className="w-full h-32 object-cover rounded-lg"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeAdditionalImage(index)}
+                      className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                    >
+                      <FaTrash className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+                
+                {additionalImages.length < 3 && (
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                    <FaUpload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                    <p className="text-xs text-gray-500 mb-2">Add more images</p>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        handleAdditionalImagesUpload(files);
+                        // Clear the input value so the same file can be selected again
+                        e.target.value = '';
+                      }}
+                      className="hidden"
+                      id="additional-upload"
+                    />
+                    <label
+                      htmlFor="additional-upload"
+                      className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 cursor-pointer"
+                    >
+                      <FaPlus className="h-3 w-3 mr-1" />
+                      Add Image
+                    </label>
+                  </div>
+                )}
               </div>
+              
+              <p className="text-xs text-gray-500">
+                Maximum 3 additional images allowed. Each image should be under 10MB.
+              </p>
             </div>
 
             {/* Active Status */}

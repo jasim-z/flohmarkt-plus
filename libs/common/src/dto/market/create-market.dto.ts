@@ -41,9 +41,51 @@ export class CreateMarketDto {
   @Length(5, 200, { message: 'Market location must be between 5 and 200 characters' })
   location: string;
 
+  @IsString()
+  @IsOptional()
+  @Length(5, 200, { message: 'Address must be between 5 and 200 characters' })
+  address?: string;
+
+  @IsString()
+  @IsOptional()
+  @Length(2, 100, { message: 'City must be between 2 and 100 characters' })
+  city?: string;
+
+  @IsString()
+  @IsOptional()
+  @Length(5, 10, { message: 'Postal code must be between 5 and 10 characters' })
+  postalCode?: string;
+
+  @IsString()
+  @IsOptional()
+  @Length(2, 100, { message: 'Country must be between 2 and 100 characters' })
+  country?: string;
+
+  @IsString()
+  @IsOptional()
+  @Length(2, 100, { message: 'State must be between 2 and 100 characters' })
+  state?: string;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(-90, { message: 'Latitude must be between -90 and 90' })
+  @Max(90, { message: 'Latitude must be between -90 and 90' })
+  latitude?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(-180, { message: 'Longitude must be between -180 and 180' })
+  @Max(180, { message: 'Longitude must be between -180 and 180' })
+  longitude?: number;
+
   @IsDateString({}, { message: 'Date must be a valid ISO date string' })
   @IsNotEmpty({ message: 'Market date is required' })
   date: string;
+
+  // Optional end date (must be >= date if provided)
+  @IsOptional()
+  @IsDateString({}, { message: 'End date must be a valid ISO date string' })
+  endDate?: string;
 
   @IsString()
   @IsNotEmpty({ message: 'Start time is required' })
@@ -64,10 +106,31 @@ export class CreateMarketDto {
   @Matches(/^[0-9a-fA-F]{24}$/, { message: 'Created by must be a valid ObjectId' })
   createdBy?: string; // admin user id (ObjectId as string)
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty({ message: 'Banner image is required' })
-  @IsUrl({}, { message: 'Banner image must be a valid URL' })
-  bannerImage: string;
+  @IsUrl({ 
+    protocols: ['http', 'https'],
+    require_protocol: true,
+    allow_underscores: true,
+    allow_trailing_dot: false,
+    allow_protocol_relative_urls: false,
+    host_whitelist: ['localhost', '127.0.0.1', 'minio', 'flohmarkt-uploads-bucket.s3.eu-central-1.amazonaws.com']
+  }, { message: 'Banner image must be a valid URL' })
+  bannerImage?: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  @ArrayMaxSize(3, { message: 'Maximum 3 additional images allowed' })
+  @IsUrl({ 
+    protocols: ['http', 'https'],
+    require_protocol: true,
+    allow_underscores: true,
+    allow_trailing_dot: false,
+    allow_protocol_relative_urls: false,
+    host_whitelist: ['localhost', '127.0.0.1', 'minio', 'flohmarkt-uploads-bucket.s3.eu-central-1.amazonaws.com']
+  }, { each: true, message: 'Each additional image must be a valid URL' })
+  additionalImages?: string[];
 
   @IsNumber()
   @Min(1, { message: 'Vendor limit must be at least 1' })

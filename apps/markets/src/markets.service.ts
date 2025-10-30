@@ -5,6 +5,7 @@ import { MarketsRepository } from './markets.repository';
 import { CreateMarketDto, UpdateMarketDto, UsersServiceClient, GetUsersByIdsRequest } from '@app/common';
 import { MarketDocument } from './schemas/market.schema';
 import { SanitizationUtils } from './middleware/sanitization.middleware';
+import { ListingsService } from '../../listings/src/listings.service';
 
 @Injectable()
 export class MarketsService {
@@ -13,6 +14,7 @@ export class MarketsService {
     @InjectModel('Market') private readonly marketModel: Model<MarketDocument>,
     @Inject('USERS_SERVICE_CLIENT') private readonly usersServiceClient: UsersServiceClient,
     @InjectConnection() private readonly connection: Connection,
+    private readonly listingsService: ListingsService
   ) {}
 
   async create(createMarketDto: CreateMarketDto, user: any) {
@@ -36,17 +38,17 @@ export class MarketsService {
       sanitizedData.vendorLimit = sanitizedData.boothsAvailable;
     }
 
-    // Calculate market status based on date and time
-    const marketDate = new Date(sanitizedData.date);
+    // Calculate market status based on start/end date and time
+    const startDateTime = new Date(`${sanitizedData.date}T${sanitizedData.startTime}`);
+    const endDateStr = sanitizedData.endDate || sanitizedData.date;
+    const endDateTime = new Date(`${endDateStr}T${sanitizedData.endTime}`);
     const now = new Date();
-    const marketStartTime = new Date(sanitizedData.date + 'T' + sanitizedData.startTime);
-    const marketEndTime = new Date(sanitizedData.date + 'T' + sanitizedData.endTime);
-    
+
     let status: string;
-    if (marketDate < now && now < marketEndTime) {
-      status = 'ongoing';
-    } else if (marketDate > now || (marketDate.getTime() === now.getTime() && marketStartTime > now)) {
+    if (startDateTime > now) {
       status = 'upcoming';
+    } else if (now >= startDateTime && now <= endDateTime) {
+      status = 'ongoing';
     } else {
       status = 'past';
     }
@@ -102,17 +104,17 @@ export class MarketsService {
           sanitizedData.vendorLimit = sanitizedData.boothsAvailable;
         }
 
-        // Calculate market status based on date and time
-        const marketDate = new Date(sanitizedData.date);
+        // Calculate market status based on start/end date and time
+        const startDateTime = new Date(`${sanitizedData.date}T${sanitizedData.startTime}`);
+        const endDateStr = sanitizedData.endDate || sanitizedData.date;
+        const endDateTime = new Date(`${endDateStr}T${sanitizedData.endTime}`);
         const now = new Date();
-        const marketStartTime = new Date(sanitizedData.date + 'T' + sanitizedData.startTime);
-        const marketEndTime = new Date(sanitizedData.date + 'T' + sanitizedData.endTime);
-        
+
         let status: string;
-        if (marketDate < now && now < marketEndTime) {
-          status = 'ongoing';
-        } else if (marketDate > now || (marketDate.getTime() === now.getTime() && marketStartTime > now)) {
+        if (startDateTime > now) {
           status = 'upcoming';
+        } else if (now >= startDateTime && now <= endDateTime) {
+          status = 'ongoing';
         } else {
           status = 'past';
         }
@@ -143,30 +145,108 @@ export class MarketsService {
     };
   }
 
-  async getFeaturedMarkets() {
-    const filter = {
+  async getFeaturedMarkets(limit: number = 4) {
+    // Primary: fetch markets explicitly marked as featured
+    const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+
+    const featuredFilter: any = {
       $and: [
-        { isDeleted: false },
-        { isActive: true },
-        { isFeatured: true },
-        // Only show upcoming and ongoing featured markets
         {
           $or: [
-            { status: 'upcoming' },
-            { status: 'ongoing' }
+            { isDeleted: false },
+            { isDeleted: { $exists: false } }
+          ]
+        },
+        { isActive: true },
+        { isFeatured: true },
+        {
+          $or: [
+            // Upcoming markets (future dates or today but hasn't started)
+            {
+              $or: [
+                { date: { $gt: todayEnd } }, // Future date (after today)
+                {
+                  $and: [
+                    { date: { $gte: todayStart, $lt: todayEnd } }, // Today
+                    { startTime: { $gt: now.toTimeString().slice(0, 5) } } // Today but hasn't started
+                  ]
+                }
+              ]
+            },
+            // Ongoing markets (today and currently happening)
+            {
+              $and: [
+                { date: { $gte: todayStart, $lt: todayEnd } }, // Today
+                { startTime: { $lte: now.toTimeString().slice(0, 5) } }, // Started
+                { endTime: { $gte: now.toTimeString().slice(0, 5) } } // Not ended
+              ]
+            }
           ]
         }
       ]
     };
 
-    const markets = await this.marketsRepository.find(filter);
+    let markets = await this.marketModel
+      .find(featuredFilter)
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean()
+      .exec();
+
+    // Fallback: if none are explicitly featured, return most recent active markets
+    if (!markets || markets.length === 0) {
+      const fallbackFilter: any = {
+        $and: [
+          {
+            $or: [
+              { isDeleted: false },
+              { isDeleted: { $exists: false } }
+            ]
+          },
+          { isActive: true },
+          {
+            $or: [
+              // Upcoming markets (future dates or today but hasn't started)
+              {
+                $or: [
+                  { date: { $gt: todayEnd } }, // Future date (after today)
+                  {
+                    $and: [
+                      { date: { $gte: todayStart, $lt: todayEnd } }, // Today
+                      { startTime: { $gt: now.toTimeString().slice(0, 5) } } // Today but hasn't started
+                    ]
+                  }
+                ]
+              },
+              // Ongoing markets (today and currently happening)
+              {
+                $and: [
+                  { date: { $gte: todayStart, $lt: todayEnd } }, // Today
+                  { startTime: { $lte: now.toTimeString().slice(0, 5) } }, // Started
+                  { endTime: { $gte: now.toTimeString().slice(0, 5) } } // Not ended
+                ]
+              }
+            ]
+          }
+        ]
+      };
+      markets = await this.marketModel
+        .find(fallbackFilter)
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .lean()
+        .exec();
+    }
+
     return {
-      data: markets.slice(0, 10),
+      data: markets,
       pagination: {
         page: 1,
-        limit: 10,
+        limit,
         total: markets.length,
-        totalPages: Math.ceil(markets.length / 10)
+        totalPages: 1
       }
     };
   }
@@ -898,6 +978,19 @@ export class MarketsService {
       console.error('Migration failed:', error);
       throw error;
     }
+  }
+
+  async leaveMarket(marketId: string, userId: string) {
+    const listingsResult = await this.listingsService.findBySellerAndMarket(userId, marketId, 1, 1);
+    if (listingsResult.data && listingsResult.data.length > 0) {
+      throw new ForbiddenException('You have listings in this market, please delete them first or contact admin.');
+    }
+    const updated = await this.marketsRepository.findOneAndUpdate(
+      { _id: new Types.ObjectId(marketId) },
+      { $pull: { registeredVendors: new Types.ObjectId(userId) } }
+    );
+    if (!updated) throw new NotFoundException('Market not found or already left.');
+    return { success: true, message: 'You have left this market.' };
   }
 
   // Utility method to check if a market is deleted

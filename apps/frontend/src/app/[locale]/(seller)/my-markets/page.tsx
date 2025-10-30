@@ -6,7 +6,7 @@ import { DataTable, Column } from '@/components/ui/data-table';
 import { Market, getMarkets, PaginatedMarketsResponse } from '@/app/api/markets';
 import UnAuthourized from '@/components/UnAuthourized';
 import { Badge } from '@/components/ui/badge';
-import { FaStore, FaCalendar, FaClock, FaExternalLinkAlt } from 'react-icons/fa';
+import { FaStore, FaCalendar, FaClock } from 'react-icons/fa';
 import { useParams, useRouter } from 'next/navigation';
 
 export default function MyMarkets() {
@@ -17,8 +17,9 @@ export default function MyMarkets() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-  const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: keyof Market | null; direction: 'asc' | 'desc' }>({ key: null, direction: 'asc' });
+  const [rawSearchInput, setRawSearchInput] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const params = useParams();
   const router = useRouter();
@@ -89,31 +90,57 @@ export default function MyMarkets() {
   ];
 
   const fetchMarkets = useCallback(async () => {
-    if (!user?._id) return;
+    if (!user?.id) return;
+    
     try {
       setLoading(true);
-      const params: any = { page, limit: 10, userId: user._id };
+      const params: Record<string, string | number> = { page, limit: 10, userId: String(user.id) };
       if (searchTerm) params.search = searchTerm;
       if (sortConfig.key) {
         params.sortBy = String(sortConfig.key);
         params.sortOrder = sortConfig.direction;
       }
+      
       const res: PaginatedMarketsResponse = await getMarkets(params);
       setMarkets(res.data);
       setTotalPages(res.pagination.totalPages);
       setTotalItems(res.pagination.total);
-    } catch (e: any) {
-      setError(e?.message || 'Failed to fetch markets');
+    } catch (e: unknown) {
+      const error = e as Error;
+      setError(error?.message || 'Failed to fetch markets');
     } finally {
       setLoading(false);
     }
-  }, [page, user?._id, searchTerm, sortConfig]);
+  }, [page, user, searchTerm, sortConfig]);
 
   useEffect(() => {
     if (isLoaded && role === 'seller') {
       fetchMarkets();
     }
   }, [isLoaded, role, fetchMarkets]);
+
+  // Debounced effect:
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSearchTerm(rawSearchInput);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [rawSearchInput]);
+
+  // On DataTable:
+  // onSearch={(term) => {
+  //   setRawSearchInput(term);
+  //   setPage(1);
+  // }}
+  //
+  // Debounce effect ONLY sets searchTerm:
+  // useEffect(() => {
+  //   if (debounceRef.current) clearTimeout(debounceRef.current);
+  //   debounceRef.current = setTimeout(() => {
+  //     setSearchTerm(rawSearchInput);
+  //   }, 400);
+  //   return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  // }, [rawSearchInput]);
 
   if (isLoaded && role !== 'seller') {
     return <UnAuthourized />;
@@ -140,7 +167,11 @@ export default function MyMarkets() {
           currentPage={page}
           totalPages={totalPages}
           onPageChange={(p) => setPage(p)}
-          onSearch={(term) => { setSearchTerm(term); setPage(1); }}
+          onSearch={(term) => {
+            setRawSearchInput(term);
+            setPage(1);
+          }}
+          searchValue={rawSearchInput}
           onSort={(key, direction) => setSortConfig({ key: key as keyof Market, direction })}
           sortConfig={sortConfig}
           emptyStateMessage="No markets found"

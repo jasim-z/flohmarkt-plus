@@ -20,7 +20,10 @@ import {
   FaInfoCircle,
   FaTimes,
   FaBox,
-  FaEye
+  FaEye,
+  FaImage,
+  FaChevronLeft,
+  FaChevronRight
 } from 'react-icons/fa';
 import { getMarketDetails, Market, Vendor } from '@/app/api/markets';
 import { getListingsByMarket, Listing } from '@/app/api/listings';
@@ -98,6 +101,14 @@ export default function MarketDetails() {
   const [hasMoreVendors, setHasMoreVendors] = useState(true);
   const [loadingMoreVendors, setLoadingMoreVendors] = useState(false);
 
+  // Additional images modal state
+  const [showAdditionalImagesModal, setShowAdditionalImagesModal] = useState(false);
+
+  // Photo viewer state
+  const [showPhotoViewer, setShowPhotoViewer] = useState(false);
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const [allPhotos, setAllPhotos] = useState<string[]>([]);
+
   // Check authentication
   useEffect(() => {
     if (isLoaded && !authLoading) {
@@ -125,6 +136,23 @@ export default function MarketDetails() {
     }
   }, [exploreMode, params.marketId]);
 
+  // Always fetch listings count for statistics (lightweight request)
+  useEffect(() => {
+    if (!params.marketId) return;
+    (async () => {
+      try {
+        const response = await getListingsByMarket(params.marketId as string, { page: 1, limit: 1 });
+        setListingsPagination(prev => ({
+          ...prev,
+          total: response.pagination.total,
+          totalPages: response.pagination.totalPages,
+        }));
+      } catch (err) {
+        console.error('Error fetching listings count:', err);
+      }
+    })();
+  }, [params.marketId]);
+
 
 
   const fetchMarketDetails = async () => {
@@ -132,6 +160,8 @@ export default function MarketDetails() {
       setLoading(true);
       const response = await getMarketDetails(params.marketId as string);
       setMarketDetails(response);
+      // Set hasMoreVendors based on pagination response
+      setHasMoreVendors(response.pagination.hasNext);
     } catch (err) {
       console.error('Error fetching market details:', err);
       setError('Failed to load market details. Please try again.');
@@ -200,13 +230,41 @@ export default function MarketDetails() {
           vendors: [...prev!.vendors, ...response.vendors],
           pagination: response.pagination
         }));
-        setHasMoreVendors(response.pagination.hasNext);
       }
+      // Always update hasMoreVendors based on pagination response
+      setHasMoreVendors(response.pagination.hasNext);
     } catch (err) {
       console.error('Error loading more vendors:', err);
     } finally {
       setLoadingMoreVendors(false);
     }
+  };
+
+  // Photo viewer functions
+  const openPhotoViewer = (photoIndex: number) => {
+    if (!marketDetails?.market) return;
+    
+    const photos = [];
+    if (marketDetails.market.bannerImage) photos.push(marketDetails.market.bannerImage);
+    if (marketDetails.market.additionalImages) photos.push(...marketDetails.market.additionalImages);
+    
+    setAllPhotos(photos);
+    setCurrentPhotoIndex(photoIndex);
+    setShowPhotoViewer(true);
+  };
+
+  const closePhotoViewer = () => {
+    setShowPhotoViewer(false);
+    setCurrentPhotoIndex(0);
+    setAllPhotos([]);
+  };
+
+  const goToPreviousPhoto = () => {
+    setCurrentPhotoIndex(prev => prev > 0 ? prev - 1 : allPhotos.length - 1);
+  };
+
+  const goToNextPhoto = () => {
+    setCurrentPhotoIndex(prev => prev < allPhotos.length - 1 ? prev + 1 : 0);
   };
 
   // Infinite scroll handlers
@@ -242,6 +300,11 @@ export default function MarketDetails() {
       month: 'long',
       day: 'numeric'
     });
+  };
+
+  const formatDateRange = (startDate: string, endDate?: string) => {
+    const end = endDate || startDate;
+    return `${formatDate(startDate)} - ${formatDate(end)}`;
   };
 
   const formatTime = (timeString: string) => {
@@ -382,7 +445,8 @@ export default function MarketDetails() {
                 <img 
                   src={market.bannerImage} 
                   alt={market.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity duration-200"
+                  onClick={() => openPhotoViewer(0)}
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.style.display = 'none';
@@ -415,20 +479,6 @@ export default function MarketDetails() {
                     {market.isActive ? 'Active' : 'Inactive'}
                   </span>
                 </div>
-                
-                {/* Action Buttons */}
-                <div className="flex-shrink-0 ml-auto">
-                  <div className="flex items-center space-x-3">
-                    <button className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-medium">
-                      <FaHeart className="w-4 h-4" />
-                      <span>Save Market</span>
-                    </button>
-                    <button className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors duration-200 font-medium">
-                      <FaShare className="w-4 h-4" />
-                      <span>Share</span>
-                    </button>
-                  </div>
-                </div>
               </div>
               
               <p className="text-gray-600 text-base sm:text-lg mb-4 sm:mb-6 break-words">{market.description}</p>
@@ -438,7 +488,7 @@ export default function MarketDetails() {
                   <div className="flex items-center space-x-3">
                   <FaCalendar className="h-4 w-4 text-gray-400 flex-shrink-0" />
                     <span className="text-gray-700">
-                      {formatDate(market.date)}
+                      {formatDateRange(market.date, (market as any).endDate)}
                     </span>
                   </div>
                   <div className="flex items-center space-x-3">
@@ -468,6 +518,21 @@ export default function MarketDetails() {
             </div>
             </div>
           </div>
+          
+          {/* Additional Images Button */}
+          {market.additionalImages && market.additionalImages.length > 0 && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <button
+                onClick={() => setShowAdditionalImagesModal(true)}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors duration-200"
+              >
+                <FaImage className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  View Additional Images ({market.additionalImages.length})
+                </span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Market Statistics Section */}
@@ -487,7 +552,7 @@ export default function MarketDetails() {
               <div className="text-sm text-gray-600">Avg Vendor Ratings</div>
             </div>
             <div className="bg-gray-50 rounded-lg p-3 text-center">
-              <div className="text-2xl font-bold text-purple-600">{listings.length}</div>
+              <div className="text-2xl font-bold text-purple-600">{listingsPagination.total}</div>
               <div className="text-sm text-gray-600">Total Items</div>
             </div>
           </div>
@@ -591,22 +656,21 @@ export default function MarketDetails() {
                 <p className="text-gray-500">Try adjusting your search terms</p>
               </div>
             ) : (
-              <div className={viewMode === 'grid' 
-                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' 
-                : 'space-y-4'
-              }>
+              <>
+                <div className={viewMode === 'grid' 
+                  ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' 
+                  : 'space-y-4'
+                }>
                 {filteredVendors.map((vendor) => (
                   <div
                     key={vendor._id}
                     onClick={() => {
-                      const vendorData = encodeURIComponent(JSON.stringify(vendor));
-                      router.push(`/${params.locale}/user-markets/${params.marketId}/seller/${vendor._id}?vendor=${vendorData}`);
+                      router.push(`/${params.locale}/user-markets/${params.marketId}/seller/${vendor._id}`);
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        const vendorData = encodeURIComponent(JSON.stringify(vendor));
-                        router.push(`/${params.locale}/user-markets/${params.marketId}/seller/${vendor._id}?vendor=${vendorData}`);
+                        router.push(`/${params.locale}/user-markets/${params.marketId}/seller/${vendor._id}`);
                       }
                     }}
                     tabIndex={0}
@@ -706,24 +770,25 @@ export default function MarketDetails() {
                     </div>
                   </div>
                 ))}
-                
-                {/* Infinite Scroll Loading Indicator for Vendors */}
-                {loadingMoreVendors && (
-                  <div className="mt-8 flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="border-4 border-blue-600 border-t-transparent rounded-full w-8 h-8 mx-auto mb-4 animate-spin"></div>
-                      <p className="text-gray-600">Loading more vendors...</p>
-                    </div>
-                  </div>
-                )}
-                
-                {/* End of Results for Vendors */}
-                {!hasMoreVendors && filteredVendors.length > 0 && (
-                  <div className="mt-8 text-center">
-                    <p className="text-gray-500 text-sm">You&apos;ve reached the end of all vendors</p>
-                  </div>
-                )}
               </div>
+              
+              {/* Infinite Scroll Loading Indicator for Vendors */}
+              {loadingMoreVendors && (
+                <div className="mt-8 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="border-4 border-blue-600 border-t-transparent rounded-full w-8 h-8 mx-auto mb-4 animate-spin"></div>
+                    <p className="text-gray-600">Loading more vendors...</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* End of Results for Vendors */}
+              {!hasMoreVendors && filteredVendors.length > 0 && (
+                <div className="mt-8 text-center">
+                  <p className="text-gray-500 text-sm">You&apos;ve reached the end of all vendors</p>
+                </div>
+              )}
+              </>
             )
           ) : (
             /* Items Display */
@@ -800,7 +865,7 @@ export default function MarketDetails() {
                             <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">Free</span>
                           ) : (
                             <span className="text-lg font-bold text-gray-900">
-                              ${listing.price.toFixed(2)}
+                              €{listing.price.toFixed(2)}
                             </span>
                           )}
                           <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full font-medium">
@@ -811,11 +876,8 @@ export default function MarketDetails() {
                       
                       {/* Action Buttons */}
                       <div className="flex items-center space-x-2">
-                        <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors duration-200">
-                          Buy Now
-                        </button>
-                        <button className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium py-2 px-3 rounded-lg transition-colors duration-200">
-                          Message Vendor
+                        <button className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors duration-200">
+                          Message Seller
                         </button>
                       </div>
                     </div>
@@ -843,6 +905,113 @@ export default function MarketDetails() {
           )}
         </div>
       </div>
+
+      {/* Additional Images Modal */}
+      {showAdditionalImagesModal && market.additionalImages && market.additionalImages.length > 0 && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {market.name} - Additional Images
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {market.additionalImages.length} additional images for this market
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAdditionalImagesModal(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+              >
+                <FaTimes className="h-5 w-5" />
+              </button>
+            </div>
+            
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {market.additionalImages.map((image, index) => (
+                  <div key={index} className="relative">
+                    <img
+                      src={image}
+                      alt={`Additional image ${index + 1}`}
+                      className="w-full h-48 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity duration-200"
+                      onClick={() => openPhotoViewer(index + (market.bannerImage ? 1 : 0))}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/placeholder-image.png';
+                      }}
+                    />
+                    <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                      {index + 1}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Modal Footer */}
+            <div className="flex justify-end p-6 border-t border-gray-200">
+              <button
+                onClick={() => setShowAdditionalImagesModal(false)}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors duration-200"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full-Screen Photo Viewer */}
+      {showPhotoViewer && allPhotos.length > 0 && (
+        <div className="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-[60]">
+          {/* Close Button */}
+          <button
+            onClick={closePhotoViewer}
+            className="absolute top-4 right-4 z-10 p-2 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-70 transition-all duration-200"
+          >
+            <FaTimes className="h-6 w-6" />
+          </button>
+
+          {/* Navigation Arrows */}
+          {allPhotos.length > 1 && (
+            <>
+              <button
+                onClick={goToPreviousPhoto}
+                className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 p-3 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-70 transition-all duration-200"
+              >
+                <FaChevronLeft className="h-6 w-6" />
+              </button>
+              <button
+                onClick={goToNextPhoto}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 p-3 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-70 transition-all duration-200"
+              >
+                <FaChevronRight className="h-6 w-6" />
+              </button>
+            </>
+          )}
+
+          {/* Main Image */}
+          <div className="flex items-center justify-center w-full h-full p-4">
+            <img
+              src={allPhotos[currentPhotoIndex]}
+              alt={`Photo ${currentPhotoIndex + 1}`}
+              className="max-w-full max-h-full object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/placeholder-image.png';
+              }}
+            />
+          </div>
+
+          {/* Photo Counter */}
+          {allPhotos.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-4 py-2 rounded-full text-sm">
+              {currentPhotoIndex + 1} / {allPhotos.length}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 } 

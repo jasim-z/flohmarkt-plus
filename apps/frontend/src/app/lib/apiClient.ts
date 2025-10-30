@@ -7,6 +7,7 @@ export interface ApiRequestOptions {
   retries?: number;
   timeout?: number;
   requestId?: string;
+  skipAuthRedirect?: boolean;
 }
 
 export interface ApiResponse<T = any> {
@@ -145,12 +146,18 @@ export class ApiClient {
 
         // Handle specific error types
         if (lastError.type === 'auth') {
-          apiErrorHandler.handleAuthError();
+          // Only auto-redirect if not explicitly disabled
+          if (!options.skipAuthRedirect) {
+            apiErrorHandler.handleAuthError();
+          }
           throw lastError;
         }
 
         if (lastError.type === 'permission') {
-          apiErrorHandler.handlePermissionError();
+          // Allow callers to skip permission redirect using skipAuthRedirect as a general skip flag
+          if (!(options as any).skipAuthRedirect) {
+            apiErrorHandler.handlePermissionError();
+          }
           throw lastError;
         }
 

@@ -3,17 +3,14 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaArrowLeft, FaCheck, FaTimes, FaDollarSign, FaInfoCircle, FaBox, FaEdit, FaTrash } from "react-icons/fa";
-import { Market, getMarketDetails, joinMarket } from "../../../../api/markets";
+import { FaStore, FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaArrowLeft, FaCheck, FaTimes, FaDollarSign, FaInfoCircle, FaBox, FaEdit, FaTrash, FaImage, FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { Market, getMarketDetails, joinMarket, leaveMarket } from "../../../../api/markets";
 import { Listing, getListingsBySellerAndMarket, deleteListing, GetListingsParams } from "../../../../api/listings";
 import { UnAuthourized } from "@/components";
 import { useUser } from "@/contexts/UserContext";
 import { formatPrice } from "@/lib/utils";
-import { PaymentModal } from "@/components/modals";
 import { Toast, ToastType } from "@/components";
 import { DataTable, Column } from "@/components/ui/data-table";
-import { AddListingModal } from "@/components/modals";
-import { ListingDetailsModal, EditListingModal, DeleteConfirmationModal } from "@/components/modals";
 
 // Utility function to calculate market status based on current date/time
 const calculateMarketStatus = (market: Market): 'upcoming' | 'ongoing' | 'past' => {
@@ -69,11 +66,20 @@ export default function MarketDetail() {
   const [showDeleteConfirmationModal, setShowDeleteConfirmationModal] = useState(false);
   const [deletingListing, setDeletingListing] = useState<Listing | null>(null);
   
+  // Additional images modal state
+  const [showAdditionalImagesModal, setShowAdditionalImagesModal] = useState(false);
+  
+  // Photo viewer state
+  const [showPhotoViewer, setShowPhotoViewer] = useState(false);
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const [allPhotos, setAllPhotos] = useState<string[]>([]);
+  
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+  const [rawSearchInput, setRawSearchInput] = useState('');
   const [sortConfig, setSortConfig] = useState<{
     key: keyof Listing | null;
     direction: 'asc' | 'desc';
@@ -82,15 +88,17 @@ export default function MarketDetail() {
   // Debouncing ref for search
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Leave confirmation modal state
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
 
   // Fetch listings for the seller in this market
   const fetchListings = useCallback(async (params: GetListingsParams = {}) => {
-    if (!market || !user?._id) return;
+    if (!market || !user?.id) return;
     
     try {
       setListingsLoading(true);
-      const response = await getListingsBySellerAndMarket(user._id, market._id, params);
+      const response = await getListingsBySellerAndMarket(user.id, market._id, params);
       console.log('Fetched listings response:', response);
       console.log('Listings data:', response.data);
       setListings(response.data);
@@ -117,29 +125,7 @@ export default function MarketDetail() {
   }, [fetchListings, searchTerm, sortConfig]);
 
   // Handle search
-  const handleSearch = useCallback((term: string) => {
-    setSearchTerm(term);
-    
-    // Clear previous timeout
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-    
-    // Set new timeout for debounced search
-    searchTimeoutRef.current = setTimeout(() => {
-      setSearchLoading(true);
-      const params: GetListingsParams = {
-        page: 1,
-        limit: 10,
-        search: term || undefined,
-        sortBy: sortConfig.key as string || 'createdAt',
-        sortOrder: sortConfig.direction || 'desc',
-      };
-      fetchListings(params).finally(() => {
-        setSearchLoading(false);
-      });
-    }, 500); // 500ms delay
-  }, [fetchListings, sortConfig]);
+  const handleSearch = useCallback((term: string) => { setRawSearchInput(term); }, []);
 
   // Handle sort
   const handleSort = useCallback((key: string, direction: 'asc' | 'desc') => {
@@ -157,11 +143,11 @@ export default function MarketDetail() {
   // Check if seller is already joined
   const checkJoinStatus = useCallback(() => {
     if (market && user) {
-      const joined = market.registeredVendors?.includes(user._id || '');
+      const joined = market.registeredVendors?.includes(user.id || '');
       setIsJoined(!!joined);
       
       // If joined, fetch listings with current pagination
-      if (joined && user._id) {
+      if (joined && user.id) {
         const params: GetListingsParams = {
           page: currentPage,
           limit: 10,
@@ -241,6 +227,33 @@ export default function MarketDetail() {
     }
   }, [deletingListing]);
 
+  // Photo viewer functions
+  const openPhotoViewer = (photoIndex: number) => {
+    if (!market) return;
+    
+    const photos = [];
+    if (market.bannerImage) photos.push(market.bannerImage);
+    if (market.additionalImages) photos.push(...market.additionalImages);
+    
+    setAllPhotos(photos);
+    setCurrentPhotoIndex(photoIndex);
+    setShowPhotoViewer(true);
+  };
+
+  const closePhotoViewer = () => {
+    setShowPhotoViewer(false);
+    setCurrentPhotoIndex(0);
+    setAllPhotos([]);
+  };
+
+  const goToPreviousPhoto = () => {
+    setCurrentPhotoIndex(prev => prev > 0 ? prev - 1 : allPhotos.length - 1);
+  };
+
+  const goToNextPhoto = () => {
+    setCurrentPhotoIndex(prev => prev < allPhotos.length - 1 ? prev + 1 : 0);
+  };
+
   useEffect(() => {
     checkJoinStatus();
   }, [checkJoinStatus]);
@@ -253,6 +266,13 @@ export default function MarketDetail() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSearchTerm(rawSearchInput);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [rawSearchInput]);
 
   const fetchMarketData = useCallback(async () => {
     try {
@@ -283,44 +303,6 @@ export default function MarketDetail() {
   const handleJoinMarket = () => {
     if (!market || !user) return;
     setShowPaymentModal(true);
-  };
-
-  const handlePaymentSuccess = async () => {
-    if (!market || !user) return;
-    
-    try {
-      setJoinLoading(true);
-      
-      // The actual join market API call is handled in the PaymentModal
-      // This function is called after successful payment and API call
-      
-      // Refetch market data to get updated registeredVendors list
-      await fetchMarketData();
-      
-      // Update local state
-      setIsJoined(true);
-      setJoinLoading(false);
-      
-      setToast({
-        message: `Successfully joined ${market.name}!`,
-        type: 'success',
-        isVisible: true
-      });
-      
-      // Fetch listings after joining
-      setTimeout(() => {
-        fetchListings();
-      }, 1000); // Small delay to ensure market data is updated
-      
-    } catch (err) {
-      console.error('Failed to join market:', err);
-      setJoinLoading(false);
-      setToast({
-        message: 'Failed to join market. Please try again.',
-        type: 'error',
-        isVisible: true
-      });
-    }
   };
 
   const handleLeaveMarket = async () => {
@@ -443,16 +425,21 @@ export default function MarketDetail() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
   const formatTime = (timeString: string) => {
     return timeString;
+  };
+
+  const formatDateRange = (startDate: string, endDate?: string) => {
+    const start = new Date(startDate).toLocaleDateString('en-GB', {
+      year: 'numeric', month: 'short', day: 'numeric',
+    });
+    let end = start;
+    if (endDate) {
+      end = new Date(endDate).toLocaleDateString('en-GB', {
+        year: 'numeric', month: 'short', day: 'numeric',
+      });
+    }
+    return `${start} - ${end}`;
   };
 
   const getVendorAvailability = () => {
@@ -518,7 +505,7 @@ export default function MarketDetail() {
             <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">Free</span>
           ) : (
             <span className="text-sm font-semibold text-gray-900">
-              ${Number(value || 0).toFixed(2)}
+              €{Number(value || 0).toFixed(2)}
             </span>
           )}
         </div>
@@ -620,7 +607,8 @@ export default function MarketDetail() {
                 <img 
                   src={market.bannerImage} 
                   alt={market.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity duration-200"
+                  onClick={() => openPhotoViewer(0)}
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.style.display = 'none';
@@ -663,7 +651,7 @@ export default function MarketDetail() {
                         <span>Joined</span>
                       </span>
                       <button
-                        onClick={handleLeaveMarket}
+                        onClick={() => setShowLeaveConfirm(true)}
                         disabled={joinLoading}
                         className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 font-medium disabled:opacity-60 disabled:cursor-not-allowed text-sm"
                       >
@@ -692,9 +680,7 @@ export default function MarketDetail() {
                   </div>
                   <div className="flex items-center space-x-3">
                     <FaCalendar className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                    <span className="text-gray-700">
-                      {formatDate(market.date)}
-                    </span>
+                    <span className="text-gray-700">{formatDateRange(market.date, market.endDate)}</span>
                   </div>
                   <div className="flex items-center space-x-3">
                     <FaClock className="h-4 w-4 text-gray-400 flex-shrink-0" />
@@ -727,6 +713,21 @@ export default function MarketDetail() {
               </div>
             </div>
           </div>
+          
+          {/* Additional Images Button */}
+          {market.additionalImages && market.additionalImages.length > 0 && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <button
+                onClick={() => setShowAdditionalImagesModal(true)}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors duration-200"
+              >
+                <FaImage className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  View Additional Images ({market.additionalImages.length})
+                </span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Conditional Content based on join status */}
@@ -836,7 +837,7 @@ export default function MarketDetail() {
                 onSort={handleSort}
                 sortConfig={sortConfig}
                 loading={listingsLoading || searchLoading}
-                searchTerm={searchTerm}
+                searchValue={rawSearchInput}
               />
               
               {/* Add Your First Listing button - only show when no listings and no search term */}
@@ -873,159 +874,7 @@ export default function MarketDetail() {
           </div>
         )}
 
-        {/* Market Rules & Information - Only show when not joined */}
-        {!isJoined && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">Market Information</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">What to Expect</h3>
-                <ul className="space-y-2 text-gray-600">
-                  <li className="flex items-start space-x-2">
-                    <FaCheck className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Professional market environment</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <FaCheck className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Organized vendor spaces</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <FaCheck className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Customer traffic and exposure</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <FaCheck className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Marketing and promotion support</span>
-                  </li>
-                </ul>
-              </div>
-              
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Requirements</h3>
-                <ul className="space-y-2 text-gray-600">
-                  <li className="flex items-start space-x-2">
-                    <FaInfoCircle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <span>Valid business license (if required)</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <FaInfoCircle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <span>Professional presentation</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <FaInfoCircle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <span>Quality products and services</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <FaInfoCircle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <span>Timely setup and teardown</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Payment Modal */}
-      <PaymentModal
-        isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
-        onPaymentSuccess={handlePaymentSuccess}
-        marketName={market?.name || ''}
-        price={market?.price || '0'}
-        marketId={market?._id || ''}
-      />
-
-      {/* Add Listing Modal */}
-      <AddListingModal
-        isOpen={showAddListingModal}
-        onClose={() => setShowAddListingModal(false)}
-        onSuccess={(message) => {
-          // Refresh listings after successful creation with current pagination
-          const params: GetListingsParams = {
-            page: currentPage,
-            limit: 10,
-            search: searchTerm || undefined,
-            sortBy: sortConfig.key as string || 'createdAt',
-            sortOrder: sortConfig.direction || 'desc',
-          };
-          fetchListings(params);
-          
-          // Show success toast if message provided
-          if (message) {
-            setToast({
-              message,
-              type: 'success',
-              isVisible: true,
-            });
-            
-            // Auto-hide toast after 3 seconds
-            setTimeout(() => {
-              setToast(null);
-            }, 3000);
-          }
-        }}
-        marketId={market?._id || ''}
-        marketName={market?.name || ''}
-        marketLocation={market?.location || ''}
-      />
-
-      {/* Listing Details Modal */}
-      <ListingDetailsModal
-        isOpen={showListingDetailsModal}
-        onClose={() => setShowListingDetailsModal(false)}
-        listing={selectedListing}
-      />
-
-      {/* Edit Listing Modal */}
-      <EditListingModal
-        isOpen={showEditListingModal}
-        onClose={() => setShowEditListingModal(false)}
-        onSuccess={(message) => {
-          // Refresh listings after successful update with current pagination
-          const params: GetListingsParams = {
-            page: currentPage,
-            limit: 10,
-            search: searchTerm || undefined,
-            sortBy: sortConfig.key as string || 'createdAt',
-            sortOrder: sortConfig.direction || 'desc',
-          };
-          fetchListings(params);
-          
-          // Show success toast if message provided
-          if (message) {
-            setToast({
-              message,
-              type: 'success',
-              isVisible: true,
-            });
-            
-            // Auto-hide toast after 3 seconds
-            setTimeout(() => {
-              setToast(null);
-            }, 3000);
-          }
-        }}
-        listing={editingListing}
-        marketId={market?._id || ''}
-        marketName={market?.name || ''}
-        marketLocation={market?.location || ''}
-      />
-
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        isOpen={showDeleteConfirmationModal}
-        onClose={() => {
-          setShowDeleteConfirmationModal(false);
-          setDeletingListing(null);
-        }}
-        onConfirm={confirmDeleteListing}
-        title="Delete Listing"
-        message="You are about to permanently delete this listing. This action will remove the listing from the market and cannot be undone."
-        itemName={deletingListing?.title || ''}
-      />
-
-      {/* Toast Notifications */}
+        {/* Toast Notifications */}
       {toast && (
         <Toast
           message={toast.message}
@@ -1034,6 +883,106 @@ export default function MarketDetail() {
           onClose={() => setToast(null)}
         />
       )}
+
+      {/* Full-Screen Photo Viewer */}
+      {showPhotoViewer && allPhotos.length > 0 && (
+        <div className="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-[60]">
+          {/* Close Button */}
+          <button
+            onClick={closePhotoViewer}
+            className="absolute top-4 right-4 z-10 p-2 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-70 transition-all duration-200"
+          >
+            <FaTimes className="h-6 w-6" />
+          </button>
+
+          {/* Navigation Arrows */}
+          {allPhotos.length > 1 && (
+            <>
+              <button
+                onClick={goToPreviousPhoto}
+                className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 p-3 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-70 transition-all duration-200"
+              >
+                <FaChevronLeft className="h-6 w-6" />
+              </button>
+              <button
+                onClick={goToNextPhoto}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 p-3 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-70 transition-all duration-200"
+              >
+                <FaChevronRight className="h-6 w-6" />
+              </button>
+            </>
+          )}
+
+          {/* Main Image */}
+          <div className="flex items-center justify-center w-full h-full p-4">
+            <img
+              src={allPhotos[currentPhotoIndex]}
+              alt={`Photo ${currentPhotoIndex + 1}`}
+              className="max-w-full max-h-full object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/placeholder-image.png';
+              }}
+            />
+          </div>
+
+          {/* Photo Counter */}
+          {allPhotos.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-4 py-2 rounded-full text-sm">
+              {currentPhotoIndex + 1} / {allPhotos.length}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Leave Confirmation Modal */}
+      {showLeaveConfirm && (
+        <div className="fixed z-50 inset-0 bg-black bg-opacity-30 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 max-w-sm mx-auto shadow-lg">
+            <h2 className="text-lg font-semibold mb-2">Leave this market?</h2>
+            <p className="mb-4 text-gray-700">Are you sure you want to leave this market?</p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setShowLeaveConfirm(false)}
+                className="px-4 py-2 rounded bg-gray-200 text-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setShowLeaveConfirm(false);
+                  setJoinLoading(true);
+                  try {
+                    const res = await leaveMarket(market._id);
+                    setIsJoined(false);
+                    setToast({ message: res.message, type: 'success', isVisible: true });
+                    setListings([]);
+                  } catch (e: any) {
+                    const isForbidden = e?.status === 403;
+                    const isListingBlock =
+                      isForbidden ||
+                      (typeof e?.message === 'string' &&
+                        e.message.toLowerCase().includes('delete them first'));
+                    setToast({
+                      message: isListingBlock
+                        ? 'You have listings in this market, please delete them first or contact admin.'
+                        : e.message || 'Something went wrong. Please try again.',
+                      type: 'error',
+                      isVisible: true,
+                    });
+                  } finally {
+                    setJoinLoading(false);
+                  }
+                }}
+                className="px-4 py-2 rounded bg-red-600 text-white"
+                disabled={joinLoading}
+              >
+                Yes, Leave
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  </div>
   );
-} 
+}

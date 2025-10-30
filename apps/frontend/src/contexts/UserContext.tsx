@@ -141,6 +141,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
       return;
     }
     
+    // Don't redirect if we're in the middle of an upload operation
+    if ((window as any).__preventRedirect) {
+      return;
+    }
+    
     // Protect admin routes
     if (pathname.includes('/admin') && role !== 'admin') {
       router.push(`/${locale}/unauthorized`);

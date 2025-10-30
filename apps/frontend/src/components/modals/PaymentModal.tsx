@@ -45,7 +45,7 @@ export default function PaymentModal({
     if (typeof price === 'object' && price.$numberDecimal) {
       priceValue = price.$numberDecimal;
     } else {
-      priceValue = price;
+      priceValue = String(price);
     }
     
     const priceNum = parseFloat(priceValue);
@@ -179,7 +179,7 @@ export default function PaymentModal({
           <div className="flex items-center justify-between">
             <span className="text-gray-700 font-medium">Booth Price:</span>
             <span className="text-2xl font-bold text-green-600">
-              ${formatPrice(price)}
+              €{formatPrice(price)}
             </span>
           </div>
           <div className="mt-2 text-sm text-gray-500">
@@ -295,7 +295,7 @@ export default function PaymentModal({
               ) : (
                 <>
                   <FaCheck size={16} />
-                  <span>Pay ${formatPrice(price)} & Join Market</span>
+                  <span>Pay €{formatPrice(price)} & Join Market</span>
                 </>
               )}
             </button>

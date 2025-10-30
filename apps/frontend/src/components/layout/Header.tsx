@@ -48,7 +48,7 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Load unread total periodically
+  // Load unread total periodically (reduced frequency)
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -59,7 +59,8 @@ export default function Header() {
       } catch {}
     };
     load();
-    const id = setInterval(load, 30000);
+    // Increased from 30s to 120s to reduce load
+    const id = setInterval(load, 120000);
     return () => { cancelled = true; clearInterval(id); };
   }, [user?._id]);
 
@@ -163,16 +164,6 @@ export default function Header() {
                     My Markets
                   </Link>
                   <Link 
-                    href={`/${params.locale}/orders`} 
-                    className={`font-medium transition-colors duration-200 ${
-                      pathname.includes('/orders') 
-                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
-                        : 'text-gray-600 hover:text-blue-600'
-                    }`}
-                  >
-                    Orders
-                  </Link>
-                  <Link 
                     href={`/${params.locale}/messages`} 
                     className={`font-medium transition-colors duration-200 relative ${
                       pathname.includes('/messages') 
@@ -211,16 +202,6 @@ export default function Header() {
                     }`}
                   >
                     Browse
-                  </Link>
-                  <Link 
-                    href={`/${params.locale}/user-orders`} 
-                    className={`font-medium transition-colors duration-200 ${
-                      pathname.includes('/user-orders') 
-                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
-                        : 'text-gray-600 hover:text-blue-600'
-                    }`}
-                  >
-                    Orders
                   </Link>
                   <Link 
                     href={`/${params.locale}/user-messages`} 
@@ -269,9 +250,30 @@ export default function Header() {
                 onClick={() => setIsAccountOpen(!isAccountOpen)}
                 className="flex items-center space-x-2 cursor-pointer px-2 sm:px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors duration-200 min-h-[44px]"
               >
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <FaUserCircle size={18} className="text-white sm:w-5 sm:h-5" />
-                </div>
+                {user?.avatar ? (
+                  <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-gray-200">
+                    <img
+                      src={user.avatar}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // Fallback to default icon if image fails to load
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const fallback = target.nextElementSibling as HTMLElement;
+                        if (fallback) fallback.style.display = 'flex';
+                      }}
+                    />
+                    {/* Fallback Icon */}
+                    <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 rounded-full items-center justify-center hidden">
+                      <FaUserCircle size={18} className="text-white sm:w-5 sm:h-5" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <FaUserCircle size={18} className="text-white sm:w-5 sm:h-5" />
+                  </div>
+                )}
                 <span className="hidden sm:inline text-gray-700 font-medium">
                   {user?.displayName || user?.email || 'Account'}
                 </span>
@@ -299,7 +301,7 @@ export default function Header() {
                     onClick={() => {
                       setIsAccountOpen(false);
                       const profilePath = user?.role === 'admin' 
-                        ? 'admin/profile' 
+                        ? 'profile' 
                         : user?.role === 'seller' 
                         ? 'seller-profile' 
                         : 'user-profile';
@@ -405,17 +407,6 @@ export default function Header() {
                     My Markets
                   </Link>
                   <Link 
-                    href={`/${params.locale}/orders`} 
-                    className={`block px-4 py-3 text-base font-medium rounded-lg transition-colors duration-200 ${
-                      pathname.includes('/orders') 
-                        ? 'bg-blue-50 text-blue-600' 
-                        : 'text-gray-700 hover:bg-gray-50'
-                    }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Orders
-                  </Link>
-                  <Link 
                     href={`/${params.locale}/messages`} 
                     className={`block px-4 py-3 text-base font-medium rounded-lg transition-colors duration-200 relative ${
                       pathname.includes('/messages') 
@@ -459,17 +450,6 @@ export default function Header() {
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Browse
-                  </Link>
-                  <Link 
-                    href={`/${params.locale}/user-orders`} 
-                    className={`block px-4 py-3 text-base font-medium rounded-lg transition-colors duration-200 ${
-                      pathname.includes('/user-orders') 
-                        ? 'bg-blue-50 text-blue-600' 
-                        : 'text-gray-700 hover:bg-gray-50'
-                    }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Orders
                   </Link>
                   <Link 
                     href={`/${params.locale}/user-messages`} 

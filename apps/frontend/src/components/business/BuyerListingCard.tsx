@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { FaHeart, FaMapMarkerAlt, FaUser, FaStore, FaEye, FaBox } from "react-icons/fa";
+import { FaMapMarkerAlt, FaUser, FaStore, FaEye, FaBox } from "react-icons/fa";
 import { formatPrice } from "@/lib/utils";
 
 interface BuyerListing {
@@ -50,14 +50,11 @@ const DEFAULT_IMAGE = '/default-listing.svg';
 
 export default function BuyerListingCard({ listing, onFavorite, onView }: BuyerListingCardProps) {
   const [imgSrc, setImgSrc] = useState(listing.images?.[0] || DEFAULT_IMAGE);
-  const [isFavorite, setIsFavorite] = useState(false);
+  
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
 
-  const handleFavorite = () => {
-    setIsFavorite(!isFavorite);
-    onFavorite?.(listing._id);
-  };
+  
 
   const handleView = () => {
     onView?.(listing._id);
@@ -112,7 +109,12 @@ export default function BuyerListingCard({ listing, onFavorite, onView }: BuyerL
   const isDefaultImage = getImageSrc() === DEFAULT_IMAGE;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 overflow-hidden group">
+    <div
+      onClick={() => onView?.(listing._id)}
+      role="button"
+      tabIndex={0}
+      className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 overflow-hidden group cursor-pointer"
+    >
       {/* Image Section */}
       <div className="relative aspect-square overflow-hidden bg-gray-50">
         {/* Loading State */}
@@ -156,6 +158,13 @@ export default function BuyerListingCard({ listing, onFavorite, onView }: BuyerL
             )}
           </div>
         )}
+
+        {/* Multiple Images Indicator */}
+        {listing.images && listing.images.length > 1 && (
+          <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded-full text-xs font-medium">
+            {listing.images.length}
+          </div>
+        )}
         
         {/* Price Badge */}
         <div className="absolute top-3 left-3">
@@ -166,15 +175,7 @@ export default function BuyerListingCard({ listing, onFavorite, onView }: BuyerL
           </div>
         </div>
 
-        {/* Favorite Button */}
-        <button
-          onClick={handleFavorite}
-          className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-sm hover:bg-gray-50 transition-colors"
-        >
-          <FaHeart 
-            className={`w-4 h-4 ${isFavorite ? 'text-red-500 fill-current' : 'text-gray-400'}`} 
-          />
-        </button>
+        {/* Favorite Button removed */}
       </div>
 
       {/* Content Section */}
@@ -217,13 +218,7 @@ export default function BuyerListingCard({ listing, onFavorite, onView }: BuyerL
           {formatDate(listing.createdAt)}
         </div>
 
-        {/* Action Button */}
-        <button
-          onClick={handleView}
-          className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors text-sm"
-        >
-          View Details
-        </button>
+        {/* Card is clickable; button removed */}
       </div>
     </div>
   );

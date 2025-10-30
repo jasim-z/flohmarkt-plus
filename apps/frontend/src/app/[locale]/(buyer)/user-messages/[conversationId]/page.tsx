@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@/contexts/UserContext';
 import { listConversations, listMessages, sendMessage, markRead } from '@/app/api/messages';
 import { useSocket } from '@/hooks/useSocket';
@@ -17,6 +17,7 @@ interface Msg {
 export default function BuyerChat() {
   const { user, isLoaded } = useUser();
   const { conversationId, locale } = useParams();
+  const search = useSearchParams();
   const router = useRouter();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [conversations, setConversations] = useState<Array<{
@@ -40,6 +41,7 @@ export default function BuyerChat() {
   } | null>(null);
   const topRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const scrollToBottom = () => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -57,7 +59,7 @@ export default function BuyerChat() {
       createdAt: string;
     }) => {
       // Avoid double-adding for the sender: REST response will replace optimistic item
-      if (user?._id && String(msg.senderId) === String(user._id)) return;
+      if (user?.id && String(msg.senderId) === String(user.id)) return;
       const isSameConversation = String(msg.conversationId) === String(conversationId);
       if (isSameConversation) {
         setMessages((prev) => {
@@ -127,7 +129,23 @@ export default function BuyerChat() {
         setLoading(false);
       }
     })();
-  }, [isLoaded, user, conversationId, router, locale]);
+    // Apply prefill if provided via query param
+    const prefill = search.get('prefill');
+    if (prefill) {
+      setText(prefill);
+      // Focus text box after render
+      setTimeout(() => {
+        inputRef.current?.focus();
+        // place cursor at end
+        const el = inputRef.current as HTMLInputElement | null;
+        if (el) {
+          const val = el.value;
+          el.value = '';
+          el.value = val;
+        }
+      }, 0);
+    }
+  }, [isLoaded, user, conversationId, router, locale, search]);
 
   const loadOlder = async () => {
     const nextPage = page + 1;
@@ -142,7 +160,7 @@ export default function BuyerChat() {
     if (!text.trim()) return;
     const optimistic: Msg = {
       _id: `tmp-${Date.now()}`,
-      senderId: user!._id,
+      senderId: user!.id,
       text,
       createdAt: new Date().toISOString(),
     };
@@ -198,7 +216,7 @@ export default function BuyerChat() {
               <div className="text-center text-gray-500 py-8">Loading...</div>
             ) : (
               messages.map((m) => {
-                const isMine = m.senderId === user?._id;
+                const isMine = m.senderId === user?.id;
                 return (
                   <div key={m._id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[75%] px-3 py-2 rounded-lg text-sm ${isMine ? 'bg-blue-600 text-white rounded-br-none' : 'bg-gray-100 text-gray-800 rounded-bl-none'}`}>
@@ -218,6 +236,7 @@ export default function BuyerChat() {
               onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }}
               placeholder="Type a message..."
               className="flex-1 border border-gray-300 rounded-lg px-3 py-3 sm:py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px]"
+              ref={inputRef}
             />
             <button 
               onClick={handleSend} 

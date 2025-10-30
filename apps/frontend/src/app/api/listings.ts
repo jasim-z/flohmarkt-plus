@@ -71,7 +71,7 @@ export async function getListingsByMarket(marketId: string, params: GetListingsP
     const queryParams = new URLSearchParams();
     if (params.page) queryParams.append('page', params.page.toString());
     if (params.limit) queryParams.append('limit', params.limit.toString());
-    if (params.search) queryParams.append('search', params.search);
+    if (params.search && params.search.trim().length > 0) queryParams.append('search', params.search.trim());
     if (params.sortBy) queryParams.append('sortBy', params.sortBy);
     if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
     if (params.category) queryParams.append('category', params.category);
@@ -100,7 +100,7 @@ export async function getAllListings(params: GetListingsParams = {}): Promise<{ 
     const queryParams = new URLSearchParams();
     if (params.page) queryParams.append('page', params.page.toString());
     if (params.limit) queryParams.append('limit', params.limit.toString());
-    if (params.search) queryParams.append('search', params.search);
+    if (params.search && params.search.trim().length > 0) queryParams.append('search', params.search.trim());
     if (params.sortBy) queryParams.append('sortBy', params.sortBy);
     if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
     if (params.category) queryParams.append('category', params.category);
@@ -132,12 +132,22 @@ export async function getListingsBySellerAndMarket(
     const queryParams = new URLSearchParams();
     if (params.page) queryParams.append('page', params.page.toString());
     if (params.limit) queryParams.append('limit', params.limit.toString());
-    if (params.search) queryParams.append('search', params.search);
+    if (params.search && params.search.trim().length > 0) queryParams.append('search', params.search.trim());
     if (params.sortBy) queryParams.append('sortBy', params.sortBy);
     if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
     
     const url = `/listings/seller/${sellerId}/market/${marketId}?${queryParams.toString()}`;
     const response = await listingsApiClient.get(url);
+    return response.data;
+  } catch (error) {
+    const apiError = apiErrorHandler.handleError(error);
+    throw apiError;
+  }
+}
+
+export async function getListingById(listingId: string): Promise<Listing> {
+  try {
+    const response = await listingsApiClient.get(`/listings/${listingId}`);
     return response.data;
   } catch (error) {
     const apiError = apiErrorHandler.handleError(error);
@@ -228,6 +238,19 @@ export async function checkMigrationStatus(): Promise<{
 export async function runIsDeletedMigration(): Promise<void> {
   try {
     await listingsApiClient.post('/listings/migrate/add-is-deleted-field');
+  } catch (error) {
+    const apiError = apiErrorHandler.handleError(error);
+    throw apiError;
+  }
+}
+
+export async function presignListingUpload(fileName: string, contentType: string): Promise<{ success: boolean; presignedUrl: string; publicUrl: string; key: string; expiresIn: number }> {
+  try {
+    const response = await listingsApiClient.post('/listings/presign-upload', {
+      fileName,
+      contentType,
+    });
+    return response.data;
   } catch (error) {
     const apiError = apiErrorHandler.handleError(error);
     throw apiError;

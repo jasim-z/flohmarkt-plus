@@ -7,11 +7,13 @@ import { MarketsController } from './markets.controller';
 import { Market, MarketSchema } from './schemas/market.schema';
 import { MarketsRepository } from './markets.repository';
 import { MarketPriceMigrationService } from './migration/add-price-field';
-import { DatabaseModule, JwtStrategy, RolesGuard, HttpUsersServiceClient, CorrelationMiddleware, MetricsService, MetricsMiddleware, HealthController } from '@app/common';
+import { DatabaseModule, JwtStrategy, RolesGuard, HttpUsersServiceClient, CorrelationMiddleware, MetricsService, MetricsMiddleware, HealthController, S3ClientService, LocationService } from '@app/common';
 import { PassportModule } from '@nestjs/passport';
 import { RateLimitMiddleware, RATE_LIMITS } from './middleware/rate-limit.middleware';
 import { SanitizationMiddleware } from './middleware/sanitization.middleware';
 import * as Joi from 'joi';
+import { ListingsService } from '../../listings/src/listings.service';
+import { Listing, ListingSchema } from '../../listings/src/schemas/listing.schema';
 
 @Module({
   imports: [
@@ -26,17 +28,23 @@ import * as Joi from 'joi';
     DatabaseModule,
     PassportModule,
     HttpModule,
-    MongooseModule.forFeature([{ name: Market.name, schema: MarketSchema }]),
+    MongooseModule.forFeature([
+      { name: Market.name, schema: MarketSchema },
+      { name: Listing.name, schema: ListingSchema },
+    ]),
   ],
   controllers: [MarketsController, HealthController],
   providers: [
-    MarketsService, 
-    MarketsRepository, 
-    JwtStrategy, 
+    MarketsService,
+    ListingsService,
+    MarketsRepository,
+    JwtStrategy,
     RolesGuard,
     HttpUsersServiceClient,
     MarketPriceMigrationService,
     MetricsService,
+    S3ClientService,
+    LocationService,
     {
       provide: 'USERS_SERVICE_CLIENT',
       useClass: HttpUsersServiceClient,

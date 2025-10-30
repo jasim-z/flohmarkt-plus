@@ -16,6 +16,6 @@ async function bootstrap() {
     origin: 'http://localhost:3000',
     credentials: true,
   });
-  await app.listen(configService.get('PORT'));
+  await app.listen(configService.get('ORDERS_SERVICE_PORT'));
 }
 bootstrap();

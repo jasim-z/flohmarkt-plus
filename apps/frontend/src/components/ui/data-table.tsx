@@ -28,6 +28,7 @@ export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> 
   emptyStateMessage?: string;
   emptyStateDescription?: string;
   onRowClick?: (row: T) => void;
+  searchValue?: string;
 }
 
 function DataTable<T>({
@@ -47,9 +48,9 @@ function DataTable<T>({
   emptyStateDescription = "There are no items to display.",
   onRowClick,
   className,
+  searchValue,
   ...props
 }: DataTableProps<T>) {
-  const [searchTerm, setSearchTerm] = useState('')
   const [localPage, setLocalPage] = useState(1)
 
   const isServerSide = totalItems !== undefined && onPageChange !== undefined
@@ -58,16 +59,16 @@ function DataTable<T>({
     if (isServerSide) return data
     
     let filtered = data
-    if (searchTerm) {
+    if (searchValue) {
       filtered = data.filter((row) =>
         columns.some((col) => {
           const value = col.key === 'string' ? (row as any)[col.key] : (row as any)[col.key as keyof T]
-          return String(value).toLowerCase().includes(searchTerm.toLowerCase())
+          return String(value).toLowerCase().includes(searchValue.toLowerCase())
         })
       )
     }
     return filtered
-  }, [data, searchTerm, columns, isServerSide])
+  }, [data, searchValue, columns, isServerSide])
 
   const paginatedData = useMemo(() => {
     if (isServerSide) return filteredData
@@ -78,7 +79,6 @@ function DataTable<T>({
   }, [filteredData, localPage, pageSize, isServerSide])
 
   const handleSearch = (term: string) => {
-    setSearchTerm(term)
     if (onSearch) {
       onSearch(term)
     } else {
@@ -115,18 +115,6 @@ function DataTable<T>({
     )
   }
 
-  if (paginatedData.length === 0) {
-    return (
-      <div className={cn("rounded-md border bg-white", className)} {...props}>
-        <div className="p-8 text-center">
-          <div className="text-gray-400 text-4xl mb-4">📊</div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">{emptyStateMessage}</h3>
-          <p className="text-gray-500">{emptyStateDescription}</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className={cn("rounded-md border bg-white", className)} {...props}>
       {searchable && (
@@ -136,7 +124,7 @@ function DataTable<T>({
             <input
               type="text"
               placeholder="Search..."
-              value={searchTerm}
+              value={searchValue ?? ''}
               onChange={(e) => handleSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
@@ -180,28 +168,40 @@ function DataTable<T>({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {paginatedData.map((row, index) => (
-              <tr
-                key={index}
-                className={cn(
-                  "hover:bg-gray-50",
-                  onRowClick && "cursor-pointer"
-                )}
-                onClick={() => onRowClick?.(row)}
-              >
-                {columns.map((column) => (
-                  <td key={String(column.key)} className="px-6 py-4 whitespace-nowrap">
-                    {column.render ? (
-                      column.render((row as any)[column.key as keyof T], row)
-                    ) : (
-                      <div className="text-sm text-gray-900">
-                        {String((row as any)[column.key as keyof T] || '')}
-                      </div>
-                    )}
-                  </td>
-                ))}
+            {paginatedData.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length} className="py-12 text-center text-gray-500">
+                  <div className="flex flex-col items-center">
+                    <div className="text-gray-400 text-4xl mb-4">📊</div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">{emptyStateMessage}</h3>
+                    <p className="text-gray-500">{emptyStateDescription}</p>
+                  </div>
+                </td>
               </tr>
-            ))}
+            ) : (
+              paginatedData.map((row, index) => (
+                <tr
+                  key={index}
+                  className={cn(
+                    "hover:bg-gray-50",
+                    onRowClick && "cursor-pointer"
+                  )}
+                  onClick={() => onRowClick?.(row)}
+                >
+                  {columns.map((column) => (
+                    <td key={String(column.key)} className="px-6 py-4 whitespace-nowrap">
+                      {column.render ? (
+                        column.render((row as any)[column.key as keyof T], row)
+                      ) : (
+                        <div className="text-sm text-gray-900">
+                          {String((row as any)[column.key as keyof T] || '')}
+                        </div>
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

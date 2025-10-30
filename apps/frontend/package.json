@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev -H 0.0.0.0 --turbo",
     "dev:optimized": "NODE_OPTIONS='--max-old-space-size=2048' next dev -H 0.0.0.0 --turbo",
+    "dev:stable": "NODE_OPTIONS='--max-old-space-size=2048' WATCHPACK_POLLING=false CHOKIDAR_USEPOLLING=false next dev -H 0.0.0.0 --turbo",
+    "dev:webpack": "NODE_OPTIONS='--max-old-space-size=4096' WATCHPACK_POLLING=false CHOKIDAR_USEPOLLING=false next dev -H 0.0.0.0",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

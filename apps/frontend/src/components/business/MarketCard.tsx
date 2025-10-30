@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaMapMarkerAlt, FaCalendar, FaClock, FaUsers, FaStore } from 'react-icons/fa';
 import { Market } from '@/app/api/markets';
 
@@ -11,6 +11,12 @@ interface MarketCardProps {
 }
 
 const MarketCard: React.FC<MarketCardProps> = ({ market, variant = 'compact', onClick }) => {
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    // Reset error state when market image changes
+    setImgError(false);
+  }, [market.bannerImage]);
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -18,6 +24,11 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, variant = 'compact', on
       day: 'numeric',
       weekday: 'short'
     });
+  };
+
+  const formatDateRange = (startDate: string, endDate?: string) => {
+    const end = endDate || startDate;
+    return `${formatDate(startDate)} - ${formatDate(end)}`;
   };
 
   const getMarketStatus = (market: Market) => {
@@ -57,22 +68,27 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, variant = 'compact', on
         role="button"
         tabIndex={0}
         data-testid="market-card"
-        className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all duration-300 cursor-pointer market-card"
+        className="bg-white rounded-xl shadow-sm border border-amber-200 overflow-hidden hover:shadow-md transition-all duration-300 cursor-pointer market-card ring-1 ring-amber-100"
       >
         {/* Banner Image */}
-        <div className="relative h-32 bg-gradient-to-br from-primary-100 to-primary-200">
-          {market.bannerImage ? (
-            <img 
-              src={market.bannerImage} 
+        <div className="relative h-32 bg-gradient-to-br from-amber-50 to-amber-100">
+          {market.bannerImage && !imgError ? (
+            <img
+              src={market.bannerImage}
               alt={market.name}
+              onError={() => setImgError(true)}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <FaStore data-testid="market-icon" className="w-12 h-12 text-primary-400" />
+              <FaStore data-testid="market-icon" className="w-12 h-12 text-amber-400" />
             </div>
           )}
           
+          {/* Featured Badge */}
+          <div className="absolute top-2 left-2 px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+            Featured
+          </div>
           {/* Status Badge */}
           <div data-testid="market-status" className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-medium ${status.color} status-badge`}>
             <StatusIcon className="inline w-3 h-3 mr-1" />
@@ -90,11 +106,16 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, variant = 'compact', on
             <div className="flex items-center">
               <FaMapMarkerAlt className="w-3 h-3 mr-1 text-red-500" />
               <span className="truncate">{market.location}</span>
+              {market.distance && (
+                <span className="ml-2 text-blue-600 font-medium">
+                  {market.distance.toFixed(1)} km
+                </span>
+              )}
             </div>
             
             <div className="flex items-center">
               <FaCalendar className="w-3 h-3 mr-1 text-blue-500" />
-              <span>{formatDate(market.date)}</span>
+              <span>{formatDateRange(market.date, market.endDate)}</span>
             </div>
             
             <div className="flex items-center">
@@ -118,10 +139,11 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, variant = 'compact', on
     >
       {/* Banner Image */}
       <div className="relative h-32 bg-gradient-to-br from-gray-100 to-gray-200">
-        {market.bannerImage ? (
-          <img 
-            src={market.bannerImage} 
+        {market.bannerImage && !imgError ? (
+          <img
+            src={market.bannerImage}
             alt={market.name}
+            onError={() => setImgError(true)}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
@@ -147,11 +169,16 @@ const MarketCard: React.FC<MarketCardProps> = ({ market, variant = 'compact', on
           <div className="flex items-center">
             <FaMapMarkerAlt className="w-3 h-3 mr-1 text-red-500" />
             <span className="truncate">{market.location}</span>
+            {market.distance && (
+              <span className="ml-2 text-blue-600 font-medium">
+                {market.distance.toFixed(1)} km
+              </span>
+            )}
           </div>
           
           <div className="flex items-center">
             <FaCalendar className="w-3 h-3 mr-1 text-blue-500" />
-            <span>{formatDate(market.date)}</span>
+            <span>{formatDateRange(market.date, market.endDate)}</span>
           </div>
           
           <div className="flex items-center">
