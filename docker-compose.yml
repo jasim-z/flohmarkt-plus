@@ -14,8 +14,6 @@ services:
       - jwt_secret
       - mongodb_uri
     depends_on:
-      mongodb:
-        condition: service_healthy
       rabbitmq:
         condition: service_started
       billing:
@@ -43,8 +41,6 @@ services:
       - jwt_secret
       - mongodb_uri
     depends_on:
-      mongodb:
-        condition: service_healthy
       rabbitmq:
         condition: service_started
       auth:
@@ -71,8 +67,6 @@ services:
       - jwt_secret
       - mongodb_uri
     depends_on:
-      mongodb:
-        condition: service_healthy
       rabbitmq:
         condition: service_started
     volumes:
@@ -97,8 +91,6 @@ services:
       - jwt_secret
       - mongodb_uri
     depends_on:
-      mongodb:
-        condition: service_healthy
       auth:
         condition: service_started
     volumes:
@@ -123,8 +115,6 @@ services:
       - jwt_secret
       - mongodb_uri
     depends_on:
-      mongodb:
-        condition: service_healthy
       auth:
         condition: service_started
     volumes:
@@ -148,8 +138,6 @@ services:
       - jwt_secret
       - mongodb_uri
     depends_on:
-      mongodb:
-        condition: service_healthy
       auth:
         condition: service_started
     volumes:
@@ -163,27 +151,6 @@ services:
     ports:
       - "5673:5672"   # AMQP
       - "15672:15672" # HTTP UI
-
-  mongodb:
-    image: mongo:5.0
-    command: ["mongod", "--bind_ip_all"]
-    secrets:
-      - mongodb_root_username
-      - mongodb_root_password
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME_FILE=/run/secrets/mongodb_root_username
-      - MONGO_INITDB_ROOT_PASSWORD_FILE=/run/secrets/mongodb_root_password
-    volumes:
-      - 'mongodb_data:/data/db'
-      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
-    ports:
-      - '27017:27017'
-    healthcheck:
-      test: ["CMD-SHELL", "mongosh --username root --password password123 --authenticationDatabase admin --eval \"db.runCommand({ ping: 1 }).ok\" | grep 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
 
   frontend:
     build:
@@ -290,9 +257,9 @@ services:
   #     - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
   #   restart: unless-stopped
 
-volumes:
-  mongodb_data:
-    driver: local
+# volumes:
+#   mongodb_data:
+#     driver: local
   # prometheus-data:
   # grafana-data:
 
@@ -301,7 +268,3 @@ secrets:
     file: ./secrets/jwt_secret.txt
   mongodb_uri:
     file: ./secrets/mongodb_uri.txt
-  mongodb_root_username:
-    file: ./secrets/mongodb_root_username.txt
-  mongodb_root_password:
-    file: ./secrets/mongodb_root_password.txt
