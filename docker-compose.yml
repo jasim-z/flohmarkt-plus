@@ -1,55 +1,55 @@
 services:  
-  orders:
-    build:
-      context: .
-      dockerfile: ./apps/orders/Dockerfile
-      target: development
-    command: pnpm run start:dev orders
-    environment:
-      - PORT=3949
-      - NODE_ENV=development
-    env_file:
-      - .env
-    secrets:
-      - jwt_secret
-      - mongodb_uri
-    depends_on:
-      rabbitmq:
-        condition: service_started
-      billing:
-        condition: service_started
-      auth:
-        condition: service_started
-    volumes:
-      - .:/usr/src/app
-      - /usr/src/app/node_modules
-    ports:
-      - '3949:3949'
+  # orders:
+  #   build:
+  #     context: .
+  #     dockerfile: ./apps/orders/Dockerfile
+  #     target: development
+  #   command: pnpm run start:dev orders
+  #   environment:
+  #     - PORT=3949
+  #     - NODE_ENV=development
+  #   env_file:
+  #     - .env
+  #   secrets:
+  #     - jwt_secret
+  #     - mongodb_uri
+  #   depends_on:
+  #     rabbitmq:
+  #       condition: service_started
+  #     billing:
+  #       condition: service_started
+  #     auth:
+  #       condition: service_started
+  #   volumes:
+  #     - .:/usr/src/app
+  #     - /usr/src/app/node_modules
+  #   ports:
+  #     - '3949:3949'
       
-  billing:
-    build:
-      context: .
-      dockerfile: ./apps/billing/Dockerfile
-      target: development
-    command: pnpm run start:dev billing
-    environment:
-      - PORT=3951
-      - NODE_ENV=development
-    env_file:
-      - .env
-    secrets:
-      - jwt_secret
-      - mongodb_uri
-    depends_on:
-      rabbitmq:
-        condition: service_started
-      auth:
-        condition: service_started
-    volumes:
-      - .:/usr/src/app
-      - /usr/src/app/node_modules
-    ports:
-      - '3951:3951'
+  # billing:
+  #   build:
+  #     context: .
+  #     dockerfile: ./apps/billing/Dockerfile
+  #     target: development
+  #   command: pnpm run start:dev billing
+  #   environment:
+  #     - PORT=3951
+  #     - NODE_ENV=development
+  #   env_file:
+  #     - .env
+  #   secrets:
+  #     - jwt_secret
+  #     - mongodb_uri
+  #   depends_on:
+  #     rabbitmq:
+  #       condition: service_started
+  #     auth:
+  #       condition: service_started
+  #   volumes:
+  #     - .:/usr/src/app
+  #     - /usr/src/app/node_modules
+  #   ports:
+  #     - '3951:3951'
 
   auth:
     build:
@@ -169,8 +169,7 @@ services:
     depends_on:
       - auth
       - listings
-      - orders
-      - billing
+      - markets
       - messages
     volumes:
       # Mount only source files, not build artifacts or config files
