@@ -1,6 +1,7 @@
 services:
   auth:
     image: ${DOCKER_USERNAME:-yourusername}/flohmarkt-plus-auth:latest
+    platform: linux/amd64
     environment:
       - PORT=3950
       - NODE_ENV=production
@@ -25,6 +26,7 @@ services:
 
   listings:
     image: ${DOCKER_USERNAME:-yourusername}/flohmarkt-plus-listings:latest
+    platform: linux/amd64
     environment:
       - PORT=3952
       - NODE_ENV=production
@@ -49,6 +51,7 @@ services:
 
   markets:
     image: ${DOCKER_USERNAME:-yourusername}/flohmarkt-plus-markets:latest
+    platform: linux/amd64
     environment:
       - PORT=3953
       - NODE_ENV=production
@@ -73,6 +76,7 @@ services:
 
   messages:
     image: ${DOCKER_USERNAME:-yourusername}/flohmarkt-plus-messages:latest
+    platform: linux/amd64
     environment:
       - PORT=3954
       - NODE_ENV=production
@@ -113,6 +117,7 @@ services:
 
   frontend:
     image: ${DOCKER_USERNAME:-yourusername}/flohmarkt-plus-frontend:latest
+    platform: linux/amd64
     environment:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1

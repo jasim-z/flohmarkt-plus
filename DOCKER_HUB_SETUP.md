@@ -13,8 +13,16 @@ Build Docker images locally on your Mac (powerful), push to Docker Hub, then EC2
 ```bash
 # On your Mac
 docker login
-# Enter your Docker Hub username and password
+# Enter your Docker Hub username
+# Password: 
+#   - If you created account with email/password: use your Docker Hub password
+#   - If you signed up with Google OAuth: Create a Personal Access Token
+#     → Go to https://hub.docker.com/settings/security
+#     → Create "New Access Token" with "Read, Write, Delete" permissions
+#     → Use the token as your "password"
 ```
+
+**Note for Google OAuth users:** Create a Personal Access Token from Docker Hub settings instead of using a password.
 
 ## Step 3: Build and Push Images Locally
 

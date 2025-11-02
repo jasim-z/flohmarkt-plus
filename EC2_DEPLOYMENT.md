@@ -97,12 +97,22 @@ nano secrets/mongodb_uri.txt
 ## Step 5: Pull Images from Docker Hub
 
 ```bash
-# Login to Docker Hub (you'll be prompted for credentials)
+# Login to Docker Hub
+# If you signed up with Google OAuth, you need a Personal Access Token:
+# 1. Go to https://hub.docker.com/settings/security
+# 2. Create "New Access Token" with "Read, Write, Delete" permissions
+# 3. Copy the token (shown only once)
+# 4. Use it as your "password" when logging in
+
 docker login
+# Username: your-dockerhub-username
+# Password: <paste your Personal Access Token here>
 
 # Pull all images (fast - just downloads)
 docker compose -f docker-compose.prod.hub.yml pull
 ```
+
+**Note for Google OAuth users:** You cannot use your Google password. You must create a Personal Access Token from Docker Hub settings.
 
 ## Step 6: Start Services
 

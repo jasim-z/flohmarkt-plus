@@ -30,25 +30,38 @@ echo "📦 Using: $DOCKER_COMPOSE"
 echo "📦 Logging in to Docker Hub..."
 docker login
 
-# Build images
-echo "🔨 Building images..."
-$DOCKER_COMPOSE -f docker-compose.prod.yml build
+# Setup buildx for multi-platform builds (if not exists)
+echo "🔧 Setting up buildx..."
+docker buildx create --use --name multiarch-builder 2>/dev/null || docker buildx use multiarch-builder
 
-# Tag images for Docker Hub
-echo "🏷️  Tagging images..."
-docker tag flohmarkt-plus-auth $DOCKER_USERNAME/flohmarkt-plus-auth:latest
-docker tag flohmarkt-plus-listings $DOCKER_USERNAME/flohmarkt-plus-listings:latest
-docker tag flohmarkt-plus-markets $DOCKER_USERNAME/flohmarkt-plus-markets:latest
-docker tag flohmarkt-plus-messages $DOCKER_USERNAME/flohmarkt-plus-messages:latest
-docker tag flohmarkt-plus-frontend $DOCKER_USERNAME/flohmarkt-plus-frontend:latest
+# Build and push images directly using buildx for linux/amd64 platform (EC2 compatible)
+echo "🔨 Building and pushing images for linux/amd64 platform..."
+echo "   This may take a while as it's cross-compiling from ARM64 to AMD64..."
 
-# Push to Docker Hub
-echo "📤 Pushing images to Docker Hub..."
-docker push $DOCKER_USERNAME/flohmarkt-plus-auth:latest
-docker push $DOCKER_USERNAME/flohmarkt-plus-listings:latest
-docker push $DOCKER_USERNAME/flohmarkt-plus-markets:latest
-docker push $DOCKER_USERNAME/flohmarkt-plus-messages:latest
-docker push $DOCKER_USERNAME/flohmarkt-plus-frontend:latest
+docker buildx build --platform linux/amd64 --push \
+  -t $DOCKER_USERNAME/flohmarkt-plus-auth:latest \
+  -f apps/auth/Dockerfile \
+  --target production .
+
+docker buildx build --platform linux/amd64 --push \
+  -t $DOCKER_USERNAME/flohmarkt-plus-listings:latest \
+  -f apps/listings/Dockerfile \
+  --target production .
+
+docker buildx build --platform linux/amd64 --push \
+  -t $DOCKER_USERNAME/flohmarkt-plus-markets:latest \
+  -f apps/markets/Dockerfile \
+  --target production .
+
+docker buildx build --platform linux/amd64 --push \
+  -t $DOCKER_USERNAME/flohmarkt-plus-messages:latest \
+  -f apps/messages/Dockerfile \
+  --target production .
+
+docker buildx build --platform linux/amd64 --push \
+  -t $DOCKER_USERNAME/flohmarkt-plus-frontend:latest \
+  -f apps/frontend/Dockerfile \
+  --target runner .
 
 echo "✅ Done! Images pushed to Docker Hub"
 echo ""
