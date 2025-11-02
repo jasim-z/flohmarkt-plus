@@ -44,6 +44,7 @@ lerna-debug.log*
 **/*.env
 .env.s3
 .env.s3dev
+.env.production
 
 # Ignore Docker secrets
 secrets/
