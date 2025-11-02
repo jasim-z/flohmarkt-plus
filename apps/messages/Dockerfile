@@ -1,4 +1,4 @@
-FROM node:alpine As development
+FROM node:alpine As builder
 
 WORKDIR /usr/src/app
 
@@ -21,7 +21,6 @@ COPY package.json pnpm-lock.yaml ./
 RUN npm i -g pnpm@9
 RUN pnpm install --prod --frozen-lockfile
 
-COPY . .
-COPY --from=development /usr/src/app/dist ./dist
+COPY --from=builder /usr/src/app/dist ./dist
 
 CMD ["node", "dist/apps/messages/main"]
