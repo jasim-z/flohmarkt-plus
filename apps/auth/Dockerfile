@@ -11,7 +11,7 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-RUN npm run build
+RUN npx nest build auth
 
 FROM node:alpine as production
 
